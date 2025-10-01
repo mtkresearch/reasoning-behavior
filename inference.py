@@ -4,8 +4,8 @@ from pathlib import Path
 from tqdm import tqdm
 from llm_client import LLMClient, Task
 
-MAX_WOKERS = 5
-MAX_TRY = 5
+MAX_WOKERS = 10
+MAX_TRY = 3
 
 
 def _get_sys_prompt(model_type, system_type):
@@ -32,7 +32,7 @@ def save_result(data, out_dir):
 
 
 def inference(target, model_type, system_type, out_dir, can_restore=False):
-    
+
     Path(out_dir).mkdir(parents=True, exist_ok=True)
 
     client = LLMClient()
@@ -45,6 +45,39 @@ def inference(target, model_type, system_type, out_dir, can_restore=False):
             data = [json.loads(line.strip()) for line in open('/mnt/shared/p01/yc/datasets/MATH-500/test.jsonl').readlines()]
 
         col_problem = 'problem'
+
+    elif target.startswith('AIME2025'):
+        # Parse repeat count from target (e.g., AIME2025__R5 means repeat 5 times)
+        if '__R' in target:
+            repeat_count = int(target.split('__R')[1])
+        else:
+            repeat_count = 1
+
+        path_results = out_dir + '/results.json'
+        if can_restore and Path(path_results).exists():
+            data = json.load(open(path_results))
+        else:
+            data = []
+            # Process both AIME 2025 jsonl files
+            for jsonl_file in ['aime2025-I.jsonl', 'aime2025-II.jsonl']:
+                jsonl_path = f'/mnt/shared/p01/yc/datasets/AIME2025/{jsonl_file}'
+                filename = jsonl_file.replace('.jsonl', '')
+
+                with open(jsonl_path, 'r') as f:
+                    lines = [line.strip() for line in f.readlines() if line.strip()]
+
+                for row_idx, line in enumerate(lines):
+                    item = json.loads(line)
+                    # Repeat each problem repeat_count times
+                    for repeat_idx in range(repeat_count):
+                        unique_id = f"{filename}-{row_idx}-{repeat_idx}"
+                        data.append({
+                            'unique_id': unique_id,
+                            'question': item['question'],
+                            'answer': item['answer'],
+                        })
+
+        col_problem = 'question'
 
     index_query_pairs = [(i, x[col_problem]) for i, x in enumerate(data) if 'result' not in x]
 
@@ -77,8 +110,20 @@ def inference(target, model_type, system_type, out_dir, can_restore=False):
 
 
 if __name__ == '__main__':
-    target = 'MATH500'
+    import sys
+
+    # Default parameters
+    target = 'AIME2025__R10'
     model_type = 'deepseek'
-    system_type = 'p1'
+    system_type = 'p2'
+
+    # Allow command line override
+    if len(sys.argv) > 1:
+        target = sys.argv[1]
+    if len(sys.argv) > 2:
+        model_type = sys.argv[2]
+    if len(sys.argv) > 3:
+        system_type = sys.argv[3]
+
     out_dir = f'data/{target}/{model_type}/{system_type}/'
     inference(target, model_type, system_type, out_dir, can_restore=True)
