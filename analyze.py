@@ -75,6 +75,9 @@ class ReasoningAnalyzer:
 
         # Map responses back to strategies
         for (option, strategy_name, _), response in zip(tasks, responses):
+            if not response.success:
+                raise Exception(f"Generation failed for strategy {option} in item {index}")
+
             try:
                 has_strategy = '\\boxed{YES}' in response.content
                 cot_collection[option] = {

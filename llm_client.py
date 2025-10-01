@@ -3,6 +3,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
+import time
 
 
 @dataclass
@@ -18,6 +19,8 @@ class Task:
 class Response:
     index: int
     content: str
+    elapsed_seconds: float
+    success: bool
 
 
 class LLMClient:
@@ -64,11 +67,14 @@ class LLMClient:
         """
         def _generate_task(task):
             try:
+                start_time = time.time()
                 messages, extra_body = self._prepare_messages_and_extra_body(task)
                 content = self.generate(messages, extra_body)
-                return Response(index=task.index, content=content)
+                elapsed_seconds = int(time.time() - start_time)
+                return Response(index=task.index, content=content, elapsed_seconds=elapsed_seconds, success=True)
             except Exception as e:
-                return Response(index=task.index, content=f"Error: {str(e)}")
+                elapsed_seconds = int(time.time() - start_time if 'start_time' in locals() else 0)
+                return Response(index=task.index, content="", elapsed_seconds=elapsed_seconds, success=False)
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []

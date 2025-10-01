@@ -67,6 +67,9 @@ class AnswerGrader:
         i = response.index
         item = data[i]
 
+        if not response.success:
+            raise Exception(f"Generation failed for item {i}")
+
         try:
             is_correct = '\\boxed{YES}' in response.content
             return {
