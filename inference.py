@@ -17,22 +17,6 @@ def _get_sys_prompt(model_type, system_type):
 
     return sys_prompt
 
-def generate(model_type, system_type, query, client):
-    sys_prompt = _get_sys_prompt(model_type, system_type)
-
-    if model_type == 'deepseek':
-        messages = [
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": "Who are you?"},
-            {"role": "assistant", "content": "<think>Hmm</think>I am DeepSeek"},
-            {"role": "user", "content": query},
-        ]
-        extra_body = {"chat_template_kwargs": {"thinking": True}}
-
-    content = client.generate(messages, extra_body)
-    return content
-
-
 def parse_response(model_type, response):
     if model_type == 'deepseek':
         part1, part2 = response.split('</think>')
@@ -66,16 +50,8 @@ def inference(target, model_type, system_type, out_dir, can_restore=False):
 
     # Prepare tasks
     sys_prompt = _get_sys_prompt(model_type, system_type)
-    tasks = []
-    for i, query in index_query_pairs:
-        messages = [
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": "Who are you?"},
-            {"role": "assistant", "content": "<think>Hmm</think>I am DeepSeek"},
-            {"role": "user", "content": query},
-        ]
-        extra_body = {"chat_template_kwargs": {"thinking": True}}
-        tasks.append(Task(index=i, messages=messages, extra_body=extra_body))
+    tasks = [Task(index=i, query=query, model_type=model_type, system_prompt=sys_prompt)
+             for i, query in index_query_pairs]
 
     # Process with retries
     for attempt in range(MAX_TRY):

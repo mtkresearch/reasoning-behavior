@@ -8,7 +8,9 @@ from typing import Optional, List, Dict, Any
 @dataclass
 class Task:
     index: int
-    messages: List[Dict[str, str]]
+    query: str
+    model_type: str = 'deepseek'
+    system_prompt: str = "You are a helpful assistant"
     extra_body: Optional[Dict[str, Any]] = None
 
 
@@ -38,6 +40,17 @@ class LLMClient:
         )
         return response.choices[0].message.content
 
+    def _prepare_messages_and_extra_body(self, task):
+        if task.model_type == 'deepseek':
+            messages = [
+                {"role": "system", "content": task.system_prompt},
+                {"role": "user", "content": "Who are you?"},
+                {"role": "assistant", "content": "<think>Hmm</think>I am DeepSeek"},
+                {"role": "user", "content": task.query},
+            ]
+            extra_body = task.extra_body or {"chat_template_kwargs": {"thinking": True}}
+        return messages, extra_body
+
     def generate_concurrent(self, tasks, max_workers=None):
         """
         Generate responses concurrently for multiple tasks.
@@ -51,7 +64,8 @@ class LLMClient:
         """
         def _generate_task(task):
             try:
-                content = self.generate(task.messages, task.extra_body)
+                messages, extra_body = self._prepare_messages_and_extra_body(task)
+                content = self.generate(messages, extra_body)
                 return Response(index=task.index, content=content)
             except Exception as e:
                 return Response(index=task.index, content=f"Error: {str(e)}")
