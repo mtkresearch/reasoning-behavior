@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from tqdm import tqdm
-from openai import OpenAI
+from llm_client import LLMClient
 
 
 def _get_sys_prompt(model_type, system_type):
@@ -14,19 +14,7 @@ def _get_sys_prompt(model_type, system_type):
 
     return sys_prompt
 
-def generate(model_type, system_type, query):
-    openai_api_key = "EMPTY"
-    openai_api_base = "http://localhost:8001/v1"
-
-    client = OpenAI(
-        api_key=openai_api_key,
-        base_url=openai_api_base,
-    )
-
-    models = client.models.list()
-    model = models.data[0].id
-
-
+def generate(model_type, system_type, query, client):
     sys_prompt = _get_sys_prompt(model_type, system_type)
 
     if model_type == 'deepseek':
@@ -38,10 +26,7 @@ def generate(model_type, system_type, query):
         ]
         extra_body = {"chat_template_kwargs": {"thinking": True}}
 
-    response = client.chat.completions.create(
-        model=model, messages=messages, extra_body=extra_body
-    )
-    content = response.choices[0].message.content
+    content = client.generate(messages, extra_body)
     return content
 
 
@@ -63,6 +48,8 @@ def inference(target, model_type, system_type, out_dir, can_restore=False):
     MAX_TRY = 5
     Path(out_dir).mkdir(parents=True, exist_ok=True)
 
+    client = LLMClient()
+
     if target == 'MATH500':
         path_results = out_dir + '/results.json'
         if can_restore and Path(path_results).exists():
@@ -77,7 +64,7 @@ def inference(target, model_type, system_type, out_dir, can_restore=False):
     for i, query in tqdm(index_query_pairs):
         for _ in range(MAX_TRY):
             try:
-                response = generate(model_type, system_type, query)
+                response = generate(model_type, system_type, query, client)
                 traj, answer = parse_response(model_type, response)
                 data[i]['result'] = {
                     'traj': traj,
