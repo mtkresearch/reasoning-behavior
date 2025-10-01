@@ -2,7 +2,10 @@ import json
 from pathlib import Path
 
 from tqdm import tqdm
-from llm_client import LLMClient
+from llm_client import LLMClient, Task
+
+MAX_WOKERS = 5
+MAX_TRY = 5
 
 
 def _get_sys_prompt(model_type, system_type):
@@ -45,7 +48,7 @@ def save_result(data, out_dir):
 
 
 def inference(target, model_type, system_type, out_dir, can_restore=False):
-    MAX_TRY = 5
+    
     Path(out_dir).mkdir(parents=True, exist_ok=True)
 
     client = LLMClient()
@@ -61,23 +64,40 @@ def inference(target, model_type, system_type, out_dir, can_restore=False):
 
     index_query_pairs = [(i, x[col_problem]) for i, x in enumerate(data) if 'result' not in x]
 
-    for i, query in tqdm(index_query_pairs):
-        for _ in range(MAX_TRY):
+    # Prepare tasks
+    sys_prompt = _get_sys_prompt(model_type, system_type)
+    tasks = []
+    for i, query in index_query_pairs:
+        messages = [
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": "Who are you?"},
+            {"role": "assistant", "content": "<think>Hmm</think>I am DeepSeek"},
+            {"role": "user", "content": query},
+        ]
+        extra_body = {"chat_template_kwargs": {"thinking": True}}
+        tasks.append(Task(index=i, messages=messages, extra_body=extra_body))
+
+    # Process with retries
+    for attempt in range(MAX_TRY):
+        failed_tasks = []
+
+        for response in tqdm(client.generate_concurrent(tasks, max_workers=MAX_WOKERS), total=len(tasks), desc=f"Attempt {attempt+1}"):
             try:
-                response = generate(model_type, system_type, query, client)
-                traj, answer = parse_response(model_type, response)
-                data[i]['result'] = {
+                traj, answer = parse_response(model_type, response.content)
+                data[response.index]['result'] = {
                     'traj': traj,
                     'answer': answer,
-                    'sys_prompt': _get_sys_prompt(model_type, system_type)
+                    'sys_prompt': sys_prompt
                 }
-                break
-            except KeyboardInterrupt:
-                raise KeyboardInterrupt
             except Exception as e:
-                print(e)
-        save_result(data, out_dir)
-    # save_result(data, out_dir)
+                print(f"Error index {response.index}: {e}")
+                failed_tasks.append([t for t in tasks if t.index == response.index][0])
+
+            save_result(data, out_dir)
+
+        if not failed_tasks:
+            break
+        tasks = failed_tasks
 
 
 if __name__ == '__main__':
