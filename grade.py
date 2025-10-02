@@ -58,7 +58,7 @@ class AnswerGrader:
                     ),
                     model_type='deepseek',
                     system_prompt="You are a helpful assistant",
-                    extra_body={"chat_template_kwargs": {"thinking": False}}
+                    reasoning_on=False
                 ),
                 metadata={'unique_id': item['unique_id']}
             )

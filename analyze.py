@@ -72,7 +72,7 @@ class ReasoningAnalyzer:
                         query=DIRECT_REASONING_WAY_SELECTION.format(traj=traj, option=option),
                         model_type='deepseek',
                         system_prompt="You are a helpful assistant",
-                        extra_body={"chat_template_kwargs": {"thinking": False}}
+                        reasoning_on=False
                     ),
                     metadata={
                         'item_index': i,

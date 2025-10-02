@@ -18,18 +18,6 @@ def _get_sys_prompt(model_type, system_type):
 
     return sys_prompt
 
-def parse_response(model_type, response):
-    if model_type == 'deepseek':
-        # Check for exactly one </think> tag
-        think_count = response.count('</think>')
-        if think_count != 1:
-            raise ValueError(f"Expected exactly 1 </think> tag, found {think_count}")
-
-        traj, answer = response.split('</think>')
-
-    return traj, answer
-
-
 def save_result(data, out_dir):
     with open(out_dir + '/results.json', 'w') as fw:
         json.dump(data, fw, ensure_ascii=False, indent=2)
@@ -113,7 +101,7 @@ def inference(target, model_type, system_type, out_dir, can_restore=False):
 
     # Prepare tasks
     sys_prompt = _get_sys_prompt(model_type, system_type)
-    tasks = [Task(index=i, request=Request(query=query, model_type=model_type, system_prompt=sys_prompt))
+    tasks = [Task(index=i, request=Request(query=query, model_type=model_type, system_prompt=sys_prompt, reasoning_on=True))
              for i, query in index_query_pairs]
 
     # Shuffle tasks
@@ -130,10 +118,9 @@ def inference(target, model_type, system_type, out_dir, can_restore=False):
                 continue
 
             try:
-                traj, answer = parse_response(model_type, task.response.content)
                 data[task.index]['result'] = {
-                    'traj': traj,
-                    'answer': answer,
+                    'traj': task.response.reasoning_content,
+                    'answer': task.response.content,
                     'sys_prompt': sys_prompt,
                     'elapsed_seconds': task.response.elapsed_seconds
                 }

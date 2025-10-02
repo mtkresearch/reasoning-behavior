@@ -64,7 +64,7 @@ class ConsistencyInference:
                     query=DIRECT_REASONING_WAY_SELECTION.format(traj=traj, option=option),
                     model_type=self.model_type,
                     system_prompt="You are a helpful assistant",
-                    extra_body={"chat_template_kwargs": {"thinking": False}}
+                    reasoning_on=False
                 ),
                 metadata={'option': option, 'strategy_name': strategy_name}
             )

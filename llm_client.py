@@ -11,7 +11,7 @@ class Request:
     query: str
     model_type: str = 'deepseek'
     system_prompt: str = "You are a helpful assistant"
-    extra_body: Optional[Dict[str, Any]] = None
+    reasoning_on: bool = True
 
 
 @dataclass
@@ -19,6 +19,7 @@ class Response:
     content: str
     elapsed_seconds: float
     success: bool
+    reasoning_content: Optional[str] = None
     err_message: Optional[str] = None
 
 
@@ -42,16 +43,14 @@ class LLMClient:
         models = self.client.models.list()
         return models.data[0].id
 
-    def generate(self, messages, extra_body=None, timeout=3600*2):
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            extra_body=extra_body,
-            timeout=timeout,
-        )
-        return response.choices[0].message.content
+    def _parse_deepseek_reasoning_content(self, content):
+        think_count = content.count('</think>')
+        if think_count != 1:
+            raise ValueError(f"Expected exactly 1 </think> tag, found {think_count}")
+        reasoning_content, content = content.split('</think>')
+        return reasoning_content, content
 
-    def _prepare_messages_and_extra_body(self, request):
+    def generate(self, request, timeout=3600*2):
         if request.model_type == 'deepseek':
             messages = [
                 {"role": "system", "content": request.system_prompt},
@@ -59,8 +58,38 @@ class LLMClient:
                 {"role": "assistant", "content": "<think>Hmm</think>I am DeepSeek"},
                 {"role": "user", "content": request.query},
             ]
-            extra_body = request.extra_body or {"chat_template_kwargs": {"thinking": True}}
-        return messages, extra_body
+            kwargs = {
+                'extra_body': {"chat_template_kwargs": {"thinking": request.reasoning_on}} 
+            }
+        elif request.model_type == 'gpt-oss':
+            messages = [
+                {"role": "system", "content": request.system_prompt},
+                {"role": "user", "content": request.query},
+            ]
+            kwargs = {
+                "reasoning_effort": "low" 
+            } if request.reasoning_on else {}
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            timeout=timeout,
+            **kwargs,
+        )
+
+        reasoning_content = None
+        if request.model_type == 'deepseek':
+            if request.reasoning_on:
+                reasoning_content, content = self._parse_deepseek_reasoning_content(response.choices[0].message.content)
+            else:
+                content = response.choices[0].message.content
+
+        elif request.model_type == 'gpt-oss':
+            if request.reasoning_on:
+                reasoning_content = response.choices[0].message.reasoning_content
+            content = response.choices[0].message.content
+
+        return reasoning_content, content 
 
     def generate_concurrent(self, tasks, max_workers=None):
         """
@@ -76,10 +105,9 @@ class LLMClient:
         def _generate_task(task):
             try:
                 start_time = time.time()
-                messages, extra_body = self._prepare_messages_and_extra_body(task.request)
-                content = self.generate(messages, extra_body)
+                reasoning_content, content = self.generate(task.request)
                 elapsed_seconds = int(time.time() - start_time)
-                task.response = Response(content=content, elapsed_seconds=elapsed_seconds, success=True)
+                task.response = Response(content=content, reasoning_content=reasoning_content, elapsed_seconds=elapsed_seconds, success=True)
                 return task
             except Exception as e:
                 elapsed_seconds = int(time.time() - start_time if 'start_time' in locals() else 0)
