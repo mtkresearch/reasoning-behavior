@@ -30,7 +30,7 @@ Please Determine: Does the reasoning chain use the {option}) strategy or not?
 - Detailed operation steps do not count as strategy.
 """
 
-MAX_WORKERS = 9
+MAX_WORKERS = 50
 MAX_TRY = 3
 
 REASONING_STRATEGIES = {
@@ -50,58 +50,6 @@ class ReasoningAnalyzer:
     def __init__(self):
         self.client = LLMClient()
 
-    def analyze_single_item(self, item: Dict, index: int) -> Dict:
-        """Analyze a single problem's reasoning trajectory using concurrent strategy checking"""
-        traj = item['result']['traj']
-
-        # Create tasks for all strategies
-        tasks = []
-        for option, strategy_name in REASONING_STRATEGIES.items():
-            task = Task(
-                index=ord(option) - ord('A'),  # Convert A-I to 0-8
-                request=Request(
-                    query=DIRECT_REASONING_WAY_SELECTION.format(traj=traj, option=option),
-                    model_type='deepseek',
-                    system_prompt="You are a helpful assistant",
-                    extra_body={"chat_template_kwargs": {"thinking": False}}
-                ),
-                metadata={'option': option, 'strategy_name': strategy_name}
-            )
-            tasks.append(task)
-
-        strategies_found = []
-        cot_collection = {}
-
-        # Process all strategies concurrently
-        for completed_task in self.client.generate_concurrent(tasks, max_workers=MAX_WORKERS):
-            option = completed_task.metadata['option']
-            strategy_name = completed_task.metadata['strategy_name']
-
-            if not completed_task.response.success:
-                raise Exception(f"Generation failed for strategy {option} in item {index}")
-
-            try:
-                has_strategy = '\\boxed{YES}' in completed_task.response.content
-                cot_collection[option] = {
-                    'name': strategy_name,
-                    'response': completed_task.response.content,
-                    'found': has_strategy
-                }
-                if has_strategy:
-                    strategies_found.append(option)
-            except Exception as e:
-                print(f"Error processing strategy {option} for item {index}: {e}")
-                cot_collection[option] = {
-                    'name': strategy_name,
-                    'error': str(e),
-                    'found': False
-                }
-
-        return {
-            'strategies_found': sorted(strategies_found),
-            'cot_collection': cot_collection
-        }
-
     def analyze_results(self, results_path: str, output_path: str):
         """Analyze all items in results.json and save to metrics.json"""
         # Load results
@@ -113,25 +61,89 @@ class ReasoningAnalyzer:
 
         print(f"Analyzing {len(items_to_analyze)} items...")
 
+        # Create all tasks (items × 9 strategies)
+        all_tasks = []
+        for i, item in items_to_analyze:
+            traj = item['result']['traj']
+            for option, strategy_name in REASONING_STRATEGIES.items():
+                task = Task(
+                    index=len(all_tasks),
+                    request=Request(
+                        query=DIRECT_REASONING_WAY_SELECTION.format(traj=traj, option=option),
+                        model_type='deepseek',
+                        system_prompt="You are a helpful assistant",
+                        extra_body={"chat_template_kwargs": {"thinking": False}}
+                    ),
+                    metadata={
+                        'item_index': i,
+                        'unique_id': item.get('unique_id', ''),
+                        'option': option,
+                        'strategy_name': strategy_name
+                    }
+                )
+                all_tasks.append(task)
+
+        print(f"Total tasks: {len(all_tasks)} ({len(items_to_analyze)} items × 9 strategies)")
+
+        # Collect results, group by item_index
+        results_by_item = {}
+        failed_items = set()
+
+        for completed_task in tqdm(
+            self.client.generate_concurrent(all_tasks, max_workers=MAX_WORKERS),
+            total=len(all_tasks),
+            desc="Processing all strategies"
+        ):
+            item_idx = completed_task.metadata['item_index']
+            option = completed_task.metadata['option']
+            strategy_name = completed_task.metadata['strategy_name']
+
+            if item_idx not in results_by_item:
+                results_by_item[item_idx] = {
+                    'unique_id': completed_task.metadata['unique_id'],
+                    'cot_collection': {},
+                    'strategies_found': []
+                }
+
+            # Check if failed
+            if not completed_task.response.success:
+                print(f"\nTask failed for item {item_idx}, strategy {option}: {completed_task.response.err_message}")
+                failed_items.add(item_idx)
+                continue
+
+            # Parse result
+            try:
+                has_strategy = '\\boxed{YES}' in completed_task.response.content
+                results_by_item[item_idx]['cot_collection'][option] = {
+                    'name': strategy_name,
+                    'response': completed_task.response.content,
+                    'found': has_strategy
+                }
+                if has_strategy:
+                    results_by_item[item_idx]['strategies_found'].append(option)
+            except Exception as e:
+                print(f"\nError processing item {item_idx}, strategy {option}: {e}")
+                failed_items.add(item_idx)
+
+        # Filter complete results (all 9 strategies succeeded)
         metrics = []
-        for i, item in tqdm(items_to_analyze, desc="Analyzing reasoning strategies"):
-            analysis = self.analyze_single_item(item, i)
+        for item_idx in sorted(results_by_item.keys()):
+            if item_idx in failed_items:
+                print(f"Skipping item {item_idx} due to failures")
+                continue
+
+            if len(results_by_item[item_idx]['cot_collection']) != 9:
+                print(f"Skipping item {item_idx}: only {len(results_by_item[item_idx]['cot_collection'])}/9 strategies completed")
+                continue
 
             metrics.append({
-                'index': i,
-                'unique_id': item.get('unique_id', ''),
-                'strategies_found': analysis['strategies_found'],
-                'cot_collection': analysis['cot_collection']
+                'index': item_idx,
+                'unique_id': results_by_item[item_idx]['unique_id'],
+                'strategies_found': sorted(results_by_item[item_idx]['strategies_found']),
+                'cot_collection': results_by_item[item_idx]['cot_collection']
             })
 
-            # Save metrics incrementally
-            output_data = {
-                'summary': None,
-                'metrics': metrics
-            }
-            with open(output_path, 'w') as f:
-                json.dump(output_data, f, ensure_ascii=False, indent=2)
-
+        # Save complete results
         summary = self.calculate_summary(metrics)
         output_data = {
             'summary': summary,
@@ -139,7 +151,10 @@ class ReasoningAnalyzer:
         }
         with open(output_path, 'w') as f:
             json.dump(output_data, f, ensure_ascii=False, indent=2)
-        print(f"Analysis complete. Metrics saved to {output_path}")
+
+        print(f"\nAnalysis complete. Metrics saved to {output_path}")
+        print(f"Completed: {len(metrics)}/{len(items_to_analyze)} items")
+        print(f"Failed/Incomplete: {len(items_to_analyze) - len(metrics)} items")
 
         # Print summary
         self.print_summary(summary, len(metrics))

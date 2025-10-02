@@ -160,6 +160,7 @@ if __name__ == '__main__':
     system_type = 'p1'
 
     # Allow command line override
+    assert len(sys.argv) == 1 + 0 or len(sys.argv) == 1 + 3
     if len(sys.argv) > 1:
         target = sys.argv[1]
     if len(sys.argv) > 2:

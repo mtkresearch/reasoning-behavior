@@ -23,7 +23,7 @@ Please determine if the model's answer is correct compared to the ground truth a
 - Answer with \\boxed{{YES}} if correct, or \\boxed{{NO}} if incorrect
 """
 
-MAX_WORKERS = 10
+MAX_WORKERS = 300
 
 
 class AnswerGrader:
@@ -151,6 +151,7 @@ if __name__ == '__main__':
     model_type = 'deepseek'  # The model type of the results being graded
 
     # Allow command line override
+    assert len(sys.argv) == 1 + 0 or len(sys.argv) == 1 + 2
     if len(sys.argv) > 1:
         results_path = sys.argv[1]
     if len(sys.argv) > 2:
