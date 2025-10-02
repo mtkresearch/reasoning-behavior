@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Dict
 from tqdm import tqdm
-from llm_client import LLMClient, Task
+from llm_client import LLMClient, Task, Request
 
 GRADING_PROMPT = """
 **Problem:**
@@ -50,39 +50,39 @@ class AnswerGrader:
 
             task = Task(
                 index=i,
-                query=GRADING_PROMPT.format(
-                    problem=problem,
-                    ground_truth=ground_truth,
-                    model_answer=model_answer
+                request=Request(
+                    query=GRADING_PROMPT.format(
+                        problem=problem,
+                        ground_truth=ground_truth,
+                        model_answer=model_answer
+                    ),
+                    model_type='deepseek',
+                    system_prompt="You are a helpful assistant",
+                    extra_body={"chat_template_kwargs": {"thinking": False}}
                 ),
-                model_type='deepseek',
-                system_prompt="You are a helpful assistant",
-                extra_body={"chat_template_kwargs": {"thinking": False}}
+                metadata={'unique_id': item['unique_id']}
             )
             tasks.append(task)
         return tasks
 
-    def _process_response(self, response, data):
+    def _process_response(self, task):
         """Process a single grading response"""
-        i = response.index
-        item = data[i]
-
-        if not response.success:
-            raise Exception(f"Generation failed for item {i}")
+        if not task.response.success:
+            raise Exception(f"Generation failed for item {task.index}")
 
         try:
-            is_correct = '\\boxed{YES}' in response.content
+            is_correct = '\\boxed{YES}' in task.response.content
             return {
-                'index': i,
-                'unique_id': item.get('unique_id', ''),
+                'index': task.index,
+                'unique_id': task.metadata['unique_id'],
                 'correct': is_correct,
-                'grading_cot': response.content
+                'grading_cot': task.response.content
             }
         except Exception as e:
-            print(f"\nError processing response for item {i}: {e}")
+            print(f"\nError processing response for item {task.index}: {e}")
             return {
-                'index': i,
-                'unique_id': item.get('unique_id', ''),
+                'index': task.index,
+                'unique_id': task.metadata['unique_id'],
                 'correct': None,
                 'grading_cot': None,
                 'error': str(e)
@@ -114,9 +114,9 @@ class AnswerGrader:
         grades = []
         correct_count = 0
 
-        for response in tqdm(self.client.generate_concurrent(tasks, max_workers=MAX_WORKERS),
+        for task in tqdm(self.client.generate_concurrent(tasks, max_workers=MAX_WORKERS),
                            total=len(tasks), desc="Grading answers"):
-            grade_entry = self._process_response(response, data)
+            grade_entry = self._process_response(task)
 
             if grade_entry['correct']:
                 correct_count += 1

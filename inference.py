@@ -3,9 +3,9 @@ import random
 from pathlib import Path
 
 from tqdm import tqdm
-from llm_client import LLMClient, Task
+from llm_client import LLMClient, Task, Request
 
-MAX_WOKERS = 3
+MAX_WOKERS = 100
 MAX_TRY = 3
 
 
@@ -113,7 +113,7 @@ def inference(target, model_type, system_type, out_dir, can_restore=False):
 
     # Prepare tasks
     sys_prompt = _get_sys_prompt(model_type, system_type)
-    tasks = [Task(index=i, query=query, model_type=model_type, system_prompt=sys_prompt)
+    tasks = [Task(index=i, request=Request(query=query, model_type=model_type, system_prompt=sys_prompt))
              for i, query in index_query_pairs]
 
     # Shuffle tasks
@@ -123,25 +123,25 @@ def inference(target, model_type, system_type, out_dir, can_restore=False):
     for attempt in range(MAX_TRY):
         failed_tasks = []
 
-        for response in tqdm(client.generate_concurrent(tasks, max_workers=MAX_WOKERS), total=len(tasks), desc=f"Attempt {attempt+1}"):
-            if not response.success:
-                print(f"Error index {response.index}: Generation failed")
-                failed_tasks.append([t for t in tasks if t.index == response.index][0])
+        for task in tqdm(client.generate_concurrent(tasks, max_workers=MAX_WOKERS), total=len(tasks), desc=f"Attempt {attempt+1}"):
+            if not task.response.success:
+                print(f"Error index {task.index}: Generation failed - {task.response.err_message}")
+                failed_tasks.append(task)
                 continue
 
             try:
-                traj, answer = parse_response(model_type, response.content)
-                data[response.index]['result'] = {
+                traj, answer = parse_response(model_type, task.response.content)
+                data[task.index]['result'] = {
                     'traj': traj,
                     'answer': answer,
                     'sys_prompt': sys_prompt,
-                    'elapsed_seconds': response.elapsed_seconds
+                    'elapsed_seconds': task.response.elapsed_seconds
                 }
                 # Save incrementally to JSONL
-                save_result_incremental(data[response.index], response.index, out_dir)
+                save_result_incremental(data[task.index], task.index, out_dir)
             except Exception as e:
-                print(f"Error index {response.index}: {e}")
-                failed_tasks.append([t for t in tasks if t.index == response.index][0])
+                print(f"Error index {task.index}: {e}")
+                failed_tasks.append(task)
 
         if not failed_tasks:
             break

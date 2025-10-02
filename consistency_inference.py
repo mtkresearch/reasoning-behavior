@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Optional, List, Dict
 from tqdm import tqdm
-from llm_client import LLMClient, Task
+from llm_client import LLMClient, Task, Request
 
 DIRECT_REASONING_WAY_SELECTION = """
 ** Original Reasoning Chain **:
@@ -60,30 +60,32 @@ class ConsistencyInference:
         for option, strategy_name in REASONING_STRATEGIES.items():
             task = Task(
                 index=ord(option) - ord('A'),  # Convert A-I to 0-8
-                query=DIRECT_REASONING_WAY_SELECTION.format(traj=traj, option=option),
-                model_type=self.model_type,
-                system_prompt="You are a helpful assistant",
-                extra_body={"chat_template_kwargs": {"thinking": False}}
+                request=Request(
+                    query=DIRECT_REASONING_WAY_SELECTION.format(traj=traj, option=option),
+                    model_type=self.model_type,
+                    system_prompt="You are a helpful assistant",
+                    extra_body={"chat_template_kwargs": {"thinking": False}}
+                ),
+                metadata={'option': option, 'strategy_name': strategy_name}
             )
-            tasks.append((option, strategy_name, task))
+            tasks.append(task)
 
         method_types = []
         cot = {}
 
         # Process all strategies concurrently
-        task_list = [task for _, _, task in tasks]
-        responses = list(self.client.generate_concurrent(task_list, max_workers=MAX_WORKERS))
+        for completed_task in self.client.generate_concurrent(tasks, max_workers=MAX_WORKERS):
+            option = completed_task.metadata['option']
+            strategy_name = completed_task.metadata['strategy_name']
 
-        # Map responses back to strategies
-        for (option, strategy_name, _), response in zip(tasks, responses):
-            if not response.success:
+            if not completed_task.response.success:
                 raise Exception(f"Generation failed for strategy {option} in item {index}")
 
             try:
-                has_strategy = '\\boxed{YES}' in response.content
+                has_strategy = '\\boxed{YES}' in completed_task.response.content
                 cot[option] = {
                     'name': strategy_name,
-                    'response': response.content,
+                    'response': completed_task.response.content,
                     'found': has_strategy
                 }
                 if has_strategy:
@@ -97,7 +99,7 @@ class ConsistencyInference:
                 }
 
         return {
-            'method_types': method_types,
+            'method_types': sorted(method_types),
             'cot': cot
         }
 

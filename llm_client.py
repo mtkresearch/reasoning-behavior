@@ -1,14 +1,13 @@
 from openai import OpenAI
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
 import time
 
 
 @dataclass
-class Task:
-    index: int
+class Request:
     query: str
     model_type: str = 'deepseek'
     system_prompt: str = "You are a helpful assistant"
@@ -17,17 +16,26 @@ class Task:
 
 @dataclass
 class Response:
-    index: int
     content: str
     elapsed_seconds: float
     success: bool
+    err_message: Optional[str] = None
+
+
+@dataclass
+class Task:
+    index: int
+    request: Request
+    response: Optional[Response] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class LLMClient:
-    def __init__(self, api_key="EMPTY", base_url="http://localhost:8001/v1"):
+    def __init__(self, api_key="EMPTY", base_url="http://localhost:8001/v1", timeout=3600):
         self.client = OpenAI(
             api_key=api_key,
             base_url=base_url,
+            timeout=timeout,
         )
         self.model = self._get_model()
 
@@ -43,15 +51,15 @@ class LLMClient:
         )
         return response.choices[0].message.content
 
-    def _prepare_messages_and_extra_body(self, task):
-        if task.model_type == 'deepseek':
+    def _prepare_messages_and_extra_body(self, request):
+        if request.model_type == 'deepseek':
             messages = [
-                {"role": "system", "content": task.system_prompt},
+                {"role": "system", "content": request.system_prompt},
                 {"role": "user", "content": "Who are you?"},
                 {"role": "assistant", "content": "<think>Hmm</think>I am DeepSeek"},
-                {"role": "user", "content": task.query},
+                {"role": "user", "content": request.query},
             ]
-            extra_body = task.extra_body or {"chat_template_kwargs": {"thinking": True}}
+            extra_body = request.extra_body or {"chat_template_kwargs": {"thinking": True}}
         return messages, extra_body
 
     def generate_concurrent(self, tasks, max_workers=None):
@@ -63,18 +71,20 @@ class LLMClient:
             max_workers: Maximum number of concurrent workers (default: None, uses ThreadPoolExecutor default)
 
         Yields:
-            Response dataclass instances as they complete
+            Task dataclass instances with response field populated as they complete
         """
         def _generate_task(task):
             try:
                 start_time = time.time()
-                messages, extra_body = self._prepare_messages_and_extra_body(task)
+                messages, extra_body = self._prepare_messages_and_extra_body(task.request)
                 content = self.generate(messages, extra_body)
                 elapsed_seconds = int(time.time() - start_time)
-                return Response(index=task.index, content=content, elapsed_seconds=elapsed_seconds, success=True)
+                task.response = Response(content=content, elapsed_seconds=elapsed_seconds, success=True)
+                return task
             except Exception as e:
                 elapsed_seconds = int(time.time() - start_time if 'start_time' in locals() else 0)
-                return Response(index=task.index, content="", elapsed_seconds=elapsed_seconds, success=False)
+                task.response = Response(content="", elapsed_seconds=elapsed_seconds, success=False, err_message=str(e))
+                return task
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
@@ -82,5 +92,5 @@ class LLMClient:
                 future = executor.submit(_generate_task, task)
                 futures.append(future)
 
-            for future in futures:
+            for future in as_completed(futures):
                 yield future.result()
