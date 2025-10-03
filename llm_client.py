@@ -12,6 +12,7 @@ class Request:
     model_type: str = 'deepseek'
     system_prompt: str = "You are a helpful assistant"
     reasoning_on: bool = True
+    temperature: Optional[float] = None
 
 
 @dataclass
@@ -66,14 +67,13 @@ class LLMClient:
                 {"role": "system", "content": request.system_prompt},
                 {"role": "user", "content": request.query},
             ]
-            kwargs = {
-                "reasoning_effort": "low" 
-            } if request.reasoning_on else {}
+            kwargs = {"reasoning_effort": "high"} if request.reasoning_on else {"reasoning_effort": "low"}
 
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
             timeout=timeout,
+            temperature=request.temperature,
             **kwargs,
         )
 

@@ -23,28 +23,36 @@ Please determine if the model's answer is correct compared to the ground truth a
 - Answer with \\boxed{{YES}} if correct, or \\boxed{{NO}} if incorrect
 """
 
-MAX_WORKERS = 300
+MAX_WORKERS = 100
+MAX_TRY = 10
 
 
 class AnswerGrader:
-    def __init__(self, model_type='deepseek'):
+    def __init__(self, judge_model_type='deepseek', target='MATH500'):
         self.client = LLMClient()
-        self.model_type = model_type
+        self.judge_model_type = judge_model_type
+        self.target = target
 
     def get_problem_and_solution(self, item: Dict) -> tuple:
-        """Extract problem and solution based on dataset/model_type"""
-        if self.model_type == 'deepseek':
-            problem = item.get('problem', '')
-            solution = item.get('solution', '')
+        """Extract problem and solution based on target dataset"""
+        if self.target == 'MATH500':
+            problem = item['problem']
+            solution = item['solution']
+        elif self.target.startswith('AIME2025'):
+            problem = item['question']
+            solution = item['answer']
         else:
-            raise ValueError(f"Unsupported model_type: {self.model_type}")
+            raise ValueError(f"Unsupported target: {self.target}")
 
         return problem, solution
 
-    def _create_grading_tasks(self, items_to_grade):
-        """Create grading tasks from items"""
+    def _create_grading_tasks(self, data):
+        """Create grading tasks from data"""
         tasks = []
-        for i, item in items_to_grade:
+        for i, item in enumerate(data):
+            if 'result' not in item:
+                continue
+
             problem, ground_truth = self.get_problem_and_solution(item)
             model_answer = item['result']['answer']
 
@@ -56,11 +64,11 @@ class AnswerGrader:
                         ground_truth=ground_truth,
                         model_answer=model_answer
                     ),
-                    model_type='deepseek',
+                    model_type=self.judge_model_type,
                     system_prompt="You are a helpful assistant",
                     reasoning_on=False
                 ),
-                metadata={'unique_id': item['unique_id']}
+                metadata={'item': item}
             )
             tasks.append(task)
         return tasks
@@ -70,23 +78,23 @@ class AnswerGrader:
         if not task.response.success:
             raise Exception(f"Generation failed for item {task.index}")
 
-        try:
-            is_correct = '\\boxed{YES}' in task.response.content
-            return {
-                'index': task.index,
-                'unique_id': task.metadata['unique_id'],
-                'correct': is_correct,
-                'grading_cot': task.response.content
-            }
-        except Exception as e:
-            print(f"\nError processing response for item {task.index}: {e}")
-            return {
-                'index': task.index,
-                'unique_id': task.metadata['unique_id'],
-                'correct': None,
-                'grading_cot': None,
-                'error': str(e)
-            }
+        item = task.metadata['item']
+
+        include_yes = 'YES' in task.response.content
+        include_no = 'NO' in task.response.content
+        if include_yes and not include_no:
+            is_correct = True
+        elif (include_yes and include_no) or (not include_yes and not include_no):
+            raise Exception
+        else:
+            is_correct = False
+
+        return {
+            'index': task.index,
+            'unique_id': item.get('unique_id', f'item_{task.index}'),
+            'correct': is_correct,
+            'grading_cot': task.response.content
+        }
 
     def _save_results(self, output_path, grades, summary=None):
         """Save grading results to file"""
@@ -103,28 +111,41 @@ class AnswerGrader:
         with open(results_path, 'r') as f:
             data = json.load(f)
 
-        # Filter items that have results
-        items_to_grade = [(i, item) for i, item in enumerate(data) if 'result' in item]
-        print(f"Grading {len(items_to_grade)} items...")
-
         # Create tasks for concurrent grading
-        tasks = self._create_grading_tasks(items_to_grade)
+        tasks = self._create_grading_tasks(data)
 
-        # Grade concurrently
+        # Grade concurrently with retries
         grades = []
         correct_count = 0
+        retry_queue = tasks
 
-        for task in tqdm(self.client.generate_concurrent(tasks, max_workers=MAX_WORKERS),
-                           total=len(tasks), desc="Grading answers"):
-            grade_entry = self._process_response(task)
+        for attempt in range(MAX_TRY):
+            if not retry_queue:
+                break
 
-            if grade_entry['correct']:
-                correct_count += 1
+            desc = f"Grading answers (attempt {attempt + 1}/{MAX_TRY})"
+            next_retry_queue = []
 
-            grades.append(grade_entry)
+            for task in tqdm(self.client.generate_concurrent(retry_queue, max_workers=MAX_WORKERS),
+                               total=len(retry_queue), desc=desc):
+                try:
+                    grade_entry = self._process_response(task)
 
-            # Save grades incrementally
-            self._save_results(output_path, grades)
+                    if grade_entry['correct']:
+                        correct_count += 1
+
+                    grades.append(grade_entry)
+
+                    # Save grades incrementally
+                    self._save_results(output_path, grades)
+                except Exception as e:
+                    if attempt < MAX_TRY - 1:
+                        print(f"\nError processing task {task.index}, will retry: {e}")
+                        next_retry_queue.append(task)
+                    else:
+                        print(f"\nTask {task.index} failed after {MAX_TRY} attempts: {e}")
+
+            retry_queue = next_retry_queue
 
         # Final save with complete summary
         total = len(grades)
@@ -146,19 +167,22 @@ class AnswerGrader:
 if __name__ == '__main__':
     import sys
 
-    # Default paths
+    # Default parameters
     results_path = 'data/MATH500/deepseek/p1/results.json'
-    model_type = 'deepseek'  # The model type of the results being graded
+    judge_model_type = 'deepseek'
+    target = 'MATH500'
 
     # Allow command line override
-    assert len(sys.argv) == 1 + 0 or len(sys.argv) == 1 + 2
+    assert len(sys.argv) == 1 + 0 or len(sys.argv) == 1 + 1 or len(sys.argv) == 1 + 2 or len(sys.argv) == 1 + 3
     if len(sys.argv) > 1:
         results_path = sys.argv[1]
     if len(sys.argv) > 2:
-        model_type = sys.argv[2]
+        judge_model_type = sys.argv[2]
+    if len(sys.argv) > 3:
+        target = sys.argv[3]
 
     # Determine output path (same directory as results.json)
     output_path = str(Path(results_path).parent / 'grades.json')
 
-    grader = AnswerGrader(model_type=model_type)
+    grader = AnswerGrader(judge_model_type=judge_model_type, target=target)
     grader.grade_results(results_path, output_path)

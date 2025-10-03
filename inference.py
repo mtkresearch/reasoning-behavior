@@ -9,8 +9,8 @@ MAX_WOKERS = 100
 MAX_TRY = 3
 
 
-def _get_sys_prompt(model_type, system_type):
-    if model_type == 'deepseek':
+def _get_sys_prompt(policy_model_type, system_type):
+    if policy_model_type == 'deepseek':
         if system_type == 'p1':
             sys_prompt = "You are a helpful assistant"
         elif system_type == 'p2':
@@ -77,7 +77,7 @@ def _load_aime2025(target):
     return data, 'question'
 
 
-def inference(target, model_type, system_type, out_dir, can_restore=False):
+def inference(target, policy_model_type, system_type, out_dir, can_restore=False):
 
     Path(out_dir).mkdir(parents=True, exist_ok=True)
 
@@ -100,8 +100,8 @@ def inference(target, model_type, system_type, out_dir, can_restore=False):
     index_query_pairs = [(i, x[col_problem]) for i, x in enumerate(data) if 'result' not in x]
 
     # Prepare tasks
-    sys_prompt = _get_sys_prompt(model_type, system_type)
-    tasks = [Task(index=i, request=Request(query=query, model_type=model_type, system_prompt=sys_prompt, reasoning_on=True))
+    sys_prompt = _get_sys_prompt(policy_model_type, system_type)
+    tasks = [Task(index=i, request=Request(query=query, model_type=policy_model_type, system_prompt=sys_prompt, reasoning_on=True))
              for i, query in index_query_pairs]
 
     # Shuffle tasks
@@ -143,7 +143,7 @@ if __name__ == '__main__':
 
     # Default parameters
     target = 'AIME2025__R10'
-    model_type = 'deepseek'
+    policy_model_type = 'deepseek'
     system_type = 'p1'
 
     # Allow command line override
@@ -151,9 +151,9 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         target = sys.argv[1]
     if len(sys.argv) > 2:
-        model_type = sys.argv[2]
+        policy_model_type = sys.argv[2]
     if len(sys.argv) > 3:
         system_type = sys.argv[3]
 
-    out_dir = f'data/{target}/{model_type}/{system_type}/'
-    inference(target, model_type, system_type, out_dir, can_restore=True)
+    out_dir = f'data/{target}/{policy_model_type}/{system_type}/'
+    inference(target, policy_model_type, system_type, out_dir, can_restore=True)

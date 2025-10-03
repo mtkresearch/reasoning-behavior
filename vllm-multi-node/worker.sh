@@ -1,0 +1,1 @@
+./multi-node-serving.sh worker --ray_address=cnode2-001 --ray_port=6779

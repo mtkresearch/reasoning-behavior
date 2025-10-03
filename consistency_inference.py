@@ -47,9 +47,9 @@ REASONING_STRATEGIES = {
 
 
 class ConsistencyInference:
-    def __init__(self, model_type: str = 'deepseek'):
+    def __init__(self, judge_model_type: str = 'deepseek'):
         self.client = LLMClient()
-        self.model_type = model_type
+        self.judge_model_type = judge_model_type
 
     def analyze_single_item(self, item: Dict, index: int) -> Dict:
         """Analyze a single problem's reasoning trajectory using concurrent strategy checking"""
@@ -62,7 +62,7 @@ class ConsistencyInference:
                 index=ord(option) - ord('A'),  # Convert A-I to 0-8
                 request=Request(
                     query=DIRECT_REASONING_WAY_SELECTION.format(traj=traj, option=option),
-                    model_type=self.model_type,
+                    model_type=self.judge_model_type,
                     system_prompt="You are a helpful assistant",
                     reasoning_on=False
                 ),
@@ -112,10 +112,10 @@ class ConsistencyInference:
         with open(input_path, 'r') as f:
             data = json.load(f)
 
-        print(f"Processing {len(data)} items with model_type={self.model_type}...")
+        print(f"Processing {len(data)} items with judge_model_type={self.judge_model_type}...")
 
         results = []
-        for i, item in enumerate(tqdm(data, desc=f"Analyzing with {self.model_type}")):
+        for i, item in enumerate(tqdm(data, desc=f"Analyzing with {self.judge_model_type}")):
             analysis = self.analyze_single_item(item, i)
 
             # Build result item - unique_id, method_types and cot
@@ -138,19 +138,19 @@ if __name__ == '__main__':
 
     # Default paths
     input_path = 'consistency_data/consistency_data.json'
+    judge_model_type = 'deepseek'
 
-    # Determine model_type from command line (default to 'deepseek')
-    model_type = sys.argv[1] if len(sys.argv) > 1 else 'deepseek'
-
-    # Override input path if provided
+    # Allow command line override
+    if len(sys.argv) > 1:
+        judge_model_type = sys.argv[1]
     if len(sys.argv) > 2:
         input_path = sys.argv[2]
 
-    # Output path based on model_type
-    output_path = str(Path(input_path).parent / f'consistency_{model_type}.json')
+    # Output path based on judge_model_type
+    output_path = str(Path(input_path).parent / f'consistency_{judge_model_type}.json')
 
     # Create analyzer
-    analyzer = ConsistencyInference(model_type=model_type)
+    analyzer = ConsistencyInference(judge_model_type=judge_model_type)
 
     # Process the data
     analyzer.process_consistency_data(input_path, output_path)

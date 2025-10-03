@@ -47,8 +47,9 @@ REASONING_STRATEGIES = {
 
 
 class ReasoningAnalyzer:
-    def __init__(self):
+    def __init__(self, judge_model_type: str = 'deepseek'):
         self.client = LLMClient()
+        self.judge_model_type = judge_model_type
 
     def analyze_results(self, results_path: str, output_path: str):
         """Analyze all items in results.json and save to metrics.json"""
@@ -70,7 +71,7 @@ class ReasoningAnalyzer:
                     index=len(all_tasks),
                     request=Request(
                         query=DIRECT_REASONING_WAY_SELECTION.format(traj=traj, option=option),
-                        model_type='deepseek',
+                        model_type=self.judge_model_type,
                         system_prompt="You are a helpful assistant",
                         reasoning_on=False
                     ),
@@ -195,13 +196,17 @@ if __name__ == '__main__':
 
     # Default paths
     results_path = 'data/MATH500/deepseek/p1/results.json'
+    judge_model_type = 'deepseek'
 
     # Allow command line override
+    assert len(sys.argv) == 1 + 0 or len(sys.argv) == 1 + 1 or len(sys.argv) == 1 + 2
     if len(sys.argv) > 1:
         results_path = sys.argv[1]
+    if len(sys.argv) > 2:
+        judge_model_type = sys.argv[2]
 
     # Determine output path (same directory as results.json)
     output_path = str(Path(results_path).parent / 'metrics.json')
 
-    analyzer = ReasoningAnalyzer()
+    analyzer = ReasoningAnalyzer(judge_model_type=judge_model_type)
     analyzer.analyze_results(results_path, output_path)
