@@ -68,6 +68,12 @@ class LLMClient:
                 {"role": "user", "content": request.query},
             ]
             kwargs = {"reasoning_effort": "high"} if request.reasoning_on else {"reasoning_effort": "low"}
+        elif request.model_type == 'qwen3':
+            messages = [
+                {"role": "system", "content": request.system_prompt},
+                {"role": "user", "content": request.query},
+            ]
+            kwargs = {}
 
         response = self.client.chat.completions.create(
             model=self.model,
@@ -88,6 +94,12 @@ class LLMClient:
             if request.reasoning_on:
                 reasoning_content = response.choices[0].message.reasoning_content
             content = response.choices[0].message.content
+
+        elif request.model_type == 'qwen3':
+            if request.reasoning_on:
+                reasoning_content, content = self._parse_deepseek_reasoning_content(response.choices[0].message.content)
+            else:
+                raise NotImplementedError
 
         return reasoning_content, content 
 

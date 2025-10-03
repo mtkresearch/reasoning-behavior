@@ -1,1 +1,1 @@
-vllm serve openai/gpt-oss-120b --tensor-parallel-size 8 --async-scheduling
+vllm serve openai/gpt-oss-120b --tensor-parallel-size 8 --async-scheduling --port 8001 
