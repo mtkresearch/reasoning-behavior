@@ -9,12 +9,11 @@ MAX_WOKERS = 100
 MAX_TRY = 3
 
 
-def _get_sys_prompt(policy_model_type, system_type):
-    if policy_model_type == 'deepseek':
-        if system_type == 'p1':
-            sys_prompt = "You are a helpful assistant"
-        elif system_type == 'p2':
-            sys_prompt = "You are a helpful assistant. In your thinking, prioritize using reverse thinking approaches whenever applicable."
+def _get_sys_prompt(system_type):
+    if system_type == 'p1':
+        sys_prompt = "You are a helpful assistant"
+    elif system_type == 'p2':
+        sys_prompt = "You are a helpful assistant. In your thinking, prioritize using reverse thinking approaches whenever applicable."
 
     return sys_prompt
 
@@ -100,7 +99,7 @@ def inference(target, policy_model_type, system_type, out_dir, can_restore=False
     index_query_pairs = [(i, x[col_problem]) for i, x in enumerate(data) if 'result' not in x]
 
     # Prepare tasks
-    sys_prompt = _get_sys_prompt(policy_model_type, system_type)
+    sys_prompt = _get_sys_prompt(system_type)
     tasks = [Task(index=i, request=Request(query=query, model_type=policy_model_type, system_prompt=sys_prompt, reasoning_on=True))
              for i, query in index_query_pairs]
 

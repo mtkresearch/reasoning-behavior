@@ -1,0 +1,3010 @@
+{
+  "summary": {
+    "total": 500,
+    "correct": 496,
+    "incorrect": 4,
+    "accuracy": 99.2
+  },
+  "grades": [
+    {
+      "index": 0,
+      "unique_id": "test/precalculus/807.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 1,
+      "unique_id": "test/intermediate_algebra/1994.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 2,
+      "unique_id": "test/algebra/2584.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 3,
+      "unique_id": "test/number_theory/572.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 4,
+      "unique_id": "test/algebra/1349.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 5,
+      "unique_id": "test/prealgebra/1622.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 6,
+      "unique_id": "test/number_theory/515.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 7,
+      "unique_id": "test/precalculus/927.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 8,
+      "unique_id": "test/algebra/2036.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 9,
+      "unique_id": "test/prealgebra/1139.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 10,
+      "unique_id": "test/number_theory/1032.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 11,
+      "unique_id": "test/intermediate_algebra/1197.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 12,
+      "unique_id": "test/number_theory/737.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 13,
+      "unique_id": "test/geometry/248.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 14,
+      "unique_id": "test/precalculus/1303.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 15,
+      "unique_id": "test/precalculus/990.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 16,
+      "unique_id": "test/intermediate_algebra/134.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 17,
+      "unique_id": "test/precalculus/1199.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 18,
+      "unique_id": "test/geometry/434.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 19,
+      "unique_id": "test/intermediate_algebra/1000.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 20,
+      "unique_id": "test/algebra/1098.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 21,
+      "unique_id": "test/intermediate_algebra/607.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 22,
+      "unique_id": "test/algebra/1837.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 23,
+      "unique_id": "test/algebra/2193.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 24,
+      "unique_id": "test/algebra/2427.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 25,
+      "unique_id": "test/intermediate_algebra/1388.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 26,
+      "unique_id": "test/counting_and_probability/525.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 27,
+      "unique_id": "test/prealgebra/1840.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 28,
+      "unique_id": "test/precalculus/779.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 29,
+      "unique_id": "test/counting_and_probability/666.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 30,
+      "unique_id": "test/number_theory/864.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 31,
+      "unique_id": "test/prealgebra/1302.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 32,
+      "unique_id": "test/counting_and_probability/134.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 33,
+      "unique_id": "test/algebra/1072.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 34,
+      "unique_id": "test/counting_and_probability/119.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 35,
+      "unique_id": "test/number_theory/627.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 36,
+      "unique_id": "test/intermediate_algebra/428.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 37,
+      "unique_id": "test/geometry/967.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 38,
+      "unique_id": "test/algebra/24.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 39,
+      "unique_id": "test/number_theory/45.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 40,
+      "unique_id": "test/prealgebra/930.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 41,
+      "unique_id": "test/geometry/627.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 42,
+      "unique_id": "test/algebra/2214.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 43,
+      "unique_id": "test/intermediate_algebra/1454.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 44,
+      "unique_id": "test/prealgebra/1558.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 45,
+      "unique_id": "test/geometry/178.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 46,
+      "unique_id": "test/precalculus/285.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 47,
+      "unique_id": "test/algebra/305.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 48,
+      "unique_id": "test/algebra/1265.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 49,
+      "unique_id": "test/prealgebra/1388.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 50,
+      "unique_id": "test/number_theory/1055.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 51,
+      "unique_id": "test/intermediate_algebra/1217.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 52,
+      "unique_id": "test/prealgebra/951.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 53,
+      "unique_id": "test/precalculus/1105.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 54,
+      "unique_id": "test/prealgebra/572.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 55,
+      "unique_id": "test/algebra/187.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 56,
+      "unique_id": "test/algebra/769.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 57,
+      "unique_id": "test/intermediate_algebra/1168.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 58,
+      "unique_id": "test/algebra/722.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 59,
+      "unique_id": "test/prealgebra/1247.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 60,
+      "unique_id": "test/intermediate_algebra/956.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 61,
+      "unique_id": "test/intermediate_algebra/1247.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 62,
+      "unique_id": "test/precalculus/675.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 63,
+      "unique_id": "test/intermediate_algebra/279.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 64,
+      "unique_id": "test/precalculus/1146.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 65,
+      "unique_id": "test/prealgebra/1747.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 66,
+      "unique_id": "test/algebra/2046.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 67,
+      "unique_id": "test/prealgebra/1233.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 68,
+      "unique_id": "test/precalculus/1313.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 69,
+      "unique_id": "test/intermediate_algebra/207.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 70,
+      "unique_id": "test/number_theory/46.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 71,
+      "unique_id": "test/number_theory/516.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 72,
+      "unique_id": "test/geometry/456.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 73,
+      "unique_id": "test/algebra/2253.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 74,
+      "unique_id": "test/precalculus/24313.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 75,
+      "unique_id": "test/counting_and_probability/1114.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 76,
+      "unique_id": "test/intermediate_algebra/623.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 77,
+      "unique_id": "test/algebra/1004.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 78,
+      "unique_id": "test/intermediate_algebra/47.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 79,
+      "unique_id": "test/prealgebra/192.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 80,
+      "unique_id": "test/intermediate_algebra/1849.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 81,
+      "unique_id": "test/algebra/1035.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 82,
+      "unique_id": "test/algebra/2700.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 83,
+      "unique_id": "test/intermediate_algebra/2046.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 84,
+      "unique_id": "test/algebra/893.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 85,
+      "unique_id": "test/geometry/353.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 86,
+      "unique_id": "test/prealgebra/307.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 87,
+      "unique_id": "test/algebra/567.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 88,
+      "unique_id": "test/algebra/892.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 89,
+      "unique_id": "test/number_theory/357.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 90,
+      "unique_id": "test/prealgebra/1761.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 91,
+      "unique_id": "test/algebra/2023.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 92,
+      "unique_id": "test/counting_and_probability/377.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 93,
+      "unique_id": "test/algebra/873.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 94,
+      "unique_id": "test/prealgebra/1646.json",
+      "correct": false,
+      "grading_cot": "\\boxed{NO}"
+    },
+    {
+      "index": 95,
+      "unique_id": "test/precalculus/34.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 96,
+      "unique_id": "test/intermediate_algebra/662.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 97,
+      "unique_id": "test/prealgebra/105.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 98,
+      "unique_id": "test/prealgebra/1924.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 99,
+      "unique_id": "test/precalculus/1300.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 100,
+      "unique_id": "test/geometry/183.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 101,
+      "unique_id": "test/intermediate_algebra/582.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 102,
+      "unique_id": "test/intermediate_algebra/431.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 103,
+      "unique_id": "test/intermediate_algebra/558.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 104,
+      "unique_id": "test/intermediate_algebra/362.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 105,
+      "unique_id": "test/prealgebra/1804.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 106,
+      "unique_id": "test/intermediate_algebra/515.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 107,
+      "unique_id": "test/number_theory/914.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 108,
+      "unique_id": "test/intermediate_algebra/894.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 109,
+      "unique_id": "test/precalculus/44.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 110,
+      "unique_id": "test/intermediate_algebra/345.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 111,
+      "unique_id": "test/counting_and_probability/23957.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 112,
+      "unique_id": "test/algebra/2058.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 113,
+      "unique_id": "test/algebra/2593.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 114,
+      "unique_id": "test/intermediate_algebra/1898.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 115,
+      "unique_id": "test/counting_and_probability/1060.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 116,
+      "unique_id": "test/algebra/2157.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 117,
+      "unique_id": "test/algebra/2251.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 118,
+      "unique_id": "test/intermediate_algebra/232.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 119,
+      "unique_id": "test/prealgebra/1733.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 120,
+      "unique_id": "test/intermediate_algebra/128.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 121,
+      "unique_id": "test/prealgebra/505.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 122,
+      "unique_id": "test/algebra/1332.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 123,
+      "unique_id": "test/geometry/283.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 124,
+      "unique_id": "test/algebra/972.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 125,
+      "unique_id": "test/algebra/2232.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 126,
+      "unique_id": "test/intermediate_algebra/1063.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 127,
+      "unique_id": "test/number_theory/847.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 128,
+      "unique_id": "test/algebra/661.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 129,
+      "unique_id": "test/geometry/1140.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 130,
+      "unique_id": "test/number_theory/753.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 131,
+      "unique_id": "test/algebra/246.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 132,
+      "unique_id": "test/prealgebra/1686.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 133,
+      "unique_id": "test/prealgebra/1807.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 134,
+      "unique_id": "test/intermediate_algebra/1126.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 135,
+      "unique_id": "test/prealgebra/1297.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 136,
+      "unique_id": "test/intermediate_algebra/2022.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 137,
+      "unique_id": "test/number_theory/1257.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 138,
+      "unique_id": "test/counting_and_probability/430.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 139,
+      "unique_id": "test/intermediate_algebra/1151.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 140,
+      "unique_id": "test/number_theory/156.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 141,
+      "unique_id": "test/number_theory/612.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 142,
+      "unique_id": "test/counting_and_probability/159.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 143,
+      "unique_id": "test/precalculus/477.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 144,
+      "unique_id": "test/precalculus/43.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 145,
+      "unique_id": "test/intermediate_algebra/1408.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 146,
+      "unique_id": "test/algebra/1519.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 147,
+      "unique_id": "test/intermediate_algebra/966.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 148,
+      "unique_id": "test/algebra/988.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 149,
+      "unique_id": "test/number_theory/931.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 150,
+      "unique_id": "test/intermediate_algebra/964.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 151,
+      "unique_id": "test/precalculus/986.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 152,
+      "unique_id": "test/geometry/172.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 153,
+      "unique_id": "test/counting_and_probability/230.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 154,
+      "unique_id": "test/geometry/880.json",
+      "correct": false,
+      "grading_cot": "\\boxed{NO}"
+    },
+    {
+      "index": 155,
+      "unique_id": "test/counting_and_probability/803.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 156,
+      "unique_id": "test/precalculus/117.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 157,
+      "unique_id": "test/intermediate_algebra/1410.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 158,
+      "unique_id": "test/algebra/2570.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 159,
+      "unique_id": "test/algebra/621.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 160,
+      "unique_id": "test/number_theory/521.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 161,
+      "unique_id": "test/algebra/1255.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 162,
+      "unique_id": "test/prealgebra/1655.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 163,
+      "unique_id": "test/algebra/2517.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 164,
+      "unique_id": "test/precalculus/697.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 165,
+      "unique_id": "test/prealgebra/1356.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 166,
+      "unique_id": "test/prealgebra/1003.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 167,
+      "unique_id": "test/algebra/478.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 168,
+      "unique_id": "test/counting_and_probability/181.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 169,
+      "unique_id": "test/geometry/802.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 170,
+      "unique_id": "test/algebra/297.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 171,
+      "unique_id": "test/prealgebra/1272.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 172,
+      "unique_id": "test/algebra/841.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 173,
+      "unique_id": "test/algebra/686.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 174,
+      "unique_id": "test/algebra/351.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 175,
+      "unique_id": "test/intermediate_algebra/991.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 176,
+      "unique_id": "test/number_theory/598.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 177,
+      "unique_id": "test/geometry/65.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 178,
+      "unique_id": "test/prealgebra/1113.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 179,
+      "unique_id": "test/precalculus/659.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 180,
+      "unique_id": "test/prealgebra/1908.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 181,
+      "unique_id": "test/algebra/1275.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 182,
+      "unique_id": "test/prealgebra/1922.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 183,
+      "unique_id": "test/algebra/1082.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 184,
+      "unique_id": "test/intermediate_algebra/183.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 185,
+      "unique_id": "test/algebra/1214.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 186,
+      "unique_id": "test/number_theory/978.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 187,
+      "unique_id": "test/algebra/2199.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 188,
+      "unique_id": "test/algebra/733.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 189,
+      "unique_id": "test/geometry/702.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 190,
+      "unique_id": "test/counting_and_probability/51.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 191,
+      "unique_id": "test/algebra/109.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 192,
+      "unique_id": "test/geometry/221.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 193,
+      "unique_id": "test/intermediate_algebra/1422.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 194,
+      "unique_id": "test/intermediate_algebra/2196.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 195,
+      "unique_id": "test/intermediate_algebra/591.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 196,
+      "unique_id": "test/algebra/1937.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 197,
+      "unique_id": "test/number_theory/838.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 198,
+      "unique_id": "test/counting_and_probability/508.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 199,
+      "unique_id": "test/prealgebra/1907.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 200,
+      "unique_id": "test/prealgebra/2086.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 201,
+      "unique_id": "test/number_theory/149.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 202,
+      "unique_id": "test/algebra/291.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 203,
+      "unique_id": "test/intermediate_algebra/1555.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 204,
+      "unique_id": "test/intermediate_algebra/1510.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 205,
+      "unique_id": "test/precalculus/263.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 206,
+      "unique_id": "test/precalculus/541.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 207,
+      "unique_id": "test/counting_and_probability/389.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 208,
+      "unique_id": "test/number_theory/1201.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 209,
+      "unique_id": "test/number_theory/234.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 210,
+      "unique_id": "test/prealgebra/378.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 211,
+      "unique_id": "test/prealgebra/1555.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 212,
+      "unique_id": "test/algebra/2102.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 213,
+      "unique_id": "test/intermediate_algebra/102.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 214,
+      "unique_id": "test/counting_and_probability/765.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 215,
+      "unique_id": "test/algebra/907.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 216,
+      "unique_id": "test/prealgebra/1436.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 217,
+      "unique_id": "test/number_theory/417.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 218,
+      "unique_id": "test/algebra/864.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 219,
+      "unique_id": "test/counting_and_probability/282.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 220,
+      "unique_id": "test/prealgebra/1961.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 221,
+      "unique_id": "test/number_theory/89.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 222,
+      "unique_id": "test/geometry/547.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 223,
+      "unique_id": "test/number_theory/183.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 224,
+      "unique_id": "test/precalculus/190.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 225,
+      "unique_id": "test/algebra/2159.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 226,
+      "unique_id": "test/counting_and_probability/71.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 227,
+      "unique_id": "test/precalculus/819.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 228,
+      "unique_id": "test/precalculus/1056.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 229,
+      "unique_id": "test/prealgebra/2057.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 230,
+      "unique_id": "test/intermediate_algebra/986.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 231,
+      "unique_id": "test/algebra/1578.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 232,
+      "unique_id": "test/intermediate_algebra/1354.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 233,
+      "unique_id": "test/precalculus/441.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 234,
+      "unique_id": "test/intermediate_algebra/1837.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 235,
+      "unique_id": "test/prealgebra/153.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 236,
+      "unique_id": "test/precalculus/989.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 237,
+      "unique_id": "test/intermediate_algebra/337.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 238,
+      "unique_id": "test/algebra/975.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 239,
+      "unique_id": "test/geometry/229.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 240,
+      "unique_id": "test/prealgebra/874.json",
+      "correct": false,
+      "grading_cot": "\\boxed{NO}"
+    },
+    {
+      "index": 241,
+      "unique_id": "test/algebra/1143.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 242,
+      "unique_id": "test/algebra/2626.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 243,
+      "unique_id": "test/geometry/254.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 244,
+      "unique_id": "test/prealgebra/1251.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 245,
+      "unique_id": "test/intermediate_algebra/1210.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 246,
+      "unique_id": "test/algebra/1787.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 247,
+      "unique_id": "test/intermediate_algebra/1123.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 248,
+      "unique_id": "test/precalculus/920.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 249,
+      "unique_id": "test/number_theory/1065.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 250,
+      "unique_id": "test/algebra/1934.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 251,
+      "unique_id": "test/counting_and_probability/894.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 252,
+      "unique_id": "test/algebra/2064.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 253,
+      "unique_id": "test/prealgebra/1458.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 254,
+      "unique_id": "test/counting_and_probability/1009.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 255,
+      "unique_id": "test/precalculus/452.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 256,
+      "unique_id": "test/prealgebra/1995.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 257,
+      "unique_id": "test/geometry/473.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 258,
+      "unique_id": "test/algebra/694.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 259,
+      "unique_id": "test/intermediate_algebra/149.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 260,
+      "unique_id": "test/precalculus/580.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 261,
+      "unique_id": "test/geometry/347.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 262,
+      "unique_id": "test/prealgebra/1317.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 263,
+      "unique_id": "test/geometry/483.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 264,
+      "unique_id": "test/geometry/826.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 265,
+      "unique_id": "test/algebra/524.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 266,
+      "unique_id": "test/prealgebra/1742.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 267,
+      "unique_id": "test/geometry/226.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 268,
+      "unique_id": "test/number_theory/466.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 269,
+      "unique_id": "test/counting_and_probability/913.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 270,
+      "unique_id": "test/algebra/2551.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 271,
+      "unique_id": "test/number_theory/634.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 272,
+      "unique_id": "test/number_theory/533.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 273,
+      "unique_id": "test/prealgebra/993.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 274,
+      "unique_id": "test/geometry/686.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 275,
+      "unique_id": "test/algebra/346.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 276,
+      "unique_id": "test/algebra/1282.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 277,
+      "unique_id": "test/prealgebra/1834.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 278,
+      "unique_id": "test/number_theory/691.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 279,
+      "unique_id": "test/prealgebra/1512.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 280,
+      "unique_id": "test/number_theory/1287.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 281,
+      "unique_id": "test/prealgebra/260.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 282,
+      "unique_id": "test/algebra/1184.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 283,
+      "unique_id": "test/prealgebra/1787.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 284,
+      "unique_id": "test/precalculus/768.json",
+      "correct": false,
+      "grading_cot": "\\boxed{NO}"
+    },
+    {
+      "index": 285,
+      "unique_id": "test/intermediate_algebra/1411.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 286,
+      "unique_id": "test/intermediate_algebra/960.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 287,
+      "unique_id": "test/number_theory/631.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 288,
+      "unique_id": "test/precalculus/1172.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 289,
+      "unique_id": "test/intermediate_algebra/1300.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 290,
+      "unique_id": "test/algebra/634.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 291,
+      "unique_id": "test/counting_and_probability/25149.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 292,
+      "unique_id": "test/intermediate_algebra/90.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 293,
+      "unique_id": "test/algebra/2486.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 294,
+      "unique_id": "test/number_theory/488.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 295,
+      "unique_id": "test/precalculus/1201.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 296,
+      "unique_id": "test/intermediate_algebra/754.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 297,
+      "unique_id": "test/number_theory/1172.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 298,
+      "unique_id": "test/precalculus/881.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 299,
+      "unique_id": "test/geometry/1097.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 300,
+      "unique_id": "test/counting_and_probability/339.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 301,
+      "unique_id": "test/prealgebra/1044.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 302,
+      "unique_id": "test/prealgebra/465.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 303,
+      "unique_id": "test/geometry/965.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 304,
+      "unique_id": "test/intermediate_algebra/446.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 305,
+      "unique_id": "test/algebra/2257.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 306,
+      "unique_id": "test/intermediate_algebra/1544.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 307,
+      "unique_id": "test/precalculus/695.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 308,
+      "unique_id": "test/geometry/711.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 309,
+      "unique_id": "test/number_theory/203.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 310,
+      "unique_id": "test/algebra/1842.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 311,
+      "unique_id": "test/number_theory/911.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 312,
+      "unique_id": "test/intermediate_algebra/1714.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 313,
+      "unique_id": "test/prealgebra/1423.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 314,
+      "unique_id": "test/geometry/1108.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 315,
+      "unique_id": "test/algebra/791.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 316,
+      "unique_id": "test/algebra/276.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 317,
+      "unique_id": "test/intermediate_algebra/2152.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 318,
+      "unique_id": "test/algebra/2735.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 319,
+      "unique_id": "test/algebra/425.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 320,
+      "unique_id": "test/geometry/947.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 321,
+      "unique_id": "test/prealgebra/954.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 322,
+      "unique_id": "test/algebra/1936.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 323,
+      "unique_id": "test/counting_and_probability/870.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 324,
+      "unique_id": "test/geometry/465.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 325,
+      "unique_id": "test/geometry/73.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 326,
+      "unique_id": "test/precalculus/742.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 327,
+      "unique_id": "test/intermediate_algebra/117.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 328,
+      "unique_id": "test/algebra/2176.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 329,
+      "unique_id": "test/prealgebra/1973.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 330,
+      "unique_id": "test/counting_and_probability/216.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 331,
+      "unique_id": "test/algebra/509.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 332,
+      "unique_id": "test/intermediate_algebra/190.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 333,
+      "unique_id": "test/intermediate_algebra/776.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 334,
+      "unique_id": "test/algebra/1457.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 335,
+      "unique_id": "test/number_theory/483.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 336,
+      "unique_id": "test/algebra/2592.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 337,
+      "unique_id": "test/prealgebra/1730.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 338,
+      "unique_id": "test/number_theory/368.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 339,
+      "unique_id": "test/intermediate_algebra/1566.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 340,
+      "unique_id": "test/precalculus/801.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 341,
+      "unique_id": "test/algebra/858.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 342,
+      "unique_id": "test/prealgebra/1238.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 343,
+      "unique_id": "test/counting_and_probability/737.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 344,
+      "unique_id": "test/intermediate_algebra/1572.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 345,
+      "unique_id": "test/algebra/1529.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 346,
+      "unique_id": "test/algebra/1338.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 347,
+      "unique_id": "test/algebra/1547.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 348,
+      "unique_id": "test/counting_and_probability/116.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 349,
+      "unique_id": "test/counting_and_probability/238.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 350,
+      "unique_id": "test/number_theory/686.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 351,
+      "unique_id": "test/precalculus/826.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 352,
+      "unique_id": "test/precalculus/1281.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 353,
+      "unique_id": "test/counting_and_probability/1014.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 354,
+      "unique_id": "test/algebra/529.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 355,
+      "unique_id": "test/intermediate_algebra/1166.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 356,
+      "unique_id": "test/algebra/1078.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 357,
+      "unique_id": "test/prealgebra/1353.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 358,
+      "unique_id": "test/intermediate_algebra/860.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 359,
+      "unique_id": "test/intermediate_algebra/1407.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 360,
+      "unique_id": "test/precalculus/96.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 361,
+      "unique_id": "test/intermediate_algebra/1405.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 362,
+      "unique_id": "test/counting_and_probability/14.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 363,
+      "unique_id": "test/algebra/251.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 364,
+      "unique_id": "test/intermediate_algebra/690.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 365,
+      "unique_id": "test/number_theory/820.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 366,
+      "unique_id": "test/number_theory/109.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 367,
+      "unique_id": "test/algebra/1199.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 368,
+      "unique_id": "test/geometry/106.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 369,
+      "unique_id": "test/prealgebra/1187.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 370,
+      "unique_id": "test/precalculus/1289.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 371,
+      "unique_id": "test/intermediate_algebra/955.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 372,
+      "unique_id": "test/geometry/846.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 373,
+      "unique_id": "test/algebra/2264.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 374,
+      "unique_id": "test/algebra/1303.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 375,
+      "unique_id": "test/number_theory/427.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 376,
+      "unique_id": "test/geometry/538.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 377,
+      "unique_id": "test/number_theory/1185.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 378,
+      "unique_id": "test/prealgebra/1743.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 379,
+      "unique_id": "test/prealgebra/1865.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 380,
+      "unique_id": "test/intermediate_algebra/1992.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 381,
+      "unique_id": "test/counting_and_probability/188.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 382,
+      "unique_id": "test/intermediate_algebra/1111.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 383,
+      "unique_id": "test/algebra/101.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 384,
+      "unique_id": "test/prealgebra/1298.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 385,
+      "unique_id": "test/prealgebra/2066.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 386,
+      "unique_id": "test/algebra/170.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 387,
+      "unique_id": "test/algebra/849.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 388,
+      "unique_id": "test/algebra/1031.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 389,
+      "unique_id": "test/geometry/795.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 390,
+      "unique_id": "test/algebra/853.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 391,
+      "unique_id": "test/algebra/2277.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 392,
+      "unique_id": "test/precalculus/902.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 393,
+      "unique_id": "test/algebra/518.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 394,
+      "unique_id": "test/intermediate_algebra/1791.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 395,
+      "unique_id": "test/algebra/114.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 396,
+      "unique_id": "test/prealgebra/631.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 397,
+      "unique_id": "test/prealgebra/977.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 398,
+      "unique_id": "test/prealgebra/1991.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 399,
+      "unique_id": "test/prealgebra/1784.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 400,
+      "unique_id": "test/geometry/817.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 401,
+      "unique_id": "test/intermediate_algebra/1806.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 402,
+      "unique_id": "test/precalculus/1291.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 403,
+      "unique_id": "test/number_theory/928.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 404,
+      "unique_id": "test/counting_and_probability/761.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 405,
+      "unique_id": "test/prealgebra/1572.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 406,
+      "unique_id": "test/number_theory/132.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 407,
+      "unique_id": "test/algebra/1960.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 408,
+      "unique_id": "test/precalculus/398.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 409,
+      "unique_id": "test/intermediate_algebra/1797.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 410,
+      "unique_id": "test/prealgebra/65.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 411,
+      "unique_id": "test/prealgebra/1227.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 412,
+      "unique_id": "test/intermediate_algebra/2146.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 413,
+      "unique_id": "test/algebra/2680.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 414,
+      "unique_id": "test/algebra/2391.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 415,
+      "unique_id": "test/number_theory/769.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 416,
+      "unique_id": "test/precalculus/681.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 417,
+      "unique_id": "test/algebra/776.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 418,
+      "unique_id": "test/algebra/1796.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 419,
+      "unique_id": "test/precalculus/145.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 420,
+      "unique_id": "test/precalculus/625.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 421,
+      "unique_id": "test/precalculus/1202.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 422,
+      "unique_id": "test/intermediate_algebra/2015.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 423,
+      "unique_id": "test/number_theory/1002.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 424,
+      "unique_id": "test/algebra/1339.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 425,
+      "unique_id": "test/precalculus/1133.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 426,
+      "unique_id": "test/geometry/843.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 427,
+      "unique_id": "test/algebra/2743.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 428,
+      "unique_id": "test/intermediate_algebra/121.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 429,
+      "unique_id": "test/intermediate_algebra/1014.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 430,
+      "unique_id": "test/prealgebra/2019.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 431,
+      "unique_id": "test/precalculus/499.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 432,
+      "unique_id": "test/intermediate_algebra/1462.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 433,
+      "unique_id": "test/number_theory/410.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 434,
+      "unique_id": "test/prealgebra/1640.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 435,
+      "unique_id": "test/algebra/2043.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 436,
+      "unique_id": "test/counting_and_probability/10.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 437,
+      "unique_id": "test/algebra/1553.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 438,
+      "unique_id": "test/number_theory/255.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 439,
+      "unique_id": "test/intermediate_algebra/199.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 440,
+      "unique_id": "test/algebra/2080.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 441,
+      "unique_id": "test/prealgebra/2037.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 442,
+      "unique_id": "test/algebra/1343.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 443,
+      "unique_id": "test/algebra/668.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 444,
+      "unique_id": "test/counting_and_probability/731.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 445,
+      "unique_id": "test/intermediate_algebra/1779.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 446,
+      "unique_id": "test/algebra/2430.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 447,
+      "unique_id": "test/prealgebra/996.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 448,
+      "unique_id": "test/number_theory/1000.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 449,
+      "unique_id": "test/algebra/2789.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 450,
+      "unique_id": "test/number_theory/13.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 451,
+      "unique_id": "test/number_theory/459.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 452,
+      "unique_id": "test/algebra/1814.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 453,
+      "unique_id": "test/algebra/2476.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 454,
+      "unique_id": "test/precalculus/323.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 455,
+      "unique_id": "test/counting_and_probability/190.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 456,
+      "unique_id": "test/intermediate_algebra/1102.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 457,
+      "unique_id": "test/number_theory/342.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 458,
+      "unique_id": "test/prealgebra/805.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 459,
+      "unique_id": "test/algebra/2780.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 460,
+      "unique_id": "test/prealgebra/914.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 461,
+      "unique_id": "test/algebra/824.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 462,
+      "unique_id": "test/number_theory/679.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 463,
+      "unique_id": "test/algebra/1425.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 464,
+      "unique_id": "test/intermediate_algebra/834.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 465,
+      "unique_id": "test/number_theory/72.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 466,
+      "unique_id": "test/precalculus/703.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 467,
+      "unique_id": "test/prealgebra/1114.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 468,
+      "unique_id": "test/algebra/224.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 469,
+      "unique_id": "test/algebra/435.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 470,
+      "unique_id": "test/intermediate_algebra/158.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 471,
+      "unique_id": "test/prealgebra/846.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 472,
+      "unique_id": "test/algebra/2470.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 473,
+      "unique_id": "test/prealgebra/1930.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 474,
+      "unique_id": "test/intermediate_algebra/752.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 475,
+      "unique_id": "test/counting_and_probability/1003.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 476,
+      "unique_id": "test/prealgebra/1252.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 477,
+      "unique_id": "test/number_theory/22.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 478,
+      "unique_id": "test/intermediate_algebra/1279.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 479,
+      "unique_id": "test/number_theory/1128.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 480,
+      "unique_id": "test/precalculus/1252.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 481,
+      "unique_id": "test/intermediate_algebra/1467.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 482,
+      "unique_id": "test/number_theory/1090.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 483,
+      "unique_id": "test/precalculus/1082.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 484,
+      "unique_id": "test/intermediate_algebra/101.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 485,
+      "unique_id": "test/counting_and_probability/199.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 486,
+      "unique_id": "test/geometry/477.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 487,
+      "unique_id": "test/number_theory/239.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 488,
+      "unique_id": "test/prealgebra/1203.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 489,
+      "unique_id": "test/intermediate_algebra/1365.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 490,
+      "unique_id": "test/intermediate_algebra/1350.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 491,
+      "unique_id": "test/prealgebra/1128.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 492,
+      "unique_id": "test/precalculus/356.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 493,
+      "unique_id": "test/algebra/2779.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 494,
+      "unique_id": "test/intermediate_algebra/1930.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}\n"
+    },
+    {
+      "index": 495,
+      "unique_id": "test/intermediate_algebra/1981.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 496,
+      "unique_id": "test/intermediate_algebra/1232.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 497,
+      "unique_id": "test/geometry/561.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 498,
+      "unique_id": "test/intermediate_algebra/1508.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    },
+    {
+      "index": 499,
+      "unique_id": "test/geometry/615.json",
+      "correct": true,
+      "grading_cot": "\\boxed{YES}"
+    }
+  ]
+}

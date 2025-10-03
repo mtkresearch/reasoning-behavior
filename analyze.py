@@ -30,7 +30,7 @@ Please Determine: Does the reasoning chain use the {option}) strategy or not?
 - Detailed operation steps do not count as strategy.
 """
 
-MAX_WORKERS = 50
+MAX_WORKERS = 100
 MAX_TRY = 3
 
 REASONING_STRATEGIES = {
