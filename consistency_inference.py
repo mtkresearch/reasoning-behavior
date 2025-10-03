@@ -30,7 +30,7 @@ Please Determine: Does the reasoning chain use the {option}) strategy or not?
 - Detailed operation steps do not count as strategy.
 """
 
-MAX_WORKERS = 9
+MAX_WORKERS = 100
 MAX_TRY = 3
 
 REASONING_STRATEGIES = {
@@ -51,57 +51,34 @@ class ConsistencyInference:
         self.client = LLMClient()
         self.judge_model_type = judge_model_type
 
-    def analyze_single_item(self, item: Dict, index: int) -> Dict:
-        """Analyze a single problem's reasoning trajectory using concurrent strategy checking"""
-        traj = item['traj']
+    def _process_single_task(self, task: Task) -> Dict:
+        """Process a single task and extract strategy information"""
+        option = task.metadata['option']
+        strategy_name = task.metadata['strategy_name']
 
-        # Create tasks for all strategies
-        tasks = []
-        for option, strategy_name in REASONING_STRATEGIES.items():
-            task = Task(
-                index=ord(option) - ord('A'),  # Convert A-I to 0-8
-                request=Request(
-                    query=DIRECT_REASONING_WAY_SELECTION.format(traj=traj, option=option),
-                    model_type=self.judge_model_type,
-                    system_prompt="You are a helpful assistant",
-                    reasoning_on=False
-                ),
-                metadata={'option': option, 'strategy_name': strategy_name}
-            )
-            tasks.append(task)
+        if not task.response.success:
+            return {
+                'option': option,
+                'name': strategy_name,
+                'error': task.response.err_message,
+                'found': False
+            }
 
-        method_types = []
-        cot = {}
-
-        # Process all strategies concurrently
-        for completed_task in self.client.generate_concurrent(tasks, max_workers=MAX_WORKERS):
-            option = completed_task.metadata['option']
-            strategy_name = completed_task.metadata['strategy_name']
-
-            if not completed_task.response.success:
-                raise Exception(f"Generation failed for strategy {option} in item {index}")
-
-            try:
-                has_strategy = '\\boxed{YES}' in completed_task.response.content
-                cot[option] = {
-                    'name': strategy_name,
-                    'response': completed_task.response.content,
-                    'found': has_strategy
-                }
-                if has_strategy:
-                    method_types.append(option)
-            except Exception as e:
-                print(f"Error processing strategy {option} for item {index}: {e}")
-                cot[option] = {
-                    'name': strategy_name,
-                    'error': str(e),
-                    'found': False
-                }
-
-        return {
-            'method_types': sorted(method_types),
-            'cot': cot
-        }
+        try:
+            has_strategy = '\\boxed{YES}' in task.response.content
+            return {
+                'option': option,
+                'name': strategy_name,
+                'response': task.response.content,
+                'found': has_strategy
+            }
+        except Exception as e:
+            return {
+                'option': option,
+                'name': strategy_name,
+                'error': str(e),
+                'found': False
+            }
 
     def process_consistency_data(self, input_path: str, output_path: str):
         """Process consistency_data.json and save results for specific model_type
@@ -114,21 +91,76 @@ class ConsistencyInference:
 
         print(f"Processing {len(data)} items with judge_model_type={self.judge_model_type}...")
 
-        results = []
-        for i, item in enumerate(tqdm(data, desc=f"Analyzing with {self.judge_model_type}")):
-            analysis = self.analyze_single_item(item, i)
+        # Create all tasks at once (items × strategies)
+        all_tasks = []
+        for item_idx, item in enumerate(data):
+            traj = item['traj']
+            for option, strategy_name in REASONING_STRATEGIES.items():
+                task = Task(
+                    index=item_idx * len(REASONING_STRATEGIES) + (ord(option) - ord('A')),
+                    request=Request(
+                        query=DIRECT_REASONING_WAY_SELECTION.format(traj=traj, option=option),
+                        model_type=self.judge_model_type,
+                        system_prompt="You are a helpful assistant",
+                        reasoning_on=False
+                    ),
+                    metadata={
+                        'item_idx': item_idx,
+                        'option': option,
+                        'strategy_name': strategy_name,
+                        'unique_id': item.get('unique_id', '')
+                    }
+                )
+                all_tasks.append(task)
 
-            # Build result item - unique_id, method_types and cot
-            result_item = {
-                'unique_id': item.get('unique_id', ''),
-                'method_types': analysis['method_types'],
-                'cot': analysis['cot']
-            }
-            results.append(result_item)
+        # Initialize results structure
+        results = [{
+            'unique_id': item.get('unique_id', ''),
+            'method_types': [],
+            'cot': {}
+        } for item in data]
 
-            # Save incrementally
-            with open(output_path, 'w') as f:
-                json.dump(results, f, ensure_ascii=False, indent=2)
+        # Process all tasks concurrently with retries
+        for attempt in range(MAX_TRY):
+            failed_tasks = []
+
+            for task in tqdm(self.client.generate_concurrent(all_tasks, max_workers=MAX_WORKERS),
+                           total=len(all_tasks),
+                           desc=f"Attempt {attempt+1}/{MAX_TRY}"):
+                if not task.response.success:
+                    print(f"Error task {task.index}: Generation failed - {task.response.err_message}")
+                    failed_tasks.append(task)
+                    continue
+
+                try:
+                    item_idx = task.metadata['item_idx']
+                    result_info = self._process_single_task(task)
+                    option = result_info['option']
+
+                    # Store the strategy analysis result
+                    results[item_idx]['cot'][option] = {
+                        k: v for k, v in result_info.items() if k != 'option'
+                    }
+
+                    # Add to method_types if found
+                    if result_info['found']:
+                        results[item_idx]['method_types'].append(option)
+
+                except Exception as e:
+                    print(f"Error processing task {task.index}: {e}")
+                    failed_tasks.append(task)
+
+            if not failed_tasks:
+                break
+            all_tasks = failed_tasks
+
+        # Sort method_types for each result
+        for result in results:
+            result['method_types'] = sorted(result['method_types'])
+
+        # Save final results
+        with open(output_path, 'w') as f:
+            json.dump(results, f, ensure_ascii=False, indent=2)
 
         print(f"Processing complete. Results saved to {output_path}")
 
@@ -137,8 +169,8 @@ if __name__ == '__main__':
     import sys
 
     # Default paths
-    input_path = 'consistency_data/consistency_data.json'
     judge_model_type = 'deepseek'
+    input_path = 'consistency_data/consistency_data.json'
 
     # Allow command line override
     if len(sys.argv) > 1:
