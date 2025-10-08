@@ -5,8 +5,8 @@ from pathlib import Path
 from tqdm import tqdm
 from llm_client import LLMClient, Task, Request
 
-MAX_WOKERS = 100
-MAX_TRY = 3
+MAX_WOKERS = 40
+MAX_TRY = 5
 
 
 def _get_sys_prompt(system_type):
