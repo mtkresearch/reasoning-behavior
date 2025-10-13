@@ -59,11 +59,11 @@ class AnswerGrader:
             task = Task(
                 index=i,
                 request=Request(
-                    query=GRADING_PROMPT.format(
+                    queries=[GRADING_PROMPT.format(
                         problem=problem,
                         ground_truth=ground_truth,
                         model_answer=model_answer
-                    ),
+                    )],
                     model_type=self.judge_model_type,
                     system_prompt="You are a helpful assistant",
                     reasoning_on=False

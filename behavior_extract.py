@@ -4,6 +4,8 @@ from typing import Optional, List, Dict
 from tqdm import tqdm
 from llm_client import LLMClient, Task, Request
 
+PROMPT_TYPE = 2
+
 DIRECT_REASONING_WAY_SELECTION = """
 ** Original Reasoning Chain **:
 ```markdown
@@ -45,6 +47,31 @@ REASONING_STRATEGIES = {
     'I': 'Association Method'
 }
 
+REASONING_SKILL_THINK_TEMPLATE = \
+"""```json
+{JSON_OBJ}
+```
+Does this problem-solving approach align/match: {STRATEGY_DESC}
+"""
+
+def REASONING_SKILL_THINKS(option, json_obj):
+    return REASONING_SKILL_THINK_TEMPLATE.format(
+        JSON_OBJ=json_obj,
+        STRATEGY_DESC={
+            'A': 'Planning and Execution: Plan first, then execute.',
+            'B': 'Problem Decomposition: Break down the problem into smaller parts and tackle each one individually.',
+            'C': 'Formulate Hypotheses and Test Them: Propose hypotheses before proceeding with verification.',
+            'D': 'Guess the Answer First, Then Verify: Make an initial guess, then check if it\'s correct.',
+            'E': 'Option Judgment and Elimination: List all possible options and eliminate them one by one.',
+            'F': 'Reverse Thinking: Work backwards from the result to infer the cause.',
+            'G': 'Divergent and Convergent Thinking: Use brainstorming for divergent thinking first, then converge to form a solution.',
+            'H': 'Counterexample Testing: Imagine scenarios where the hypothesis holds, then look for counterexamples to disprove it.',
+            'I': 'Association Method: Draw connections or analogies from related concepts, experiences, or fields to inspire solutions.',
+        }[option]
+    )
+
+REASONING_SKILL_DETERMINE = "Use binary classification to determine whether to use this approach. Answer with \\boxed{YES} or \\boxed{NO}"
+
 
 class ReasoningAnalyzer:
     def __init__(self, judge_model_type: str = 'deepseek', reasoning_on=False):
@@ -52,37 +79,71 @@ class ReasoningAnalyzer:
         self.judge_model_type = judge_model_type
         self.reasoning_on = reasoning_on
 
-    def analyze_results(self, results_path: str, output_path: str):
+    def analyze_results(self, results_path: str, output_path: str, parsing_func, limit=None):
         """Analyze all items in results.json and save to metrics.json"""
         # Load results
         with open(results_path, 'r') as f:
             data = json.load(f)
 
         # Filter items that have results
-        items_to_analyze = [(i, item) for i, item in enumerate(data) if 'result' in item]
+        items_to_analyze = []
+        for i, item in enumerate(data):
+            try:
+                question, traj, idx = parsing_func(item)
+                if question is None and traj is None:
+                    continue
+                items_to_analyze.append(
+                    (
+                        i, {'question': question, 'traj': traj, 'idx': idx}
+                    )
+                )
+            except Exception:
+                pass
+
+        if limit:
+            items_to_analyze = items_to_analyze[:limit]
 
         print(f"Analyzing {len(items_to_analyze)} items...")
 
         # Create all tasks (items × 9 strategies)
         all_tasks = []
         for i, item in items_to_analyze:
-            traj = item['result']['traj']
             for option, strategy_name in REASONING_STRATEGIES.items():
-                task = Task(
-                    index=len(all_tasks),
-                    request=Request(
-                        query=DIRECT_REASONING_WAY_SELECTION.format(traj=traj, option=option),
-                        model_type=self.judge_model_type,
-                        system_prompt="You are a helpful assistant",
-                        reasoning_on=self.reasoning_on
-                    ),
-                    metadata={
-                        'item_index': i,
-                        'unique_id': item.get('unique_id', ''),
-                        'option': option,
-                        'strategy_name': strategy_name
-                    }
-                )
+                if PROMPT_TYPE == 1: 
+                    task = Task(
+                        index=len(all_tasks),
+                        request=Request(
+                            queries=[DIRECT_REASONING_WAY_SELECTION.format(traj=item['traj'], option=option)],
+                            model_type=self.judge_model_type,
+                            system_prompt="You are a helpful assistant",
+                            reasoning_on=self.reasoning_on
+                        ),
+                        metadata={
+                            'item_index': i,
+                            'idx': item.get('idx', ''),
+                            'option': option,
+                            'strategy_name': strategy_name
+                        }
+                    )
+                elif PROMPT_TYPE == 2:
+                    task = Task(
+                        index=len(all_tasks),
+                        request=Request(
+                            queries=[
+                                REASONING_SKILL_THINKS(option=option, json_obj=json.dumps({'question': item['question'], 'thinking_process': item['traj']}, indent=2, ensure_ascii=False)),
+                                REASONING_SKILL_DETERMINE,
+                            ],
+                            model_type=self.judge_model_type,
+                            system_prompt="You are a helpful assistant",
+                            reasoning_on=self.reasoning_on
+                        ),
+                        metadata={
+                            'item_index': i,
+                            'idx': item.get('idx', ''),
+                            'option': option,
+                            'strategy_name': strategy_name
+                        }
+                    )
                 all_tasks.append(task)
 
         print(f"Total tasks: {len(all_tasks)} ({len(items_to_analyze)} items × 9 strategies)")
@@ -102,7 +163,7 @@ class ReasoningAnalyzer:
 
             if item_idx not in results_by_item:
                 results_by_item[item_idx] = {
-                    'unique_id': completed_task.metadata['unique_id'],
+                    'idx': completed_task.metadata['idx'],
                     'cot_collection': {},
                     'strategies_found': []
                 }
@@ -119,6 +180,7 @@ class ReasoningAnalyzer:
                 results_by_item[item_idx]['cot_collection'][option] = {
                     'name': strategy_name,
                     'response': completed_task.response.content,
+                    'cot': json.loads(completed_task.response.history)[-2]['content'],
                     'found': has_strategy
                 }
                 if has_strategy:
@@ -140,7 +202,7 @@ class ReasoningAnalyzer:
 
             metrics.append({
                 'index': item_idx,
-                'unique_id': results_by_item[item_idx]['unique_id'],
+                'idx': results_by_item[item_idx]['idx'],
                 'strategies_found': sorted(results_by_item[item_idx]['strategies_found']),
                 'cot_collection': results_by_item[item_idx]['cot_collection']
             })
@@ -210,4 +272,8 @@ if __name__ == '__main__':
     output_path = str(Path(results_path).parent / 'metrics.json')
 
     analyzer = ReasoningAnalyzer(judge_model_type=judge_model_type)
-    analyzer.analyze_results(results_path, output_path)
+    analyzer.analyze_results(
+        results_path, 
+        output_path, 
+        parsing_func=lambda item: (item['problem'], item['result']['traj'], None) if 'result' in item else (None, None, None)
+    )

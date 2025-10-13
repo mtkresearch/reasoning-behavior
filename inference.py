@@ -100,7 +100,7 @@ def inference(target, policy_model_type, system_type, out_dir, can_restore=False
 
     # Prepare tasks
     sys_prompt = _get_sys_prompt(system_type)
-    tasks = [Task(index=i, request=Request(query=query, model_type=policy_model_type, system_prompt=sys_prompt, reasoning_on=True))
+    tasks = [Task(index=i, request=Request(queries=[query], model_type=policy_model_type, system_prompt=sys_prompt, reasoning_on=True))
              for i, query in index_query_pairs]
 
     # Shuffle tasks

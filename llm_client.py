@@ -1,3 +1,5 @@
+import json
+
 from openai import OpenAI
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -8,7 +10,7 @@ import time
 
 @dataclass
 class Request:
-    query: str
+    queries: List[str]
     model_type: str = 'deepseek'
     system_prompt: str = "You are a helpful assistant"
     reasoning_on: bool = True
@@ -18,6 +20,7 @@ class Request:
 @dataclass
 class Response:
     content: str
+    history: str
     elapsed_seconds: float
     success: bool
     reasoning_content: Optional[str] = None
@@ -57,7 +60,7 @@ class LLMClient:
                 {"role": "system", "content": request.system_prompt},
                 {"role": "user", "content": "Who are you?"},
                 {"role": "assistant", "content": "<think>Hmm</think>I am DeepSeek"},
-                {"role": "user", "content": request.query},
+                {"role": "user", "content": request.queries[0]},
             ]
             kwargs = {
                 'extra_body': {"chat_template_kwargs": {"thinking": request.reasoning_on}} 
@@ -65,43 +68,48 @@ class LLMClient:
         elif request.model_type == 'gpt-oss':
             messages = [
                 {"role": "system", "content": request.system_prompt},
-                {"role": "user", "content": request.query},
+                {"role": "user", "content": request.queries[0]},
             ]
             kwargs = {"reasoning_effort": "high"} if request.reasoning_on else {"reasoning_effort": "low"}
         elif request.model_type == 'qwen3':
             messages = [
                 {"role": "system", "content": request.system_prompt},
-                {"role": "user", "content": request.query},
+                {"role": "user", "content": request.queries[0]},
             ]
             kwargs = {}
 
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            timeout=timeout,
-            temperature=request.temperature,
-            **kwargs,
-        )
+        for k in range(len(request.queries)):
+            if k >= 1:
+                messages.append({"role": "assistant", "content": content})
+                messages.append({"role": "user", "content": request.queries[k]})
 
-        reasoning_content = None
-        if request.model_type == 'deepseek':
-            if request.reasoning_on:
-                reasoning_content, content = self._parse_deepseek_reasoning_content(response.choices[0].message.content)
-            else:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                timeout=timeout,
+                temperature=request.temperature,
+                **kwargs,
+            )
+
+            reasoning_content = None
+            if request.model_type == 'deepseek':
+                if request.reasoning_on:
+                    reasoning_content, content = self._parse_deepseek_reasoning_content(response.choices[0].message.content)
+                else:
+                    content = response.choices[0].message.content
+
+            elif request.model_type == 'gpt-oss':
+                if request.reasoning_on:
+                    reasoning_content = response.choices[0].message.reasoning_content
                 content = response.choices[0].message.content
 
-        elif request.model_type == 'gpt-oss':
-            if request.reasoning_on:
-                reasoning_content = response.choices[0].message.reasoning_content
-            content = response.choices[0].message.content
+            elif request.model_type == 'qwen3':
+                if request.reasoning_on:
+                    reasoning_content, content = self._parse_deepseek_reasoning_content(response.choices[0].message.content)
+                else:
+                    raise NotImplementedError
 
-        elif request.model_type == 'qwen3':
-            if request.reasoning_on:
-                reasoning_content, content = self._parse_deepseek_reasoning_content(response.choices[0].message.content)
-            else:
-                raise NotImplementedError
-
-        return reasoning_content, content 
+        return reasoning_content, content, messages
 
     def generate_concurrent(self, tasks, max_workers=None):
         """
@@ -117,13 +125,13 @@ class LLMClient:
         def _generate_task(task):
             try:
                 start_time = time.time()
-                reasoning_content, content = self.generate(task.request)
+                reasoning_content, content, history = self.generate(task.request)
                 elapsed_seconds = int(time.time() - start_time)
-                task.response = Response(content=content, reasoning_content=reasoning_content, elapsed_seconds=elapsed_seconds, success=True)
+                task.response = Response(content=content, history=json.dumps(history), reasoning_content=reasoning_content, elapsed_seconds=elapsed_seconds, success=True)
                 return task
             except Exception as e:
                 elapsed_seconds = int(time.time() - start_time if 'start_time' in locals() else 0)
-                task.response = Response(content="", elapsed_seconds=elapsed_seconds, success=False, err_message=str(e))
+                task.response = Response(content="", history="", elapsed_seconds=elapsed_seconds, success=False, err_message=str(e))
                 return task
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
