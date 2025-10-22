@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consistency Data Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .selector-panel {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .selector-panel label {
+            font-weight: 600;
+            margin-right: 10px;
+            color: #555;
+        }
+
+        .selector-panel select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            min-width: 200px;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 20px;
+        }
+
+        .left-panel {
+            flex: 2;
+            min-width: 0;
+        }
+
+        .right-panel {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #fafafa;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .section-title {
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .correct-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .correct-badge.correct {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .correct-badge.incorrect {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .content-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.8;
+            color: #444;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+        }
+
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .strategy-button {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            text-align: left;
+            background: white;
+        }
+
+        .strategy-button:hover {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+
+        .strategy-button.found {
+            border-color: #28a745;
+            background: #f0f9f3;
+        }
+
+        .strategy-button.not-found {
+            border-color: #dc3545;
+            background: #fef5f6;
+        }
+
+        .strategy-button.active {
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.3);
+        }
+
+        .strategy-button.not-found.active {
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.3);
+        }
+
+        .strategy-label {
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .strategy-name {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .status-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-icon.found {
+            background: #28a745;
+        }
+
+        .status-icon.not-found {
+            background: #dc3545;
+        }
+
+        .cot-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff9e6;
+            border-radius: 6px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .cot-title {
+            font-weight: 700;
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+
+        .cot-content {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.8;
+            color: #444;
+            font-size: 13px;
+            max-height: 500px;
+            overflow-y: auto;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error {
+            color: #dc3545;
+            padding: 10px;
+            background: #f8d7da;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Consistency Data Viewer</h1>
+
+        <div class="selector-panel">
+            <label for="questionSelect">題號:</label>
+            <select id="questionSelect">
+                <option value="">請選擇題號...</option>
+            </select>
+        </div>
+
+        <div id="mainContent" class="main-content" style="display: none;">
+            <div class="left-panel">
+                <div class="section">
+                    <div class="section-title">
+                        📝 Question
+                        <span id="correctBadge" class="correct-badge"></span>
+                    </div>
+                    <div id="questionText" class="content-text"></div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">🤔 Trajectory</div>
+                    <div id="trajText" class="content-text"></div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div id="cotSection" class="cot-section" style="display: none;">
+                    <div class="cot-title">
+                        💭 判定理由 (CoT) - <span id="cotStrategy"></span>
+                    </div>
+                    <div id="cotContent" class="cot-content"></div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">🎯 策略分析 (A-I)</div>
+                    <div id="strategyGrid" class="strategy-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingText" class="loading">載入中...</div>
+    </div>
+
+    <script>
+        let indexData = null;
+        let itemCache = {};
+        let selectedStrategy = null;
+
+        const strategyDescriptions = {
+            'A': 'Planning and Execution',
+            'B': 'Problem Decomposition',
+            'C': 'Formulate Hypotheses and Test Them',
+            'D': 'Guess the Answer First, Then Verify',
+            'E': 'Option Judgment and Elimination',
+            'F': 'Reverse Thinking',
+            'G': 'Divergent and Convergent Thinking',
+            'H': 'Counterexample Testing',
+            'I': 'Association Method'
+        };
+
+        const questionSelect = document.getElementById('questionSelect');
+        const mainContent = document.getElementById('mainContent');
+        const loadingText = document.getElementById('loadingText');
+
+        // Load index on page load
+        (async function loadIndex() {
+            try {
+                const response = await fetch('./consistency_data/index.json');
+                indexData = await response.json();
+                populateQuestionSelect();
+                loadingText.textContent = '請選擇題號';
+            } catch (error) {
+                loadingText.innerHTML = `<div class="error">載入索引失敗: ${error.message}<br>請先執行 python3 build_index.py 建立索引</div>`;
+            }
+        })();
+
+        questionSelect.addEventListener('change', async (e) => {
+            const selectedIndex = parseInt(e.target.value);
+            if (!isNaN(selectedIndex)) {
+                await loadAndDisplayData(selectedIndex);
+            }
+        });
+
+        function populateQuestionSelect() {
+            questionSelect.innerHTML = '<option value="">請選擇題號...</option>';
+            indexData.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.index;
+                option.textContent = item.unique_id;
+                questionSelect.appendChild(option);
+            });
+        }
+
+        async function loadAndDisplayData(selectedIndex) {
+            const item = indexData[selectedIndex];
+            const uniqueId = item.unique_id;
+
+            // Check cache first
+            if (itemCache[uniqueId]) {
+                displayData(itemCache[uniqueId]);
+                return;
+            }
+
+            loadingText.textContent = '載入資料中...';
+            loadingText.style.display = 'block';
+            mainContent.style.display = 'none';
+
+            try {
+                // Load only the specific item file
+                const response = await fetch(`./consistency_data/items/${uniqueId}.json`);
+                const itemData = await response.json();
+
+                // Cache the item
+                itemCache[uniqueId] = itemData;
+
+                displayData(itemData);
+            } catch (error) {
+                loadingText.innerHTML = `<div class="error">載入資料失敗: ${error.message}</div>`;
+            }
+        }
+
+        function displayData(item) {
+            if (!item) return;
+
+            // Display question
+            document.getElementById('questionText').textContent = item.question || 'N/A';
+
+            // Display trajectory
+            document.getElementById('trajText').textContent = item.traj || 'N/A';
+
+            // Display correct badge
+            const correctBadge = document.getElementById('correctBadge');
+            const isCorrect = item.is_correct === true || item.is_correct === 'true';
+            correctBadge.textContent = isCorrect ? '✓ Correct' : '✗ Incorrect';
+            correctBadge.className = `correct-badge ${isCorrect ? 'correct' : 'incorrect'}`;
+
+            // Display strategies
+            displayStrategies(item);
+
+            // Hide CoT section initially
+            document.getElementById('cotSection').style.display = 'none';
+            selectedStrategy = null;
+
+            mainContent.style.display = 'flex';
+            loadingText.style.display = 'none';
+        }
+
+        function displayStrategies(item) {
+            const strategyGrid = document.getElementById('strategyGrid');
+            strategyGrid.innerHTML = '';
+
+            const strategies = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+            const cotCollection = item.cot_collection || {};
+            const strategiesFound = item.strategies_found || [];
+
+            strategies.forEach(strategy => {
+                const button = document.createElement('button');
+                button.className = 'strategy-button';
+
+                const strategyInfo = cotCollection[strategy];
+                const found = strategyInfo ? strategyInfo.found : strategiesFound.includes(strategy);
+
+                button.classList.add(found ? 'found' : 'not-found');
+
+                button.innerHTML = `
+                    <div class="strategy-label">
+                        <span class="status-icon ${found ? 'found' : 'not-found'}"></span>
+                        <strong>${strategy}</strong>
+                    </div>
+                    <div class="strategy-name">${strategyDescriptions[strategy]}</div>
+                `;
+
+                button.addEventListener('click', () => {
+                    // Remove active class from all buttons
+                    document.querySelectorAll('.strategy-button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+
+                    // Add active class to clicked button
+                    button.classList.add('active');
+
+                    // Display CoT
+                    displayCoT(strategy, strategyInfo);
+                });
+
+                strategyGrid.appendChild(button);
+            });
+        }
+
+        function displayCoT(strategy, strategyInfo) {
+            const cotSection = document.getElementById('cotSection');
+            const cotContent = document.getElementById('cotContent');
+            const cotStrategy = document.getElementById('cotStrategy');
+
+            // Display which strategy this CoT is for
+            const strategyName = strategyDescriptions[strategy];
+            cotStrategy.textContent = `${strategy}: ${strategyName}`;
+
+            if (strategyInfo && strategyInfo.cot) {
+                cotContent.textContent = strategyInfo.cot;
+                cotSection.style.display = 'block';
+
+                // Scroll to CoT section smoothly
+                cotSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                cotContent.textContent = '此策略沒有判定理由 (CoT) 資料';
+                cotSection.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

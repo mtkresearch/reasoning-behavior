@@ -9,7 +9,7 @@ if __name__ == '__main__':
     import sys
 
     # Default paths
-    judge_model_type = 'gpt-oss-reasoning'
+    judge_model_type = 'deepseek'
     input_path = 'consistency_data/consistency_data.json'
 
     # Allow command line override
@@ -19,7 +19,7 @@ if __name__ == '__main__':
         input_path = sys.argv[2]
 
     # Output path based on judge_model_type
-    output_path = str(Path(input_path).parent / f'consistency2_{judge_model_type}.json')
+    output_path = str(Path(input_path).parent / f'consistency3_{judge_model_type}.json')
 
     # Handle reasoning_on flag
     reasoning_on = False

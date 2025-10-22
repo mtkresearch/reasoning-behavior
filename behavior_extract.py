@@ -4,7 +4,7 @@ from typing import Optional, List, Dict
 from tqdm import tqdm
 from llm_client import LLMClient, Task, Request
 
-PROMPT_TYPE = 2
+PROMPT_TYPE = 3
 
 DIRECT_REASONING_WAY_SELECTION = """
 ** Original Reasoning Chain **:
@@ -35,16 +35,35 @@ Please Determine: Does the reasoning chain use the {option}) strategy or not?
 MAX_WORKERS = 100
 MAX_TRY = 3
 
+# REASONING_STRATEGIES = {
+#     'A': 'Planning and Execution',
+#     'B': 'Problem Decomposition',
+#     'C': 'Formulate Hypotheses and Test Them',
+#     'D': 'Guess the Answer First, Then Verify',
+#     'E': 'Option Judgment and Elimination',
+#     'F': 'Reverse Thinking',
+#     'G': 'Divergent and Convergent Thinking',
+#     'H': 'Counterexample Testing',
+#     'I': 'Association Method'
+# }
+
 REASONING_STRATEGIES = {
-    'A': 'Planning and Execution',
+    'A': 'Reflection',
     'B': 'Problem Decomposition',
     'C': 'Formulate Hypotheses and Test Them',
     'D': 'Guess the Answer First, Then Verify',
     'E': 'Option Judgment and Elimination',
-    'F': 'Reverse Thinking',
-    'G': 'Divergent and Convergent Thinking',
-    'H': 'Counterexample Testing',
-    'I': 'Association Method'
+    'F': 'Counterexample Testing',
+    'G': 'Association Method'
+}
+REASONING_STRATEGIES_DESC = {
+    'A': 'Reviewing and evaluating previous steps or conclusions to identify errors or improvements.',
+    'B': 'Breaking down the problem into smaller, manageable parts and addressing each one individually.',
+    'C': 'Proposing hypotheses before proceeding with verification or testing.',
+    'D': 'Making an initial guess or prediction, then checking whether it\'s correct.',
+    'E': 'List all possible options and eliminate them one by one.',
+    'F': 'Imagine scenarios where the hypothesis holds, then look for counterexamples to disprove it.',
+    'G': 'Draw connections or analogies from related concepts, experiences, or fields to inspire solutions.'
 }
 
 REASONING_SKILL_THINK_TEMPLATE = \
@@ -52,25 +71,63 @@ REASONING_SKILL_THINK_TEMPLATE = \
 {JSON_OBJ}
 ```
 Does this problem-solving approach align/match: {STRATEGY_DESC}
-"""
+""" 
 
-def REASONING_SKILL_THINKS(option, json_obj):
-    return REASONING_SKILL_THINK_TEMPLATE.format(
-        JSON_OBJ=json_obj,
-        STRATEGY_DESC={
-            'A': 'Planning and Execution: Plan first, then execute.',
-            'B': 'Problem Decomposition: Break down the problem into smaller parts and tackle each one individually.',
-            'C': 'Formulate Hypotheses and Test Them: Propose hypotheses before proceeding with verification.',
-            'D': 'Guess the Answer First, Then Verify: Make an initial guess, then check if it\'s correct.',
-            'E': 'Option Judgment and Elimination: List all possible options and eliminate them one by one.',
-            'F': 'Reverse Thinking: Work backwards from the result to infer the cause.',
-            'G': 'Divergent and Convergent Thinking: Use brainstorming for divergent thinking first, then converge to form a solution.',
-            'H': 'Counterexample Testing: Imagine scenarios where the hypothesis holds, then look for counterexamples to disprove it.',
-            'I': 'Association Method: Draw connections or analogies from related concepts, experiences, or fields to inspire solutions.',
-        }[option]
-    )
+REASONING_SKILL_THINK_TEMPLATE_WITHOUT_OBJ = \
+"""
+Based on the sequence of decision points, does this problem-solving approach align/match the stragegy: {STRATEGY_DESC}
+
+**Important**: Only identify a strategy if there is clear, explicit evidence of its use in the reasoning chain.
+""" 
+
+def REASONING_SKILL_THINKS(option, json_obj=None):
+    strategy_desc = f'{REASONING_STRATEGIES[option]} ({REASONING_STRATEGIES_DESC[option]})'
+
+    if json_obj is None:
+        return REASONING_SKILL_THINK_TEMPLATE_WITHOUT_OBJ.format(STRATEGY_DESC=strategy_desc)
+    else:
+        return REASONING_SKILL_THINK_TEMPLATE.format(
+            JSON_OBJ=json_obj,
+            STRATEGY_DESC=strategy_desc,
+        )
 
 REASONING_SKILL_DETERMINE = "Use binary classification to determine whether to use this approach. Answer with \\boxed{YES} or \\boxed{NO}"
+
+PROMPT3_REASONING = """** Reasoning Chain **:
+```json
+{JSON_OBJ}
+```
+
+Analyze the above chain of thought, excluding the execution details. Focus only on the **decision points** and explain in bullet-point format what specifically occurred at each decision point. 
+
+**Required Output Format:**
+```
+Decision Point 1:
+- What happened: [Describe what specifically occurred at this decision point]
+
+Decision Point 2:
+- What happened: [Describe what specifically occurred at this decision point]
+
+[Continue for all decision points...]
+```
+"""
+
+PROMPT3_DETERMINE = """
+For each decision point, identify which thinking strategies were employed (you may select multiple strategies, or none at all).
+
+**Available thinking strategies:**
+
+A) **Reflection**: Reviewing and evaluating previous steps or conclusions to identify errors or improvements.
+B) **Problem Decomposition**: Breaking down the problem into smaller, manageable parts and addressing each one individually.
+C) **Formulate Hypotheses and Test Them**: Proposing hypotheses before proceeding with verification or testing.
+D) **Guess the Answer First, Then Verify**: Making an initial guess or prediction, then checking whether it's correct.
+E) **Option Judgment and Elimination**: Listing all possible options and systematically eliminating them one by one.
+F) **Counterexample Testing**: Imagining scenarios where the hypothesis holds true, then searching for counterexamples to disprove it.
+G) **Association Method**: Drawing connections or analogies from related concepts, experiences, or fields to inspire solutions.
+
+Important: Only identify a strategy if there is clear, explicit evidence of its use in the reasoning chain.
+
+Use binary classification to determine whether to use the option {OPTION}. Answer with \\boxed{{YES}} or \\boxed{{NO}}"""
 
 
 class ReasoningAnalyzer:
@@ -105,7 +162,7 @@ class ReasoningAnalyzer:
 
         print(f"Analyzing {len(items_to_analyze)} items...")
 
-        # Create all tasks (items × 9 strategies)
+        # Create all tasks (items × all strategies)
         all_tasks = []
         for i, item in items_to_analyze:
             for option, strategy_name in REASONING_STRATEGIES.items():
@@ -144,9 +201,29 @@ class ReasoningAnalyzer:
                             'strategy_name': strategy_name
                         }
                     )
+                elif PROMPT_TYPE == 3:
+                    task = Task(
+                        index=len(all_tasks),
+                        request=Request(
+                            queries=[
+                                PROMPT3_REASONING.format(JSON_OBJ=json.dumps({'question': item['question'], 'thinking_process': item['traj']}, indent=2, ensure_ascii=False)),
+                                REASONING_SKILL_THINKS(option=option),
+                                REASONING_SKILL_DETERMINE,
+                            ],
+                            model_type=self.judge_model_type,
+                            system_prompt="You are a helpful assistant",
+                            reasoning_on=self.reasoning_on
+                        ),
+                        metadata={
+                            'item_index': i,
+                            'idx': item.get('idx', ''),
+                            'option': option,
+                            'strategy_name': strategy_name
+                        }
+                    )
                 all_tasks.append(task)
 
-        print(f"Total tasks: {len(all_tasks)} ({len(items_to_analyze)} items × 9 strategies)")
+        print(f"Total tasks: {len(all_tasks)} ({len(items_to_analyze)} items × {len(REASONING_STRATEGIES)} strategies)")
 
         # Collect results, group by item_index
         results_by_item = {}
@@ -180,7 +257,7 @@ class ReasoningAnalyzer:
                 results_by_item[item_idx]['cot_collection'][option] = {
                     'name': strategy_name,
                     'response': completed_task.response.content,
-                    'cot': json.loads(completed_task.response.history)[-2]['content'],
+                    'cot': '\n============================\n'.join([x['content'] for i, x in enumerate(json.loads(completed_task.response.history)) if i in [2, 4]]),
                     'found': has_strategy
                 }
                 if has_strategy:
@@ -189,15 +266,15 @@ class ReasoningAnalyzer:
                 print(f"\nError processing item {item_idx}, strategy {option}: {e}")
                 failed_items.add(item_idx)
 
-        # Filter complete results (all 9 strategies succeeded)
+        # Filter complete results (all strategies succeeded)
         metrics = []
         for item_idx in sorted(results_by_item.keys()):
             if item_idx in failed_items:
                 print(f"Skipping item {item_idx} due to failures")
                 continue
 
-            if len(results_by_item[item_idx]['cot_collection']) != 9:
-                print(f"Skipping item {item_idx}: only {len(results_by_item[item_idx]['cot_collection'])}/9 strategies completed")
+            if len(results_by_item[item_idx]['cot_collection']) != len(REASONING_STRATEGIES):
+                print(f"Skipping item {item_idx}: only {len(results_by_item[item_idx]['cot_collection'])}/{len(REASONING_STRATEGIES)} strategies completed")
                 continue
 
             metrics.append({

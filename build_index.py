@@ -12,7 +12,7 @@ def build_index():
     with open('consistency_data/consistency_data.json', 'r', encoding='utf-8') as f:
         base_data = json.load(f)
 
-    with open('consistency_data/consistency2_gpt-oss-reasoning.json', 'r', encoding='utf-8') as f:
+    with open('consistency_data/consistency3_gpt-oss-reasoning.json', 'r', encoding='utf-8') as f:
         strategy_full = json.load(f)
         strategy_data = {item['idx']: item for item in strategy_full['metrics']}
 
