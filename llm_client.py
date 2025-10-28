@@ -18,6 +18,14 @@ class Request:
 
 
 @dataclass
+class CompletionRequest:
+    prompt: str
+    model_type: str = 'gpt-oss'
+    temperature: Optional[float] = None
+    max_tokens: int = 20480
+
+
+@dataclass
 class Response:
     content: str
     history: str
@@ -111,6 +119,19 @@ class LLMClient:
 
         return reasoning_content, content, messages
 
+    def complete(self, request: CompletionRequest, timeout=3600*2):
+        """Text completion (not chat completion)"""
+        response = self.client.completions.create(
+            model=self.model,
+            prompt=request.prompt,
+            timeout=timeout,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+        )
+
+        content = response.choices[0].text
+        return content
+
     def generate_concurrent(self, tasks, max_workers=None):
         """
         Generate responses concurrently for multiple tasks.
@@ -138,6 +159,38 @@ class LLMClient:
             futures = []
             for task in tasks:
                 future = executor.submit(_generate_task, task)
+                futures.append(future)
+
+            for future in as_completed(futures):
+                yield future.result()
+
+    def complete_concurrent(self, tasks, max_workers=None):
+        """
+        Generate completions concurrently for multiple tasks.
+
+        Args:
+            tasks: Iterable of Task dataclass instances (with CompletionRequest)
+            max_workers: Maximum number of concurrent workers (default: None, uses ThreadPoolExecutor default)
+
+        Yields:
+            Task dataclass instances with response field populated as they complete
+        """
+        def _complete_task(task):
+            try:
+                start_time = time.time()
+                content = self.complete(task.request)
+                elapsed_seconds = int(time.time() - start_time)
+                task.response = Response(content=content, history="", reasoning_content=None, elapsed_seconds=elapsed_seconds, success=True)
+                return task
+            except Exception as e:
+                elapsed_seconds = int(time.time() - start_time if 'start_time' in locals() else 0)
+                task.response = Response(content="", history="", elapsed_seconds=elapsed_seconds, success=False, err_message=str(e))
+                return task
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for task in tasks:
+                future = executor.submit(_complete_task, task)
                 futures.append(future)
 
             for future in as_completed(futures):
