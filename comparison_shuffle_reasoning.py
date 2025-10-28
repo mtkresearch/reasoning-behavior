@@ -70,30 +70,42 @@ def clean_multiple_newlines(text: str) -> str:
     return cleaned
 
 
-def truncate_reasoning_lines(reasoning: str, del_last_line_count: int) -> str:
+def truncate_reasoning_lines(reasoning: str, del_last_line: float) -> str:
     """
-    Remove last n lines from reasoning content
+    Remove last n lines or ratio of lines from reasoning content
 
     Args:
         reasoning: Original reasoning content
-        del_last_line_count: Number of lines to remove from the end
+        del_last_line: If >= 1, number of lines to remove from the end (integer)
+                      If 0 < del_last_line < 1, ratio of lines to remove (float)
 
     Returns:
         Truncated reasoning content
     """
-    if del_last_line_count <= 0:
+    if del_last_line <= 0:
         return reasoning
 
     lines = reasoning.strip().split('\n')
     # Remove empty lines
     lines = [line for line in lines if line.strip()]
 
+    # Calculate number of lines to remove
+    if del_last_line < 1:
+        # Ratio mode: remove a percentage of lines
+        lines_to_remove = int(len(lines) * del_last_line)
+    else:
+        # Count mode: remove specific number of lines
+        lines_to_remove = int(del_last_line)
+
     # Remove last n lines
-    if del_last_line_count >= len(lines):
+    if lines_to_remove >= len(lines):
         # If trying to remove more lines than available, return first line
         return lines[0] if lines else ""
 
-    truncated_lines = lines[:-del_last_line_count]
+    if lines_to_remove == 0:
+        return reasoning
+
+    truncated_lines = lines[:-lines_to_remove]
     return '\n'.join(truncated_lines)
 
 
@@ -316,7 +328,7 @@ def parse_yes_no_response(response_text: str) -> bool:
 
 
 def run_experiment(results_path: str, grades_path: str, output_dir: str,
-                  num_samples: int = None, seed: int = 42, del_last_line_count: int = 0,
+                  num_samples: int = None, seed: int = 42, del_last_line: float = 0,
                   judge_model_type: str = 'gpt-oss', max_workers: int = 50):
     """
     Run the comparison experiment using VLLM
@@ -327,7 +339,7 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
         output_dir: Directory to save results
         num_samples: Number of samples to test (None = all)
         seed: Random seed for shuffling
-        del_last_line_count: Number of lines to remove from end of reasoning
+        del_last_line: Number of lines to remove from end (>=1) or ratio of lines (0-1)
         judge_model_type: Model to use for judging
         max_workers: Maximum number of concurrent workers
     """
@@ -370,7 +382,7 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
         full_reasoning = clean_multiple_newlines(full_reasoning)
 
         # Truncate reasoning
-        normal_reasoning = truncate_reasoning_lines(full_reasoning, del_last_line_count)
+        normal_reasoning = truncate_reasoning_lines(full_reasoning, del_last_line)
 
         # Shuffle reasoning
         shuffled_reasoning = shuffle_reasoning_lines(normal_reasoning)
@@ -534,7 +546,7 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
 
     summary = {
         'total_problems': total,
-        'del_last_line_count': del_last_line_count,
+        'del_last_line': del_last_line,
         'same_answer': {
             'count': same_answer_count,
             'percentage': round(same_answer_count / total * 100, 2) if total > 0 else 0
@@ -583,7 +595,10 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
     print("SUMMARY")
     print(f"{'='*80}")
     print(f"Total problems: {total}")
-    print(f"Deleted last {del_last_line_count} lines from reasoning")
+    if del_last_line < 1:
+        print(f"Deleted last {del_last_line*100:.1f}% of lines from reasoning")
+    else:
+        print(f"Deleted last {int(del_last_line)} lines from reasoning")
     print(f"\nSame answer: {same_answer_count}/{total} ({summary['same_answer']['percentage']:.2f}%)")
     print(f"\nCorrectness:")
     print(f"  Full correct:    {full_correct_count}/{total} ({summary['full_correct']['percentage']:.2f}%)")
@@ -613,8 +628,8 @@ def main():
                        help="Number of samples to test (default: all)")
     parser.add_argument("--seed", type=int, default=42,
                        help="Random seed")
-    parser.add_argument("--del_last_line_count", type=int, default=0,
-                       help="Number of lines to remove from end of reasoning (default: 0)")
+    parser.add_argument("--del_last_line", type=float, default=0,
+                       help="Lines to remove: integer >=1 for line count, float 0-1 for ratio (default: 0)")
     parser.add_argument("--judge_model_type", type=str, default='gpt-oss',
                        help="Model type for judging (default: gpt-oss)")
     parser.add_argument("--max_workers", type=int, default=50,
@@ -629,7 +644,7 @@ def main():
         output_dir=args.output_dir,
         num_samples=args.num_samples,
         seed=args.seed,
-        del_last_line_count=args.del_last_line_count,
+        del_last_line=args.del_last_line,
         judge_model_type=args.judge_model_type,
         max_workers=args.max_workers
     )

@@ -1,0 +1,34 @@
+{
+  "total_problems": 300,
+  "del_last_line": 0.5,
+  "same_answer": {
+    "count": 172,
+    "percentage": 57.33
+  },
+  "full_correct": {
+    "count": 274,
+    "percentage": 91.33
+  },
+  "normal_correct": {
+    "count": 174,
+    "percentage": 58.0
+  },
+  "shuffle_correct": {
+    "count": 161,
+    "percentage": 53.67
+  },
+  "difference": {
+    "normal_vs_shuffle": {
+      "absolute": 13,
+      "percentage": 4.33
+    },
+    "full_vs_normal": {
+      "absolute": 100,
+      "percentage": 33.33
+    },
+    "full_vs_shuffle": {
+      "absolute": 113,
+      "percentage": 37.67
+    }
+  }
+}
