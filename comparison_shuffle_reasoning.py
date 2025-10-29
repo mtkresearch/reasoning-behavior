@@ -22,6 +22,9 @@ from llm_client import LLMClient, Task, Request, CompletionRequest
 # Debug flag
 DEBUG = os.environ.get('DEBUG', '0') == '1'
 
+# Global tokenizer cache
+_TOKENIZER_CACHE = {}
+
 def debug_print(msg: str):
     """Print debug message if DEBUG is enabled"""
     if DEBUG:
@@ -127,6 +130,81 @@ def shuffle_reasoning_lines(reasoning: str) -> str:
     random.shuffle(lines)
 
     return '\n'.join(lines)
+
+
+def shuffle_reasoning_words(reasoning: str) -> str:
+    """
+    Shuffle reasoning content word-by-word
+
+    Args:
+        reasoning: Original reasoning content
+
+    Returns:
+        Shuffled reasoning content with words shuffled
+    """
+    # Split by whitespace to get words
+    words = reasoning.split()
+
+    # Shuffle words
+    random.shuffle(words)
+
+    # Rejoin with single space
+    return ' '.join(words)
+
+
+def shuffle_reasoning_tokens(reasoning: str, model_name: str = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B") -> str:
+    """
+    Shuffle reasoning content token-by-token using the model's tokenizer
+
+    Args:
+        reasoning: Original reasoning content
+        model_name: Model name for tokenizer (default: gpt-oss model)
+
+    Returns:
+        Shuffled reasoning content with tokens shuffled
+    """
+    from transformers import AutoTokenizer
+
+    # Load tokenizer (with caching to avoid reloading)
+    if model_name not in _TOKENIZER_CACHE:
+        debug_print(f"Loading tokenizer for {model_name}...")
+        _TOKENIZER_CACHE[model_name] = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+
+    tokenizer = _TOKENIZER_CACHE[model_name]
+
+    # Tokenize
+    tokens = tokenizer.encode(reasoning, add_special_tokens=False)
+
+    # Shuffle token IDs
+    random.shuffle(tokens)
+
+    # Decode back to text
+    shuffled_text = tokenizer.decode(tokens, skip_special_tokens=True)
+
+    return shuffled_text
+
+
+def shuffle_reasoning(reasoning: str, shuffle_type: str = 'line',
+                     tokenizer_model: str = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B") -> str:
+    """
+    Shuffle reasoning content using specified method
+
+    Args:
+        reasoning: Original reasoning content
+        shuffle_type: Type of shuffle - 'line', 'word', or 'token'
+        tokenizer_model: Model name for tokenizer (only used for token shuffle)
+
+    Returns:
+        Shuffled reasoning content
+    """
+    if shuffle_type == 'line':
+        return shuffle_reasoning_lines(reasoning)
+    elif shuffle_type == 'word':
+        return shuffle_reasoning_words(reasoning)
+    elif shuffle_type == 'token':
+        return shuffle_reasoning_tokens(reasoning, tokenizer_model)
+    else:
+        raise ValueError(f"Invalid shuffle_type: {shuffle_type}. Must be 'line', 'word', or 'token'")
 
 
 
@@ -329,7 +407,8 @@ def parse_yes_no_response(response_text: str) -> bool:
 
 def run_experiment(results_path: str, grades_path: str, output_dir: str,
                   num_samples: int = None, seed: int = 42, del_last_line: float = 0,
-                  judge_model_type: str = 'gpt-oss', max_workers: int = 50):
+                  judge_model_type: str = 'gpt-oss', max_workers: int = 50,
+                  shuffle_type: str = 'line', tokenizer_model: str = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"):
     """
     Run the comparison experiment using VLLM
 
@@ -342,6 +421,8 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
         del_last_line: Number of lines to remove from end (>=1) or ratio of lines (0-1)
         judge_model_type: Model to use for judging
         max_workers: Maximum number of concurrent workers
+        shuffle_type: Type of shuffle - 'line', 'word', or 'token'
+        tokenizer_model: Model name for tokenizer (only used for token shuffle)
     """
     random.seed(seed)
 
@@ -384,8 +465,8 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
         # Truncate reasoning
         normal_reasoning = truncate_reasoning_lines(full_reasoning, del_last_line)
 
-        # Shuffle reasoning
-        shuffled_reasoning = shuffle_reasoning_lines(normal_reasoning)
+        # Shuffle reasoning using specified method
+        shuffled_reasoning = shuffle_reasoning(normal_reasoning, shuffle_type, tokenizer_model)
 
         # Build prompts for text completion
         normal_prompt = build_gpt_oss_prompt_with_reasoning(question, normal_reasoning)
@@ -547,6 +628,7 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
     summary = {
         'total_problems': total,
         'del_last_line': del_last_line,
+        'shuffle_type': shuffle_type,
         'same_answer': {
             'count': same_answer_count,
             'percentage': round(same_answer_count / total * 100, 2) if total > 0 else 0
@@ -595,6 +677,7 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
     print("SUMMARY")
     print(f"{'='*80}")
     print(f"Total problems: {total}")
+    print(f"Shuffle type: {shuffle_type}")
     if del_last_line < 1:
         print(f"Deleted last {del_last_line*100:.1f}% of lines from reasoning")
     else:
@@ -634,6 +717,11 @@ def main():
                        help="Model type for judging (default: gpt-oss)")
     parser.add_argument("--max_workers", type=int, default=50,
                        help="Maximum number of concurrent workers (default: 50)")
+    parser.add_argument("--shuffle_type", type=str, default='line',
+                       choices=['line', 'word', 'token'],
+                       help="Shuffle method: 'line' (by-line), 'word' (by-word), or 'token' (by-token) (default: line)")
+    parser.add_argument("--tokenizer_model", type=str, default="deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+                       help="Model name for tokenizer (only used for token shuffle, default: deepseek-ai/DeepSeek-R1-Distill-Qwen-32B)")
 
     args = parser.parse_args()
 
@@ -646,7 +734,9 @@ def main():
         seed=args.seed,
         del_last_line=args.del_last_line,
         judge_model_type=args.judge_model_type,
-        max_workers=args.max_workers
+        max_workers=args.max_workers,
+        shuffle_type=args.shuffle_type,
+        tokenizer_model=args.tokenizer_model
     )
 
     print(f"\n✓ Experiment complete!")
