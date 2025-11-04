@@ -4,8 +4,8 @@
 # Compares normal vs shuffled reasoning with different truncation levels
 
 # Configuration
-RESULTS_PATH="/mnt/shared/p01/yc/reasoning-behavior/data/AIME2025__R10/gpt-oss/p1/results.json"
-GRADES_PATH="/mnt/shared/p01/yc/reasoning-behavior/data/AIME2025__R10/gpt-oss/p1/grades.json"
+RESULTS_PATH="data/AIME2025__R10/gpt-oss/p1/results.json"
+GRADES_PATH="data/AIME2025__R10/gpt-oss/p1/grades.json"
 JUDGE_MODEL="gpt-oss"
 MAX_WORKERS=50
 

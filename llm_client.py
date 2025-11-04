@@ -1,4 +1,5 @@
 import json
+import os
 
 from openai import OpenAI
 import asyncio
@@ -6,6 +7,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
 import time
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 @dataclass
@@ -44,16 +49,41 @@ class Task:
 
 
 class LLMClient:
-    def __init__(self, api_key="EMPTY", base_url="http://localhost:8001/v1"):
-        self.client = OpenAI(
-            api_key=api_key,
-            base_url=base_url,
-        )
-        self.model = self._get_model()
+    def __init__(self, mode: str = "openrouter", api_key: Optional[str] = None, base_url: Optional[str] = None):
+        """
+        Initialize LLM Client with mode selection.
 
-    def _get_model(self):
-        models = self.client.models.list()
-        return models.data[0].id
+        Args:
+            mode: "openrouter" or "local". Default is "openrouter"
+            api_key: Optional API key override
+            base_url: Optional base URL override
+        """
+        self.mode = mode
+
+        # Set default values based on mode
+        if mode == "openrouter":
+            self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
+            if not self.api_key:
+                raise ValueError("OPENROUTER_API_KEY not found in environment variables")
+            self.base_url = base_url or "https://openrouter.ai/api/v1"
+        elif mode == "local":
+            self.api_key = api_key or "EMPTY"
+            self.base_url = base_url or "http://localhost:8001/v1"
+        else:
+            raise ValueError(f"Invalid mode: {mode}. Must be 'openrouter' or 'local'")
+
+        self.client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url,
+        )
+
+    def _get_model(self, model_type):
+        if self.mode == 'local':
+            models = self.client.models.list()
+            return models.data[0].id
+        elif self.mode == 'openrouter':
+            assert model_type == 'gpt-oss'
+            return 'openai/gpt-oss-120b'
 
     def _parse_deepseek_reasoning_content(self, content):
         think_count = content.count('</think>')
@@ -92,7 +122,7 @@ class LLMClient:
                 messages.append({"role": "user", "content": request.queries[k]})
 
             response = self.client.chat.completions.create(
-                model=self.model,
+                model=self._get_model(request.model_type),
                 messages=messages,
                 timeout=timeout,
                 temperature=request.temperature,
@@ -122,7 +152,7 @@ class LLMClient:
     def complete(self, request: CompletionRequest, timeout=3600*2):
         """Text completion (not chat completion)"""
         response = self.client.completions.create(
-            model=self.model,
+            model=self._get_model(request.model_type),
             prompt=request.prompt,
             timeout=timeout,
             temperature=request.temperature,
