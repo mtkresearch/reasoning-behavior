@@ -229,7 +229,8 @@ def load_existing_grades(grades_path: str) -> Dict[str, bool]:
 
 
 def build_gpt_oss_prompt_with_reasoning(question: str, reasoning: str,
-                                        reasoning_effort: str = "high") -> str:
+                                        reasoning_effort: str = "high",
+                                        empty_question: bool = False) -> str:
     """
     Build GPT-OSS prompt with prefilled reasoning for text completion
 
@@ -240,6 +241,12 @@ def build_gpt_oss_prompt_with_reasoning(question: str, reasoning: str,
     <|start|>assistant<|channel|>final<|message|>
 
     The system message includes model identity, date, and reasoning effort.
+
+    Args:
+        question: The question to ask
+        reasoning: The reasoning content to prefill
+        reasoning_effort: Reasoning effort level (default: "high")
+        empty_question: If True, replace question with empty string (default: False)
     """
     from datetime import datetime
 
@@ -253,9 +260,12 @@ def build_gpt_oss_prompt_with_reasoning(question: str, reasoning: str,
     system_message += f"Reasoning: {reasoning_effort}\n\n"
     system_message += "# Valid channels: analysis, commentary, final. Channel must be included for every message."
 
+    # Replace question with empty string if requested
+    question_text = "" if empty_question else question
+
     # Build complete prompt
     prompt = f"<|start|>system<|message|>{system_message}<|end|>"
-    prompt += f"<|start|>user<|message|>{question}<|end|>"
+    prompt += f"<|start|>user<|message|>{question_text}<|end|>"
     prompt += f"<|start|>assistant<|channel|>analysis<|message|>{reasoning}<|end|>"
     prompt += f"<|start|>assistant<|channel|>final<|message|>"
 
@@ -408,7 +418,8 @@ def parse_yes_no_response(response_text: str) -> bool:
 def run_experiment(results_path: str, grades_path: str, output_dir: str,
                   num_samples: int = None, seed: int = 42, del_last_line: float = 0,
                   judge_model_type: str = 'gpt-oss', max_workers: int = 50,
-                  shuffle_type: str = 'line', tokenizer_model: str = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"):
+                  shuffle_type: str = 'line', tokenizer_model: str = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+                  empty_question: bool = False):
     """
     Run the comparison experiment using VLLM
 
@@ -423,6 +434,7 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
         max_workers: Maximum number of concurrent workers
         shuffle_type: Type of shuffle - 'line', 'word', or 'token'
         tokenizer_model: Model name for tokenizer (only used for token shuffle)
+        empty_question: If True, replace question with empty string in prompts
     """
     random.seed(seed)
 
@@ -469,8 +481,8 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
         shuffled_reasoning = shuffle_reasoning(normal_reasoning, shuffle_type, tokenizer_model)
 
         # Build prompts for text completion
-        normal_prompt = build_gpt_oss_prompt_with_reasoning(question, normal_reasoning)
-        shuffled_prompt = build_gpt_oss_prompt_with_reasoning(question, shuffled_reasoning)
+        normal_prompt = build_gpt_oss_prompt_with_reasoning(question, normal_reasoning, empty_question=empty_question)
+        shuffled_prompt = build_gpt_oss_prompt_with_reasoning(question, shuffled_reasoning, empty_question=empty_question)
 
         # Create tasks
         generation_tasks.append(Task(
@@ -629,6 +641,7 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
         'total_problems': total,
         'del_last_line': del_last_line,
         'shuffle_type': shuffle_type,
+        'empty_question': empty_question,
         'same_answer': {
             'count': same_answer_count,
             'percentage': round(same_answer_count / total * 100, 2) if total > 0 else 0
@@ -678,6 +691,7 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
     print(f"{'='*80}")
     print(f"Total problems: {total}")
     print(f"Shuffle type: {shuffle_type}")
+    print(f"Empty question: {empty_question}")
     if del_last_line < 1:
         print(f"Deleted last {del_last_line*100:.1f}% of lines from reasoning")
     else:
@@ -722,6 +736,8 @@ def main():
                        help="Shuffle method: 'line' (by-line), 'word' (by-word), or 'token' (by-token) (default: line)")
     parser.add_argument("--tokenizer_model", type=str, default="deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
                        help="Model name for tokenizer (only used for token shuffle, default: deepseek-ai/DeepSeek-R1-Distill-Qwen-32B)")
+    parser.add_argument("--empty_question", action="store_true",
+                       help="Replace question with empty string in prompts (default: False)")
 
     args = parser.parse_args()
 
@@ -736,7 +752,8 @@ def main():
         judge_model_type=args.judge_model_type,
         max_workers=args.max_workers,
         shuffle_type=args.shuffle_type,
-        tokenizer_model=args.tokenizer_model
+        tokenizer_model=args.tokenizer_model,
+        empty_question=args.empty_question
     )
 
     print(f"\n✓ Experiment complete!")
