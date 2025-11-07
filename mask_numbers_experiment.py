@@ -4,12 +4,14 @@ Mask Numbers Experiment on result.traj
 
 This script:
 1. Loads results.json with result.traj as reasoning
-2. Masks numbers in reasoning (four modes available):
+2. Masks numbers in reasoning (five modes available):
    - all: Mask all numbers (0-9) with '█' (default)
    - answer: Mask only the answer number
    - line: Mask all numbers in lines containing the answer
    - n-lines: Mask all numbers in answer line and N previous non-empty lines
               (N is configurable via --num-prev-lines, default: 1)
+   - all-advance: Mask computational numbers while preserving algebraic notation
+                  (keeps numbers adjacent to letters/underscores like A12, x_1, 3x)
 3. Optionally shuffles lines after masking (--shuffle)
 4. Generates new answers with masked (and optionally shuffled) reasoning
 5. Grades answers and calculates accuracy
@@ -178,6 +180,98 @@ def mask_numbers_in_nlines_with_answer(reasoning: str, answer: str, n: int = 1, 
     return '\n'.join(masked_lines)
 
 
+def mask_numbers_all_advance(reasoning: str, answer: str = None, mask_char: str = '█') -> str:
+    """
+    Mask numbers with advanced rules: keep numbers adjacent to letters/underscores
+
+    This mode masks computational numbers while preserving algebraic notation.
+
+    Rules (in priority order):
+    1. HARD RULE: If number equals answer → ALWAYS mask (highest priority)
+    2. Number with [A-Za-z_] immediately before or after → Don't mask (algebraic)
+    3. Number with inequality symbols (< > ≤ ≥ etc.) nearby (with optional spaces) → Don't mask
+    4. Exception: "digit + x + digit" pattern → Force mask (multiplication like 3x3)
+    5. Other numbers → Mask (computational values)
+
+    Examples:
+        A12 → A12 (not masked, variable index)
+        x_1 → x_1 (not masked, subscript)
+        3x → 3x (not masked, coefficient)
+        1st → 1st (not masked, ordinal)
+        n < 5 → n < 5 (not masked, inequality)
+        1 ≤ x ≤ 10 → 1 ≤ x ≤ 10 (not masked, inequality)
+        x^2 → x^█ (masked, exponent)
+        3x3 → █x█ (masked, multiplication)
+        1+2 → █+█ (masked, calculation)
+        f(3) → f(█) (masked, function argument)
+        answer=42, text="x42" → x██ (ALWAYS mask answer, even if adjacent to letter)
+
+    Args:
+        reasoning: Original reasoning content
+        answer: The ground truth answer (if provided, will always be masked)
+        mask_char: Character to use for masking (default: '█')
+
+    Returns:
+        Reasoning content with computational numbers masked
+    """
+    # Exception: Handle "digit+x+digit" multiplication pattern first
+    # This must be done before the main rule to catch patterns like 3x3, 10x5
+    reasoning = re.sub(
+        r'\b(\d+)x(\d+)\b',
+        lambda m: mask_char * len(m.group(1)) + 'x' + mask_char * len(m.group(2)),
+        reasoning
+    )
+
+    # Main rule: Check each number sequence
+    def should_mask_number(match):
+        pos = match.start()
+        text = match.string
+        number = match.group()
+
+        # HARD RULE: If number equals answer, ALWAYS mask (highest priority)
+        if answer is not None and number == answer.strip():
+            return mask_char * len(number)
+
+        # Check character immediately before the number
+        char_before = text[pos - 1] if pos > 0 else ''
+        is_letter_before = char_before.isalpha() or char_before == '_'
+
+        # Check character immediately after the number
+        char_after = text[pos + len(number)] if pos + len(number) < len(text) else ''
+        is_letter_after = char_after.isalpha() or char_after == '_'
+
+        # Don't mask if adjacent to letter or underscore
+        if is_letter_before or is_letter_after:
+            return number
+
+        # Check for inequality symbols near the number (with optional spaces)
+        # Look for: <, >, ≤, ≥, \leq, \geq, \le, \ge, <=, >=
+        # Search in a window around the number
+        window_start = max(0, pos - 10)
+        window_end = min(len(text), pos + len(number) + 10)
+        window = text[window_start:window_end]
+
+        # Inequality patterns (including LaTeX commands)
+        inequality_patterns = [
+            r'<', r'>', r'≤', r'≥', r'≦', r'≧',
+            r'<=', r'>=',
+            r'\\leq', r'\\geq', r'\\le', r'\\ge',
+            r'\\lt', r'\\gt'
+        ]
+
+        has_inequality = any(re.search(pattern, window) for pattern in inequality_patterns)
+
+        if has_inequality:
+            return number
+        else:
+            return mask_char * len(number)
+
+    # Apply main masking rule
+    masked_reasoning = re.sub(r'\d+', should_mask_number, reasoning)
+
+    return masked_reasoning
+
+
 def shuffle_lines(reasoning: str, seed: int = None) -> str:
     """
     Shuffle reasoning content line-by-line
@@ -229,11 +323,12 @@ def prepare_mask_task(
         item: Result item from results.json
         model_type: Model type
         mask_char: Character to use for masking numbers (default: '█')
-        mask_mode: Masking mode - 'all', 'answer', 'line', or 'n-lines'
+        mask_mode: Masking mode - 'all', 'answer', 'line', 'n-lines', or 'all-advance'
                   'all': mask all numbers
                   'answer': mask only answer occurrences
                   'line': mask all numbers in lines containing answer
                   'n-lines': mask all numbers in answer line and N previous non-empty lines
+                  'all-advance': mask computational numbers, keep algebraic notation
         num_prev_lines: Number of previous non-empty lines to mask (used with 'n-lines' mode)
         shuffle: If True, shuffle lines after masking
         seed_base: Base seed for shuffling
@@ -256,6 +351,8 @@ def prepare_mask_task(
         masked_reasoning = mask_numbers_in_lines_with_answer(original_reasoning, ground_truth, mask_char)
     elif mask_mode == 'n-lines':
         masked_reasoning = mask_numbers_in_nlines_with_answer(original_reasoning, ground_truth, num_prev_lines, mask_char)
+    elif mask_mode == 'all-advance':
+        masked_reasoning = mask_numbers_all_advance(original_reasoning, answer=ground_truth, mask_char=mask_char)
     else:  # 'all'
         masked_reasoning = mask_numbers_in_reasoning(original_reasoning, mask_char)
 
@@ -394,7 +491,8 @@ def run_experiment(
         'all': 'Mask all numbers',
         'answer': 'Mask only answer',
         'line': 'Mask all numbers in lines containing answer',
-        'n-lines': f'Mask all numbers in answer line and {num_prev_lines} previous non-empty line(s)'
+        'n-lines': f'Mask all numbers in answer line and {num_prev_lines} previous non-empty line(s)',
+        'all-advance': 'Mask computational numbers, keep algebraic notation (numbers adjacent to letters/underscores)'
     }
 
     print(f"Total questions: {len(data)}")
@@ -467,7 +565,8 @@ def run_experiment(
         'all': 'All Numbers Masked',
         'answer': 'Answer Only Masked',
         'line': 'Lines with Answer Masked',
-        'n-lines': f'N-Lines Masked (Answer + Previous {num_prev_lines} Line(s))'
+        'n-lines': f'N-Lines Masked (Answer + Previous {num_prev_lines} Line(s))',
+        'all-advance': 'Advanced Masking (Computational Numbers Only)'
     }
 
     title = mode_titles.get(mask_mode, 'Masked')
@@ -531,10 +630,11 @@ def main():
         '--mask-mode',
         type=str,
         default='all',
-        choices=['all', 'answer', 'line', 'n-lines'],
+        choices=['all', 'answer', 'line', 'n-lines', 'all-advance'],
         help='Masking mode: "all" (mask all numbers), "answer" (mask only answer), '
              '"line" (mask all numbers in lines containing answer), '
-             '"n-lines" (mask all numbers in answer line and N previous non-empty lines)'
+             '"n-lines" (mask all numbers in answer line and N previous non-empty lines), '
+             '"all-advance" (mask computational numbers, keep algebraic notation)'
     )
     parser.add_argument(
         '--num-prev-lines',
