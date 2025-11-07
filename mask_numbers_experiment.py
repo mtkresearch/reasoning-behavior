@@ -8,14 +8,17 @@ This script:
    - all: Mask all numbers (0-9) with '█' (default)
    - answer: Mask only the answer number
    - line: Mask all numbers in lines containing the answer
-3. Generates new answers with masked reasoning
-4. Grades answers and calculates accuracy
+3. Optionally shuffles lines after masking (--shuffle)
+4. Generates new answers with masked (and optionally shuffled) reasoning
+5. Grades answers and calculates accuracy
 
-Purpose: Test whether the model relies on specific numbers in reasoning
+Purpose: Test whether the model relies on specific numbers and/or
+         reasoning order in the reasoning process
 """
 
 import json
 import re
+import random
 import argparse
 from pathlib import Path
 from typing import List, Dict
@@ -111,6 +114,30 @@ def mask_numbers_in_lines_with_answer(reasoning: str, answer: str, mask_char: st
     return '\n'.join(masked_lines)
 
 
+def shuffle_lines(reasoning: str, seed: int = None) -> str:
+    """
+    Shuffle reasoning content line-by-line
+
+    Args:
+        reasoning: Original reasoning content
+        seed: Random seed for reproducibility
+
+    Returns:
+        Shuffled reasoning content
+    """
+    if seed is not None:
+        random.seed(seed)
+
+    lines = reasoning.strip().split('\n')
+    # Remove empty lines
+    lines = [line for line in lines if line.strip()]
+
+    # Shuffle
+    random.shuffle(lines)
+
+    return '\n'.join(lines)
+
+
 def load_results_json(results_path: str) -> List[Dict]:
     """
     Load results.json file
@@ -126,7 +153,9 @@ def prepare_mask_task(
     item: Dict,
     model_type: str,
     mask_char: str = '█',
-    mask_mode: str = 'all'
+    mask_mode: str = 'all',
+    shuffle: bool = False,
+    seed_base: int = 42
 ) -> Task:
     """
     Prepare a Task for masked reasoning generation
@@ -139,6 +168,8 @@ def prepare_mask_task(
                   'all': mask all numbers
                   'answer': mask only answer occurrences
                   'line': mask all numbers in lines containing answer
+        shuffle: If True, shuffle lines after masking
+        seed_base: Base seed for shuffling
     """
     unique_id = item['unique_id']
     question = item['question']
@@ -158,6 +189,10 @@ def prepare_mask_task(
         masked_reasoning = mask_numbers_in_lines_with_answer(original_reasoning, ground_truth, mask_char)
     else:  # 'all'
         masked_reasoning = mask_numbers_in_reasoning(original_reasoning, mask_char)
+
+    # Apply line shuffle if requested
+    if shuffle:
+        masked_reasoning = shuffle_lines(masked_reasoning, seed=seed_base + index)
 
     # Build prompt with masked reasoning
     prompt = build_gpt_oss_prompt_with_reasoning(question, masked_reasoning)
@@ -261,6 +296,7 @@ def run_experiment(
     mode: str = 'openrouter',
     mask_char: str = '█',
     mask_mode: str = 'all',
+    shuffle: bool = False,
     limit: int = None
 ):
     """
@@ -273,6 +309,7 @@ def run_experiment(
         mode: 'openrouter' or 'local'
         mask_char: Character to use for masking numbers (default: '█')
         mask_mode: Masking mode - 'all', 'answer', or 'line'
+        shuffle: If True, shuffle lines after masking
         limit: Limit number of questions (for testing)
     """
     print(f"Loading results from {results_path}")
@@ -291,6 +328,7 @@ def run_experiment(
     print(f"Total questions: {len(data)}")
     print(f"Mask character: '{mask_char}'")
     print(f"Mask mode: {mode_descriptions.get(mask_mode, mask_mode)}")
+    print(f"Shuffle lines: {'Yes' if shuffle else 'No'}")
 
     # Initialize LLM client
     client = LLMClient(mode=mode)
@@ -299,7 +337,7 @@ def run_experiment(
     print("Preparing mask tasks...")
     tasks = []
     for item in data:
-        task = prepare_mask_task(item, model_type, mask_char, mask_mode)
+        task = prepare_mask_task(item, model_type, mask_char, mask_mode, shuffle)
         tasks.append(task)
 
     # Phase 1: Generate answers with masked reasoning
@@ -357,10 +395,15 @@ def run_experiment(
         'line': 'Lines with Answer Masked'
     }
 
+    title = mode_titles.get(mask_mode, 'Masked')
+    if shuffle:
+        title += " + Shuffled"
+
     print("\n" + "="*60)
-    print(f"EXPERIMENT RESULTS - {mode_titles.get(mask_mode, 'Masked')}")
+    print(f"EXPERIMENT RESULTS - {title}")
     print("="*60)
     print(f"Mask Mode:           {mode_descriptions.get(mask_mode, mask_mode)}")
+    print(f"Shuffle Lines:       {'Yes' if shuffle else 'No'}")
     print(f"Total Questions:     {stats['total_questions']}")
     print(f"Successful:          {stats['successful']}")
     print(f"Failed:              {stats['failed']}")
@@ -416,6 +459,11 @@ def main():
              '"line" (mask all numbers in lines containing answer)'
     )
     parser.add_argument(
+        '--shuffle',
+        action='store_true',
+        help='If set, shuffle lines after masking'
+    )
+    parser.add_argument(
         '--limit',
         type=int,
         default=None,
@@ -436,6 +484,7 @@ def main():
         mode=args.mode,
         mask_char=args.mask_char,
         mask_mode=args.mask_mode,
+        shuffle=args.shuffle,
         limit=args.limit
     )
 
