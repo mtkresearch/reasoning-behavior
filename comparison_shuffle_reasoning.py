@@ -18,17 +18,20 @@ from dataclasses import dataclass, asdict
 import argparse
 
 from llm_client import LLMClient, Task, Request, CompletionRequest
-
-# Debug flag
-DEBUG = os.environ.get('DEBUG', '0') == '1'
+from core import (
+    debug_print,
+    load_existing_results,
+    load_existing_grades,
+    parse_answer_from_completion,
+    parse_yes_no_response,
+    clean_multiple_newlines,
+    build_gpt_oss_prompt_with_reasoning,
+    GRADING_PROMPT,
+    SAME_ANSWER_PROMPT
+)
 
 # Global tokenizer cache
 _TOKENIZER_CACHE = {}
-
-def debug_print(msg: str):
-    """Print debug message if DEBUG is enabled"""
-    if DEBUG:
-        print(msg)
 
 
 @dataclass
@@ -64,13 +67,6 @@ class ExperimentResult:
     full_correct_reasoning: str = None
     normal_correct_reasoning: str = None
     shuffle_correct_reasoning: str = None
-
-
-def clean_multiple_newlines(text: str) -> str:
-    """Replace multiple consecutive newlines with a single newline"""
-    import re
-    cleaned = re.sub(r'\n\n+', '\n', text)
-    return cleaned
 
 
 def truncate_reasoning_lines(reasoning: str, del_last_line: float) -> str:
@@ -207,112 +203,9 @@ def shuffle_reasoning(reasoning: str, shuffle_type: str = 'line',
         raise ValueError(f"Invalid shuffle_type: {shuffle_type}. Must be 'line', 'word', or 'token'")
 
 
-
-
-def load_existing_results(results_path: str) -> List[Dict]:
-    """Load existing results.json"""
-    with open(results_path, 'r') as f:
-        return json.load(f)
-
-
-def load_existing_grades(grades_path: str) -> Dict[str, bool]:
-    """Load existing grades.json and return mapping of index to correctness"""
-    with open(grades_path, 'r') as f:
-        grades_data = json.load(f)
-
-    # Create mapping from index to correctness
-    grade_map = {}
-    for grade in grades_data['grades']:
-        grade_map[grade['index']] = grade['correct']
-
-    return grade_map
-
-
-def build_gpt_oss_prompt_with_reasoning(question: str, reasoning: str,
-                                        reasoning_effort: str = "high",
-                                        empty_question: bool = False) -> str:
-    """
-    Build GPT-OSS prompt with prefilled reasoning for text completion
-
-    Based on chat_template.jinja, the format should be:
-    <|start|>system<|message|>{system_message}<|end|>
-    <|start|>user<|message|>{question}<|end|>
-    <|start|>assistant<|channel|>analysis<|message|>{reasoning}<|end|>
-    <|start|>assistant<|channel|>final<|message|>
-
-    The system message includes model identity, date, and reasoning effort.
-
-    Args:
-        question: The question to ask
-        reasoning: The reasoning content to prefill
-        reasoning_effort: Reasoning effort level (default: "high")
-        empty_question: If True, replace question with empty string (default: False)
-    """
-    from datetime import datetime
-
-    # Build system message (based on build_system_message macro in template)
-    model_identity = "You are ChatGPT, a large language model trained by OpenAI."
-    current_date = datetime.now().strftime("%Y-%m-%d")
-
-    system_message = f"{model_identity}\n"
-    system_message += "Knowledge cutoff: 2024-06\n"
-    system_message += f"Current date: {current_date}\n\n"
-    system_message += f"Reasoning: {reasoning_effort}\n\n"
-    system_message += "# Valid channels: analysis, commentary, final. Channel must be included for every message."
-
-    # Replace question with empty string if requested
-    question_text = "" if empty_question else question
-
-    # Build complete prompt
-    prompt = f"<|start|>system<|message|>{system_message}<|end|>"
-    prompt += f"<|start|>user<|message|>{question_text}<|end|>"
-    prompt += f"<|start|>assistant<|channel|>analysis<|message|>{reasoning}<|end|>"
-    prompt += f"<|start|>assistant<|channel|>final<|message|>"
-
-    debug_print(f'\n[DEBUG] Built prompt:\n{prompt}\n')
-    return prompt
-
-
-def parse_answer_from_completion(text: str) -> str:
-    """
-    Parse the final answer from completion output
-
-    The model should generate the final answer after <|channel|>final<|message|>
-    """
-    # The completion is the final answer directly
-    # Remove any trailing special tokens
-    answer = text.strip()
-
-    # Remove <|return|> or <|end|> if present
-    if '<|return|>' in answer:
-        answer = answer.split('<|return|>')[0].strip()
-    if '<|end|>' in answer:
-        answer = answer.split('<|end|>')[0].strip()
-
-    return answer
-
-
 def create_grading_tasks(client: LLMClient, results: List[ExperimentResult],
                         judge_model_type: str = 'gpt-oss') -> List[Task]:
     """Create grading tasks for both normal and shuffled answers"""
-    GRADING_PROMPT = """**Problem:**
-{problem}
-
-**Ground Truth Answer:**
-{ground_truth}
-
-**Model's Answer:**
-{model_answer}
-
-**Task: Grading**
-Please determine if the model's answer is correct compared to the ground truth answer.
-
-**Guidelines:**
-- Consider mathematical equivalence (e.g., 1/2 = 0.5, 2x = x + x)
-- Ignore formatting differences if the mathematical content is the same
-- Answer with \\boxed{{YES}} if correct, or \\boxed{{NO}} if incorrect
-"""
-
     tasks = []
 
     for result in results:
@@ -356,24 +249,6 @@ Please determine if the model's answer is correct compared to the ground truth a
 def create_same_answer_tasks(client: LLMClient, results: List[ExperimentResult],
                              judge_model_type: str = 'gpt-oss') -> List[Task]:
     """Create tasks for checking if normal and shuffled answers are the same"""
-    SAME_ANSWER_PROMPT = """Compare these two answers and determine if they are mathematically equivalent.
-
-**Answer 1:**
-{answer1}
-
-**Answer 2:**
-{answer2}
-
-**Task:**
-Determine if these two answers are the same or equivalent.
-
-**Guidelines:**
-- Consider mathematical equivalence (e.g., 1/2 = 0.5, 2x = x + x)
-- Ignore formatting differences if the mathematical content is the same
-- Answer with \\boxed{{YES}} if they are the same, or \\boxed{{NO}} if they are different
-
-Provide your reasoning first, then give your final answer in \\boxed{{}}."""
-
     tasks = []
 
     for result in results:
@@ -397,22 +272,6 @@ Provide your reasoning first, then give your final answer in \\boxed{{}}."""
         ))
 
     return tasks
-
-
-def parse_yes_no_response(response_text: str) -> bool:
-    """Parse YES/NO response from grading"""
-    include_yes = 'YES' in response_text.upper()
-    include_no = 'NO' in response_text.upper()
-
-    if include_yes and not include_no:
-        return True
-    elif include_yes and include_no:
-        # Both present, check which comes last in boxed format
-        yes_pos = response_text.upper().rfind('\\BOXED{YES}')
-        no_pos = response_text.upper().rfind('\\BOXED{NO}')
-        return yes_pos > no_pos
-    else:
-        return False
 
 
 def run_experiment(results_path: str, grades_path: str, output_dir: str,

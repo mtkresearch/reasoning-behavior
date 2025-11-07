@@ -17,18 +17,17 @@ from typing import List, Dict, Tuple
 from tqdm import tqdm
 from dataclasses import dataclass, asdict
 import argparse
-from datetime import datetime
 
 from llm_client import LLMClient, Task, CompletionRequest, Request
-
-# Debug flag
-DEBUG = os.environ.get('DEBUG', '0') == '1'
-
-
-def debug_print(msg: str):
-    """Print debug message if DEBUG is enabled"""
-    if DEBUG:
-        print(msg)
+from core import (
+    debug_print,
+    load_existing_results,
+    load_existing_grades,
+    parse_answer_from_completion,
+    parse_yes_no_response,
+    build_gpt_oss_prompt_with_reasoning,
+    GRADING_PROMPT
+)
 
 
 @dataclass
@@ -58,25 +57,6 @@ class InsertNoiseResult:
     noisy_generation_time: float = None
     is_noisy_correct: bool = None
     noisy_grading_reasoning: str = None
-
-
-def load_existing_results(results_path: str) -> List[Dict]:
-    """Load existing results.json"""
-    with open(results_path, 'r') as f:
-        return json.load(f)
-
-
-def load_existing_grades(grades_path: str) -> Dict[int, bool]:
-    """Load existing grades.json and return mapping of index to correctness"""
-    with open(grades_path, 'r') as f:
-        grades_data = json.load(f)
-
-    # Create mapping from index to correctness
-    grade_map = {}
-    for grade in grades_data['grades']:
-        grade_map[grade['index']] = grade['correct']
-
-    return grade_map
 
 
 def shuffle_reasoning_lines(reasoning: str) -> str:
@@ -133,78 +113,10 @@ def insert_noise_random(reasoning: str, noise: str = "Maybe the answer is 123.",
     return '\n'.join(lines), insertion_positions
 
 
-def build_gpt_oss_prompt_with_reasoning(question: str, reasoning: str,
-                                        reasoning_effort: str = "high") -> str:
-    """
-    Build GPT-OSS prompt with prefilled reasoning for text completion
-
-    Format:
-    <|start|>system<|message|>{system_message}<|end|>
-    <|start|>user<|message|>{question}<|end|>
-    <|start|>assistant<|channel|>analysis<|message|>{reasoning}<|end|>
-    <|start|>assistant<|channel|>final<|message|>
-    """
-    # Build system message
-    model_identity = "You are ChatGPT, a large language model trained by OpenAI."
-    current_date = datetime.now().strftime("%Y-%m-%d")
-
-    system_message = f"{model_identity}\n"
-    system_message += "Knowledge cutoff: 2024-06\n"
-    system_message += f"Current date: {current_date}\n\n"
-    system_message += f"Reasoning: {reasoning_effort}\n\n"
-    system_message += "# Valid channels: analysis, commentary, final. Channel must be included for every message."
-
-    # Build complete prompt
-    prompt = f"<|start|>system<|message|>{system_message}<|end|>"
-    prompt += f"<|start|>user<|message|>{question}<|end|>"
-    prompt += f"<|start|>assistant<|channel|>analysis<|message|>{reasoning}<|end|>"
-    prompt += f"<|start|>assistant<|channel|>final<|message|>"
-
-    debug_print(f'\n[DEBUG] Built prompt:\n{prompt}\n')
-    return prompt
-
-
-def parse_answer_from_completion(text: str) -> str:
-    """
-    Parse the final answer from completion output
-
-    The model should generate the final answer after <|channel|>final<|message|>
-    """
-    # The completion is the final answer directly
-    # Remove any trailing special tokens
-    answer = text.strip()
-
-    # Remove <|return|> or <|end|> if present
-    if '<|return|>' in answer:
-        answer = answer.split('<|return|>')[0].strip()
-    if '<|end|>' in answer:
-        answer = answer.split('<|end|>')[0].strip()
-
-    return answer
-
-
 def create_grading_tasks(client: LLMClient, results: List[InsertNoiseResult],
                         shuffle_enabled: bool = False,
                         judge_model_type: str = 'gpt-oss') -> List[Task]:
     """Create grading tasks for answers"""
-    GRADING_PROMPT = """**Problem:**
-{problem}
-
-**Ground Truth Answer:**
-{ground_truth}
-
-**Model's Answer:**
-{model_answer}
-
-**Task: Grading**
-Please determine if the model's answer is correct compared to the ground truth answer.
-
-**Guidelines:**
-- Consider mathematical equivalence (e.g., 1/2 = 0.5, 2x = x + x)
-- Ignore formatting differences if the mathematical content is the same
-- Answer with \\boxed{{YES}} if correct, or \\boxed{{NO}} if incorrect
-"""
-
     tasks = []
 
     if shuffle_enabled:
@@ -263,22 +175,6 @@ Please determine if the model's answer is correct compared to the ground truth a
             ))
 
     return tasks
-
-
-def parse_yes_no_response(response_text: str) -> bool:
-    """Parse YES/NO response from grading"""
-    include_yes = 'YES' in response_text.upper()
-    include_no = 'NO' in response_text.upper()
-
-    if include_yes and not include_no:
-        return True
-    elif include_yes and include_no:
-        # Both present, check which comes last in boxed format
-        yes_pos = response_text.upper().rfind('\\BOXED{YES}')
-        no_pos = response_text.upper().rfind('\\BOXED{NO}')
-        return yes_pos > no_pos
-    else:
-        return False
 
 
 def run_insert_noise_experiment(results_path: str, grades_path: str, output_path: str,

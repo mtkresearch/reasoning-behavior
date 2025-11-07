@@ -31,6 +31,7 @@ reasoning-behavior/
 │   └── consistency_data/       # Consistency analysis
 │
 ├── llm_client.py              # Core LLM abstraction
+├── core.py                    # Shared utilities for all experiments
 ├── comparison_shuffle_reasoning.py  # Experiment: shuffle comparison
 ├── insert_noise_reasoning.py        # Experiment: noise insertion
 ├── insert_crossreasoning_noise.py   # Experiment: cross-reasoning
@@ -48,6 +49,7 @@ The codebase is organized into two main layers:
 
 **Root Directory** - Core infrastructure and experiment scripts:
 - `llm_client.py` - Central LLM client abstraction
+- `core.py` - Shared utilities (data loading, parsing, text processing, prompt templates)
 - Experiment scripts: `comparison_shuffle_reasoning.py`, `insert_noise_reasoning.py`, etc.
 - Analysis utilities: `analyze_shuffle_results.py`, `filter_by_consensus.py`, etc.
 
@@ -58,6 +60,44 @@ The central abstraction for all LLM interactions:
 - Provides synchronous and concurrent generation interfaces
 - Supports multiple models: DeepSeek, GPT-OSS, Qwen3
 - Key classes: `Request`, `Response`, `Task`, `LLMClient`
+
+### Core Utilities Layer (`core.py`)
+
+Shared utilities used across all experiment scripts to eliminate code duplication:
+
+**Debug Utilities:**
+- `DEBUG` - Environment variable flag for debug mode
+- `debug_print(msg)` - Conditional debug message printing
+
+**Data Loading:**
+- `load_existing_results(path)` - Load existing results.json files
+- `load_existing_grades(path)` - Load existing grades.json with index→correctness mapping
+
+**Parsing Functions:**
+- `parse_answer_from_completion(text)` - Extract final answer from model completion
+- `parse_yes_no_response(text)` - Parse YES/NO responses from grading tasks
+
+**Text Processing:**
+- `clean_multiple_newlines(text)` - Replace multiple consecutive newlines with single newline
+- `extract_nonempty_lines(text)` - Extract non-empty lines from text
+
+**Prompt Construction:**
+- `build_gpt_oss_prompt_with_reasoning(question, reasoning, ...)` - Build GPT-OSS completion prompts with prefilled reasoning
+
+**Prompt Templates:**
+- `GRADING_PROMPT` - Standard mathematical answer grading template
+- `SAME_ANSWER_PROMPT` - Template for comparing answer equivalence
+
+**Usage Example:**
+```python
+from core import (
+    debug_print,
+    load_existing_results,
+    parse_answer_from_completion,
+    build_gpt_oss_prompt_with_reasoning,
+    GRADING_PROMPT
+)
+```
 
 ### Main Components
 
@@ -107,7 +147,8 @@ python analyze_shuffle_results.py [data_folder]
 2. **Incremental Saving**: JSONL format with automatic resume capability (checks existing results before re-running)
 3. **Retry Mechanism**: `MAX_TRY` parameter for handling API failures
 4. **Data Classes**: Uses `@dataclass` for clear data structures (Request, Response, Task)
-5. **Modular Experiments**: Each experiment type has its own script sharing the core `llm_client`
+5. **Modular Experiments**: Each experiment type has its own script sharing the core infrastructure (`llm_client.py` and `core.py`)
+6. **DRY Principle**: Common utilities extracted to `core.py` to eliminate code duplication across experiment scripts
 
 ## Important Configuration
 
@@ -199,12 +240,19 @@ datasets/
    - **Root directory**: Specialized experiment scripts that use the core pipeline
    - **behavior_analysis/**: Core pipeline tools and advanced analysis modules (deprecated)
 
-2. **Standalone scripts**: Each Python file is designed to be run independently with clear command-line interfaces
+2. **Shared utilities layer**: `core.py` provides common functions used across experiments:
+   - Data loading and parsing functions
+   - Text processing utilities
+   - Prompt construction helpers
+   - Standard prompt templates
+   - This eliminates code duplication and ensures consistency across experiments
 
-3. **Results are cached**: All scripts check for existing results and skip completed work to support resumable execution
+3. **Standalone scripts**: Each Python file is designed to be run independently with clear command-line interfaces
 
-4. **No unit tests**: This is a research codebase; validation happens through experimental results and comparative analysis
+4. **Results are cached**: All scripts check for existing results and skip completed work to support resumable execution
 
-5. **Incremental development**: Experiments build on each other; check related scripts before adding new ones
+5. **No unit tests**: This is a research codebase; validation happens through experimental results and comparative analysis
 
-6. **Token-level operations**: Some experiments use transformers tokenizer for fine-grained text manipulation (shuffling, truncation at token boundaries)
+6. **Incremental development**: Experiments build on each other; check related scripts before adding new ones
+
+7. **Token-level operations**: Some experiments use transformers tokenizer for fine-grained text manipulation (shuffling, truncation at token boundaries)

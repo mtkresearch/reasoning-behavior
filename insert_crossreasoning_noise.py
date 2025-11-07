@@ -17,28 +17,19 @@ from typing import List, Dict, Tuple
 from tqdm import tqdm
 from dataclasses import dataclass, asdict
 import argparse
-from datetime import datetime
 
 from llm_client import LLMClient, Task, CompletionRequest, Request
-
-# Import reusable functions from insert_noise_reasoning
-from insert_noise_reasoning import (
+from core import (
+    debug_print,
     load_existing_results,
     load_existing_grades,
-    shuffle_reasoning_lines,
-    build_gpt_oss_prompt_with_reasoning,
     parse_answer_from_completion,
-    parse_yes_no_response
+    parse_yes_no_response,
+    build_gpt_oss_prompt_with_reasoning,
+    extract_nonempty_lines,
+    GRADING_PROMPT
 )
-
-# Debug flag
-DEBUG = os.environ.get('DEBUG', '0') == '1'
-
-
-def debug_print(msg: str):
-    """Print debug message if DEBUG is enabled"""
-    if DEBUG:
-        print(msg)
+from insert_noise_reasoning import shuffle_reasoning_lines
 
 
 @dataclass
@@ -119,12 +110,6 @@ def select_noise_source(all_results: List[Dict], current_idx: int, seed: int = 4
     return source_index
 
 
-def extract_nonempty_lines(reasoning: str) -> List[str]:
-    """Extract non-empty lines from reasoning"""
-    lines = reasoning.strip().split('\n')
-    return [line for line in lines if line.strip()]
-
-
 def sample_reasoning_lines(reasoning: str, num_lines: int) -> List[str]:
     """
     Randomly sample N lines from reasoning
@@ -178,24 +163,6 @@ def create_grading_tasks(client: LLMClient, results: List[CrossNoiseResult],
                         shuffle_enabled: bool = False,
                         judge_model_type: str = 'gpt-oss') -> List[Task]:
     """Create grading tasks for answers"""
-    GRADING_PROMPT = """**Problem:**
-{problem}
-
-**Ground Truth Answer:**
-{ground_truth}
-
-**Model's Answer:**
-{model_answer}
-
-**Task: Grading**
-Please determine if the model's answer is correct compared to the ground truth answer.
-
-**Guidelines:**
-- Consider mathematical equivalence (e.g., 1/2 = 0.5, 2x = x + x)
-- Ignore formatting differences if the mathematical content is the same
-- Answer with \\boxed{{YES}} if correct, or \\boxed{{NO}} if incorrect
-"""
-
     tasks = []
 
     if shuffle_enabled:

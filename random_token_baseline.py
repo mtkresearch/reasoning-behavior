@@ -25,10 +25,11 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from transformers import AutoTokenizer
 from llm_client import LLMClient, CompletionRequest, Task, Request
-from comparison_shuffle_reasoning import (
+from core import (
     parse_answer_from_completion,
     parse_yes_no_response,
-    build_gpt_oss_prompt_with_reasoning
+    build_gpt_oss_prompt_with_reasoning,
+    GRADING_PROMPT
 )
 
 # Global tokenizer cache
@@ -163,24 +164,6 @@ def load_experiment_data(results_path: str) -> List[Dict]:
 
 def create_grading_tasks(results: List[Dict], judge_model_type: str = 'gpt-oss') -> List[Task]:
     """Create grading tasks for random token baseline answers"""
-    GRADING_PROMPT = """## Problem:
-{problem}
-
-## Ground Truth Answer:
-{ground_truth}
-
-## Model's Answer:
-{model_answer}
-
-## Task: Grading
-Please determine if the model's answer is correct compared to the ground truth answer.
-
-**Guidelines:**
-- Consider mathematical equivalence (e.g., 1/2 = 0.5, 2x = x + x)
-- Ignore formatting differences if the mathematical content is the same
-- Answer with \\boxed{{YES}} if correct, or \\boxed{{NO}} if incorrect
-"""
-
     tasks = []
 
     for result in results:
