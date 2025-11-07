@@ -4,9 +4,13 @@ Mask Numbers Experiment on result.traj
 
 This script:
 1. Loads results.json with result.traj as reasoning
-2. Masks all numbers (0-9) with '*' in reasoning
+2. Masks numbers in reasoning (two modes available):
+   - Default: Mask all numbers (0-9) with '█'
+   - --mask-only-answer: Mask only the answer number
 3. Generates new answers with masked reasoning
 4. Grades answers and calculates accuracy
+
+Purpose: Test whether the model relies on specific numbers in reasoning
 """
 
 import json
@@ -45,6 +49,32 @@ def mask_numbers_in_reasoning(reasoning: str, mask_char: str = '█') -> str:
     return masked_reasoning
 
 
+def mask_answer_only_in_reasoning(reasoning: str, answer: str, mask_char: str = '█') -> str:
+    """
+    Mask only the answer number in reasoning with specified mask character
+
+    Args:
+        reasoning: Original reasoning content
+        answer: The ground truth answer to mask
+        mask_char: Character to use for masking (default: '█')
+
+    Returns:
+        Reasoning content with only answer occurrences replaced by mask_char
+    """
+    # Clean answer string (remove potential whitespace)
+    answer_clean = answer.strip()
+
+    # Escape special regex characters in answer
+    answer_escaped = re.escape(answer_clean)
+
+    # Replace all occurrences of the answer with masked version
+    # Use word boundaries to avoid partial matches
+    masked_answer = mask_char * len(answer_clean)
+    masked_reasoning = re.sub(r'\b' + answer_escaped + r'\b', masked_answer, reasoning)
+
+    return masked_reasoning
+
+
 def load_results_json(results_path: str) -> List[Dict]:
     """
     Load results.json file
@@ -59,7 +89,8 @@ def load_results_json(results_path: str) -> List[Dict]:
 def prepare_mask_task(
     item: Dict,
     model_type: str,
-    mask_char: str = '█'
+    mask_char: str = '█',
+    mask_only_answer: bool = False
 ) -> Task:
     """
     Prepare a Task for masked reasoning generation
@@ -68,6 +99,7 @@ def prepare_mask_task(
         item: Result item from results.json
         model_type: Model type
         mask_char: Character to use for masking numbers (default: '█')
+        mask_only_answer: If True, only mask the answer; if False, mask all numbers
     """
     unique_id = item['unique_id']
     question = item['question']
@@ -80,8 +112,11 @@ def prepare_mask_task(
     except:
         index = hash(unique_id) % 10000
 
-    # Mask all numbers in reasoning
-    masked_reasoning = mask_numbers_in_reasoning(original_reasoning, mask_char)
+    # Mask numbers in reasoning based on mode
+    if mask_only_answer:
+        masked_reasoning = mask_answer_only_in_reasoning(original_reasoning, ground_truth, mask_char)
+    else:
+        masked_reasoning = mask_numbers_in_reasoning(original_reasoning, mask_char)
 
     # Build prompt with masked reasoning
     prompt = build_gpt_oss_prompt_with_reasoning(question, masked_reasoning)
@@ -184,6 +219,7 @@ def run_experiment(
     model_type: str = 'gpt-oss',
     mode: str = 'openrouter',
     mask_char: str = '█',
+    mask_only_answer: bool = False,
     limit: int = None
 ):
     """
@@ -195,6 +231,7 @@ def run_experiment(
         model_type: Model type
         mode: 'openrouter' or 'local'
         mask_char: Character to use for masking numbers (default: '█')
+        mask_only_answer: If True, only mask the answer; if False, mask all numbers
         limit: Limit number of questions (for testing)
     """
     print(f"Loading results from {results_path}")
@@ -206,6 +243,7 @@ def run_experiment(
 
     print(f"Total questions: {len(data)}")
     print(f"Mask character: '{mask_char}'")
+    print(f"Mask mode: {'Only answer' if mask_only_answer else 'All numbers'}")
 
     # Initialize LLM client
     client = LLMClient(mode=mode)
@@ -214,7 +252,7 @@ def run_experiment(
     print("Preparing mask tasks...")
     tasks = []
     for item in data:
-        task = prepare_mask_task(item, model_type, mask_char)
+        task = prepare_mask_task(item, model_type, mask_char, mask_only_answer)
         tasks.append(task)
 
     # Phase 1: Generate answers with masked reasoning
@@ -267,8 +305,9 @@ def run_experiment(
     }
 
     print("\n" + "="*60)
-    print("EXPERIMENT RESULTS - Masked Numbers Reasoning")
+    print(f"EXPERIMENT RESULTS - {'Answer Only' if mask_only_answer else 'All Numbers'} Masked")
     print("="*60)
+    print(f"Mask Mode:           {'Only answer' if mask_only_answer else 'All numbers'}")
     print(f"Total Questions:     {stats['total_questions']}")
     print(f"Successful:          {stats['successful']}")
     print(f"Failed:              {stats['failed']}")
@@ -316,6 +355,11 @@ def main():
         help='Character to use for masking numbers (default: █)'
     )
     parser.add_argument(
+        '--mask-only-answer',
+        action='store_true',
+        help='If set, only mask the answer number; otherwise mask all numbers'
+    )
+    parser.add_argument(
         '--limit',
         type=int,
         default=None,
@@ -335,6 +379,7 @@ def main():
         model_type=args.model_type,
         mode=args.mode,
         mask_char=args.mask_char,
+        mask_only_answer=args.mask_only_answer,
         limit=args.limit
     )
 
