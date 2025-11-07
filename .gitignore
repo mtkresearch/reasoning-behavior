@@ -58,10 +58,6 @@ coverage.xml
 *.cover
 .pytest_cache/
 
-# Experimental Results
-data/shuffle_comparison_exp/
-data/**/test_*/
-
 # Model outputs and logs
 *.log
 logs/
