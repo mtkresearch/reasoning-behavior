@@ -4,10 +4,12 @@ Mask Numbers Experiment on result.traj
 
 This script:
 1. Loads results.json with result.traj as reasoning
-2. Masks numbers in reasoning (three modes available):
+2. Masks numbers in reasoning (four modes available):
    - all: Mask all numbers (0-9) with '█' (default)
    - answer: Mask only the answer number
    - line: Mask all numbers in lines containing the answer
+   - n-lines: Mask all numbers in answer line and N previous non-empty lines
+              (N is configurable via --num-prev-lines, default: 1)
 3. Optionally shuffles lines after masking (--shuffle)
 4. Generates new answers with masked (and optionally shuffled) reasoning
 5. Grades answers and calculates accuracy
@@ -114,6 +116,68 @@ def mask_numbers_in_lines_with_answer(reasoning: str, answer: str, mask_char: st
     return '\n'.join(masked_lines)
 
 
+def mask_numbers_in_nlines_with_answer(reasoning: str, answer: str, n: int = 1, mask_char: str = '█') -> str:
+    """
+    Mask all numbers in the line containing answer and the N non-empty lines before it
+
+    Args:
+        reasoning: Original reasoning content
+        answer: The ground truth answer to identify relevant lines
+        n: Number of previous non-empty lines to mask (default: 1)
+        mask_char: Character to use for masking (default: '█')
+
+    Returns:
+        Reasoning content with all numbers masked in the answer line and previous N non-empty lines
+    """
+    # Clean answer string (remove potential whitespace)
+    answer_clean = answer.strip()
+
+    # Escape special regex characters in answer for matching
+    answer_escaped = re.escape(answer_clean)
+
+    # Split reasoning into lines
+    lines = reasoning.split('\n')
+
+    # Build mapping of non-empty lines: valid_index -> original_index
+    non_empty_indices = []
+    for i, line in enumerate(lines):
+        if line.strip():  # Only count non-empty lines
+            non_empty_indices.append(i)
+
+    # Find lines that contain the answer (in non-empty lines)
+    answer_line_positions = []  # positions in non_empty_indices
+    for pos, orig_idx in enumerate(non_empty_indices):
+        line = lines[orig_idx]
+        if re.search(r'\b' + answer_escaped + r'\b', line):
+            answer_line_positions.append(pos)
+
+    # Build set of original line indices to mask
+    lines_to_mask = set()
+    for pos in answer_line_positions:
+        # Mask the answer line
+        orig_idx = non_empty_indices[pos]
+        lines_to_mask.add(orig_idx)
+
+        # Mask the previous N non-empty lines (if exist)
+        for i in range(1, n + 1):
+            if pos >= i:  # If there's an i-th previous non-empty line
+                prev_orig_idx = non_empty_indices[pos - i]
+                lines_to_mask.add(prev_orig_idx)
+
+    # Apply masking
+    masked_lines = []
+    for i, line in enumerate(lines):
+        if i in lines_to_mask:
+            # Mask all digits in this line
+            masked_line = re.sub(r'\d', mask_char, line)
+            masked_lines.append(masked_line)
+        else:
+            # Keep line as is
+            masked_lines.append(line)
+
+    return '\n'.join(masked_lines)
+
+
 def shuffle_lines(reasoning: str, seed: int = None) -> str:
     """
     Shuffle reasoning content line-by-line
@@ -154,6 +218,7 @@ def prepare_mask_task(
     model_type: str,
     mask_char: str = '█',
     mask_mode: str = 'all',
+    num_prev_lines: int = 1,
     shuffle: bool = False,
     seed_base: int = 42
 ) -> Task:
@@ -164,10 +229,12 @@ def prepare_mask_task(
         item: Result item from results.json
         model_type: Model type
         mask_char: Character to use for masking numbers (default: '█')
-        mask_mode: Masking mode - 'all', 'answer', or 'line'
+        mask_mode: Masking mode - 'all', 'answer', 'line', or 'n-lines'
                   'all': mask all numbers
                   'answer': mask only answer occurrences
                   'line': mask all numbers in lines containing answer
+                  'n-lines': mask all numbers in answer line and N previous non-empty lines
+        num_prev_lines: Number of previous non-empty lines to mask (used with 'n-lines' mode)
         shuffle: If True, shuffle lines after masking
         seed_base: Base seed for shuffling
     """
@@ -187,6 +254,8 @@ def prepare_mask_task(
         masked_reasoning = mask_answer_only_in_reasoning(original_reasoning, ground_truth, mask_char)
     elif mask_mode == 'line':
         masked_reasoning = mask_numbers_in_lines_with_answer(original_reasoning, ground_truth, mask_char)
+    elif mask_mode == 'n-lines':
+        masked_reasoning = mask_numbers_in_nlines_with_answer(original_reasoning, ground_truth, num_prev_lines, mask_char)
     else:  # 'all'
         masked_reasoning = mask_numbers_in_reasoning(original_reasoning, mask_char)
 
@@ -296,6 +365,7 @@ def run_experiment(
     mode: str = 'openrouter',
     mask_char: str = '█',
     mask_mode: str = 'all',
+    num_prev_lines: int = 1,
     shuffle: bool = False,
     limit: int = None
 ):
@@ -308,7 +378,8 @@ def run_experiment(
         model_type: Model type
         mode: 'openrouter' or 'local'
         mask_char: Character to use for masking numbers (default: '█')
-        mask_mode: Masking mode - 'all', 'answer', or 'line'
+        mask_mode: Masking mode - 'all', 'answer', 'line', or 'n-lines'
+        num_prev_lines: Number of previous non-empty lines to mask (used with 'n-lines' mode)
         shuffle: If True, shuffle lines after masking
         limit: Limit number of questions (for testing)
     """
@@ -322,12 +393,15 @@ def run_experiment(
     mode_descriptions = {
         'all': 'Mask all numbers',
         'answer': 'Mask only answer',
-        'line': 'Mask all numbers in lines containing answer'
+        'line': 'Mask all numbers in lines containing answer',
+        'n-lines': f'Mask all numbers in answer line and {num_prev_lines} previous non-empty line(s)'
     }
 
     print(f"Total questions: {len(data)}")
     print(f"Mask character: '{mask_char}'")
     print(f"Mask mode: {mode_descriptions.get(mask_mode, mask_mode)}")
+    if mask_mode == 'n-lines':
+        print(f"Previous lines: {num_prev_lines}")
     print(f"Shuffle lines: {'Yes' if shuffle else 'No'}")
 
     # Initialize LLM client
@@ -337,7 +411,7 @@ def run_experiment(
     print("Preparing mask tasks...")
     tasks = []
     for item in data:
-        task = prepare_mask_task(item, model_type, mask_char, mask_mode, shuffle)
+        task = prepare_mask_task(item, model_type, mask_char, mask_mode, num_prev_lines, shuffle)
         tasks.append(task)
 
     # Phase 1: Generate answers with masked reasoning
@@ -392,7 +466,8 @@ def run_experiment(
     mode_titles = {
         'all': 'All Numbers Masked',
         'answer': 'Answer Only Masked',
-        'line': 'Lines with Answer Masked'
+        'line': 'Lines with Answer Masked',
+        'n-lines': f'N-Lines Masked (Answer + Previous {num_prev_lines} Line(s))'
     }
 
     title = mode_titles.get(mask_mode, 'Masked')
@@ -403,6 +478,8 @@ def run_experiment(
     print(f"EXPERIMENT RESULTS - {title}")
     print("="*60)
     print(f"Mask Mode:           {mode_descriptions.get(mask_mode, mask_mode)}")
+    if mask_mode == 'n-lines':
+        print(f"Previous Lines:      {num_prev_lines}")
     print(f"Shuffle Lines:       {'Yes' if shuffle else 'No'}")
     print(f"Total Questions:     {stats['total_questions']}")
     print(f"Successful:          {stats['successful']}")
@@ -454,9 +531,16 @@ def main():
         '--mask-mode',
         type=str,
         default='all',
-        choices=['all', 'answer', 'line'],
+        choices=['all', 'answer', 'line', 'n-lines'],
         help='Masking mode: "all" (mask all numbers), "answer" (mask only answer), '
-             '"line" (mask all numbers in lines containing answer)'
+             '"line" (mask all numbers in lines containing answer), '
+             '"n-lines" (mask all numbers in answer line and N previous non-empty lines)'
+    )
+    parser.add_argument(
+        '--num-prev-lines',
+        type=int,
+        default=1,
+        help='Number of previous non-empty lines to mask (used with --mask-mode n-lines, default: 1)'
     )
     parser.add_argument(
         '--shuffle',
@@ -484,6 +568,7 @@ def main():
         mode=args.mode,
         mask_char=args.mask_char,
         mask_mode=args.mask_mode,
+        num_prev_lines=args.num_prev_lines,
         shuffle=args.shuffle,
         limit=args.limit
     )
