@@ -2,8 +2,13 @@
 Comparison experiment: Normal reasoning vs Shuffled reasoning (VLLM version)
 
 This script compares model performance when:
-1. Control group: Normal reasoning (truncated from full reasoning)
-2. Experimental group: Shuffled reasoning (line-by-line shuffle)
+1. Control group: Normal reasoning (optionally remove answer line and after, then truncated from full reasoning)
+2. Experimental group: Shuffled reasoning (line-by-line/word-by-word/token-by-token shuffle)
+
+Processing order:
+1. Remove answer line and all lines after it (if --remove_answer_after is set)
+2. Truncate reasoning (remove last N lines or ratio)
+3. Shuffle reasoning (using specified method: line/word/token)
 
 Uses VLLM via llm_client for parallel execution and efficiency.
 """
@@ -16,6 +21,7 @@ from typing import List, Dict, Tuple
 from tqdm import tqdm
 from dataclasses import dataclass, asdict
 import argparse
+import re
 
 from llm_client import LLMClient, Task, Request, CompletionRequest
 from core import (
@@ -67,6 +73,40 @@ class ExperimentResult:
     full_correct_reasoning: str = None
     normal_correct_reasoning: str = None
     shuffle_correct_reasoning: str = None
+
+
+def remove_answer_and_after(reasoning: str, answer: str) -> str:
+    """
+    Remove the line containing the answer and all subsequent lines
+
+    Args:
+        reasoning: Original reasoning content
+        answer: The ground truth answer to identify the line to remove from
+
+    Returns:
+        Reasoning content with answer line and all lines after it removed
+    """
+    # Clean answer string (remove potential whitespace)
+    answer_clean = answer.strip()
+
+    # Escape special regex characters in answer for matching
+    answer_escaped = re.escape(answer_clean)
+
+    # Split reasoning into lines
+    lines = reasoning.split('\n')
+
+    # Find the first line that contains the answer (with word boundaries)
+    answer_line_index = None
+    for i, line in enumerate(lines):
+        if re.search(r'\b' + answer_escaped + r'\b', line):
+            answer_line_index = i
+            break
+
+    # If answer is found, keep only lines before it
+    if answer_line_index is not None:
+        lines = lines[:answer_line_index]
+
+    return '\n'.join(lines)
 
 
 def truncate_reasoning_lines(reasoning: str, del_last_line: float) -> str:
@@ -278,7 +318,7 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
                   num_samples: int = None, seed: int = 42, del_last_line: float = 0,
                   judge_model_type: str = 'gpt-oss', max_workers: int = 50,
                   shuffle_type: str = 'line', tokenizer_model: str = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
-                  empty_question: bool = False):
+                  empty_question: bool = False, remove_answer_after: bool = False):
     """
     Run the comparison experiment using VLLM
 
@@ -294,6 +334,7 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
         shuffle_type: Type of shuffle - 'line', 'word', or 'token'
         tokenizer_model: Model name for tokenizer (only used for token shuffle)
         empty_question: If True, replace question with empty string in prompts
+        remove_answer_after: If True, remove the line containing answer and all lines after it
     """
     random.seed(seed)
 
@@ -333,8 +374,13 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
         # Clean reasoning
         full_reasoning = clean_multiple_newlines(full_reasoning)
 
+        # Process reasoning: first remove answer line and after if requested
+        processed_reasoning = full_reasoning
+        if remove_answer_after:
+            processed_reasoning = remove_answer_and_after(processed_reasoning, ground_truth)
+
         # Truncate reasoning
-        normal_reasoning = truncate_reasoning_lines(full_reasoning, del_last_line)
+        normal_reasoning = truncate_reasoning_lines(processed_reasoning, del_last_line)
 
         # Shuffle reasoning using specified method
         shuffled_reasoning = shuffle_reasoning(normal_reasoning, shuffle_type, tokenizer_model)
@@ -501,6 +547,7 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
         'del_last_line': del_last_line,
         'shuffle_type': shuffle_type,
         'empty_question': empty_question,
+        'remove_answer_after': remove_answer_after,
         'same_answer': {
             'count': same_answer_count,
             'percentage': round(same_answer_count / total * 100, 2) if total > 0 else 0
@@ -551,6 +598,7 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
     print(f"Total problems: {total}")
     print(f"Shuffle type: {shuffle_type}")
     print(f"Empty question: {empty_question}")
+    print(f"Remove answer and after: {remove_answer_after}")
     if del_last_line < 1:
         print(f"Deleted last {del_last_line*100:.1f}% of lines from reasoning")
     else:
@@ -572,10 +620,10 @@ def run_experiment(results_path: str, grades_path: str, output_dir: str,
 def main():
     parser = argparse.ArgumentParser(description="Compare normal vs shuffled reasoning (VLLM version)")
     parser.add_argument("--results_path", type=str,
-                       default="/mnt/shared/p01/yc/reasoning-behavior/data/AIME2025__R10/gpt-oss/p1/results.json",
+                       default="./data/AIME2025__R10/gpt-oss/p1/results.json",
                        help="Path to existing results.json")
     parser.add_argument("--grades_path", type=str,
-                       default="/mnt/shared/p01/yc/reasoning-behavior/data/AIME2025__R10/gpt-oss/p1/grades.json",
+                       default="./data/AIME2025__R10/gpt-oss/p1/grades.json",
                        help="Path to existing grades.json")
     parser.add_argument("--output_dir", type=str,
                        default="./data/shuffle_comparison",
@@ -597,6 +645,8 @@ def main():
                        help="Model name for tokenizer (only used for token shuffle, default: deepseek-ai/DeepSeek-R1-Distill-Qwen-32B)")
     parser.add_argument("--empty_question", action="store_true",
                        help="Replace question with empty string in prompts (default: False)")
+    parser.add_argument("--remove_answer_after", action="store_true",
+                       help="Remove the line containing answer and all lines after it (applied before truncation, default: False)")
 
     args = parser.parse_args()
 
@@ -612,7 +662,8 @@ def main():
         max_workers=args.max_workers,
         shuffle_type=args.shuffle_type,
         tokenizer_model=args.tokenizer_model,
-        empty_question=args.empty_question
+        empty_question=args.empty_question,
+        remove_answer_after=args.remove_answer_after
     )
 
     print(f"\n✓ Experiment complete!")

@@ -4,7 +4,8 @@ Mask Numbers Experiment on result.traj
 
 This script:
 1. Loads results.json with result.traj as reasoning
-2. Masks numbers in reasoning (seven modes available):
+2. Optionally removes answer line and all lines after it (--remove-answer-after)
+3. Masks numbers in reasoning (seven modes available):
    - all: Mask all numbers (0-9) with '█' (default)
    - answer: Mask only the answer number
    - line: Mask all numbers in lines containing the answer
@@ -14,12 +15,12 @@ This script:
                   (keeps numbers adjacent to letters/underscores like A12, x_1, 3x)
    - alphabet: Mask all alphabetic characters (A-Z and a-z) instead of numbers
    - alphabet-and-answer: Mask all alphabetic characters (A-Z and a-z) AND the answer number
-3. Optionally shuffles lines after masking (--shuffle)
-4. Generates new answers with masked (and optionally shuffled) reasoning
-5. Grades answers and calculates accuracy
+4. Optionally shuffles lines after masking (--shuffle)
+5. Generates new answers with processed (removed/masked/shuffled) reasoning
+6. Grades answers and calculates accuracy
 
-Purpose: Test whether the model relies on specific numbers and/or
-         reasoning order in the reasoning process
+Purpose: Test whether the model relies on specific numbers, answer appearance,
+         and/or reasoning order in the reasoning process
 """
 
 import json
@@ -315,6 +316,40 @@ def mask_numbers_all_advance(reasoning: str, answer: str = None, mask_char: str 
     return masked_reasoning
 
 
+def remove_answer_and_after(reasoning: str, answer: str) -> str:
+    """
+    Remove the line containing the answer and all subsequent lines
+
+    Args:
+        reasoning: Original reasoning content
+        answer: The ground truth answer to identify the line to remove from
+
+    Returns:
+        Reasoning content with answer line and all lines after it removed
+    """
+    # Clean answer string (remove potential whitespace)
+    answer_clean = answer.strip()
+
+    # Escape special regex characters in answer for matching
+    answer_escaped = re.escape(answer_clean)
+
+    # Split reasoning into lines
+    lines = reasoning.split('\n')
+
+    # Find the first line that contains the answer (with word boundaries)
+    answer_line_index = None
+    for i, line in enumerate(lines):
+        if re.search(r'\b' + answer_escaped + r'\b', line):
+            answer_line_index = i
+            break
+
+    # If answer is found, keep only lines before it
+    if answer_line_index is not None:
+        lines = lines[:answer_line_index]
+
+    return '\n'.join(lines)
+
+
 def shuffle_lines(reasoning: str, seed: int = None) -> str:
     """
     Shuffle reasoning content line-by-line
@@ -357,6 +392,7 @@ def prepare_mask_task(
     mask_mode: str = 'all',
     num_prev_lines: int = 1,
     shuffle: bool = False,
+    remove_answer_after: bool = False,
     seed_base: int = 42
 ) -> Task:
     """
@@ -376,6 +412,7 @@ def prepare_mask_task(
                   'alphabet-and-answer': mask all alphabetic characters AND the answer number
         num_prev_lines: Number of previous non-empty lines to mask (used with 'n-lines' mode)
         shuffle: If True, shuffle lines after masking
+        remove_answer_after: If True, remove the line containing answer and all lines after it
         seed_base: Base seed for shuffling
     """
     unique_id = item['unique_id']
@@ -389,21 +426,28 @@ def prepare_mask_task(
     except:
         index = hash(unique_id) % 10000
 
+    # Start with original reasoning
+    processed_reasoning = original_reasoning
+
+    # Remove answer line and all lines after it if requested (do this FIRST, before masking)
+    if remove_answer_after:
+        processed_reasoning = remove_answer_and_after(processed_reasoning, ground_truth)
+
     # Mask numbers in reasoning based on mode
     if mask_mode == 'answer':
-        masked_reasoning = mask_answer_only_in_reasoning(original_reasoning, ground_truth, mask_char)
+        masked_reasoning = mask_answer_only_in_reasoning(processed_reasoning, ground_truth, mask_char)
     elif mask_mode == 'line':
-        masked_reasoning = mask_numbers_in_lines_with_answer(original_reasoning, ground_truth, mask_char)
+        masked_reasoning = mask_numbers_in_lines_with_answer(processed_reasoning, ground_truth, mask_char)
     elif mask_mode == 'n-lines':
-        masked_reasoning = mask_numbers_in_nlines_with_answer(original_reasoning, ground_truth, num_prev_lines, mask_char)
+        masked_reasoning = mask_numbers_in_nlines_with_answer(processed_reasoning, ground_truth, num_prev_lines, mask_char)
     elif mask_mode == 'all-advance':
-        masked_reasoning = mask_numbers_all_advance(original_reasoning, answer=ground_truth, mask_char=mask_char)
+        masked_reasoning = mask_numbers_all_advance(processed_reasoning, answer=ground_truth, mask_char=mask_char)
     elif mask_mode == 'alphabet':
-        masked_reasoning = mask_alphabet_in_reasoning(original_reasoning, mask_char)
+        masked_reasoning = mask_alphabet_in_reasoning(processed_reasoning, mask_char)
     elif mask_mode == 'alphabet-and-answer':
-        masked_reasoning = mask_alphabet_and_answer_in_reasoning(original_reasoning, ground_truth, mask_char)
+        masked_reasoning = mask_alphabet_and_answer_in_reasoning(processed_reasoning, ground_truth, mask_char)
     else:  # 'all'
-        masked_reasoning = mask_numbers_in_reasoning(original_reasoning, mask_char)
+        masked_reasoning = mask_numbers_in_reasoning(processed_reasoning, mask_char)
 
     # Apply line shuffle if requested
     if shuffle:
@@ -513,6 +557,7 @@ def run_experiment(
     mask_mode: str = 'all',
     num_prev_lines: int = 1,
     shuffle: bool = False,
+    remove_answer_after: bool = False,
     limit: int = None
 ):
     """
@@ -527,6 +572,7 @@ def run_experiment(
         mask_mode: Masking mode - 'all', 'answer', 'line', or 'n-lines'
         num_prev_lines: Number of previous non-empty lines to mask (used with 'n-lines' mode)
         shuffle: If True, shuffle lines after masking
+        remove_answer_after: If True, remove the line containing answer and all lines after it
         limit: Limit number of questions (for testing)
     """
     print(f"Loading results from {results_path}")
@@ -552,6 +598,7 @@ def run_experiment(
     if mask_mode == 'n-lines':
         print(f"Previous lines: {num_prev_lines}")
     print(f"Shuffle lines: {'Yes' if shuffle else 'No'}")
+    print(f"Remove answer and after: {'Yes' if remove_answer_after else 'No'}")
 
     # Initialize LLM client
     client = LLMClient(mode=mode)
@@ -560,7 +607,7 @@ def run_experiment(
     print("Preparing mask tasks...")
     tasks = []
     for item in data:
-        task = prepare_mask_task(item, model_type, mask_char, mask_mode, num_prev_lines, shuffle)
+        task = prepare_mask_task(item, model_type, mask_char, mask_mode, num_prev_lines, shuffle, remove_answer_after)
         tasks.append(task)
 
     # Phase 1: Generate answers with masked reasoning
@@ -703,6 +750,11 @@ def main():
         help='If set, shuffle lines after masking'
     )
     parser.add_argument(
+        '--remove-answer-after',
+        action='store_true',
+        help='If set, remove the line containing answer and all lines after it (applied before masking)'
+    )
+    parser.add_argument(
         '--limit',
         type=int,
         default=None,
@@ -725,6 +777,7 @@ def main():
         mask_mode=args.mask_mode,
         num_prev_lines=args.num_prev_lines,
         shuffle=args.shuffle,
+        remove_answer_after=args.remove_answer_after,
         limit=args.limit
     )
 
