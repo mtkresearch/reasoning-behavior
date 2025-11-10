@@ -11,7 +11,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from mask_numbers_experiment import mask_numbers_all_advance
+from core import mask_numbers_advance
 
 # A realistic mathematical reasoning example
 # Let's say the answer is 2400
@@ -63,7 +63,7 @@ def main():
     print("\n" + "=" * 80)
     print(f"MASKED REASONING (all-advance mode with answer={ANSWER}):")
     print("=" * 80)
-    masked = mask_numbers_all_advance(reasoning_example, answer=ANSWER)
+    masked = mask_numbers_advance(reasoning_example, answer=ANSWER)
     print(masked)
 
     print("\n" + "=" * 80)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script for inequality rule in mask_numbers_all_advance function
+Test script for inequality rule in mask_numbers_advance function
 Run from project root: python tests/test_mask_inequality.py
 """
 
@@ -11,7 +11,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from mask_numbers_experiment import mask_numbers_all_advance
+from mask_experiment import mask_numbers_advance
 
 def test_inequalities():
     """Test various inequality patterns"""
@@ -58,7 +58,7 @@ def test_inequalities():
     failed = 0
 
     for input_text, expected, description in test_cases:
-        result = mask_numbers_all_advance(input_text, answer=None)
+        result = mask_numbers_advance(input_text, answer=None)
         status = "✓ PASS" if result == expected else "✗ FAIL"
 
         if result == expected:

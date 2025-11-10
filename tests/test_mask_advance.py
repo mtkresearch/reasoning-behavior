@@ -11,7 +11,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from mask_numbers_experiment import mask_numbers_all_advance
+from core import mask_numbers_advance
 
 # Test cases
 test_cases = [
@@ -60,7 +60,7 @@ def run_tests():
     failed = 0
 
     for input_text, expected, description in test_cases:
-        result = mask_numbers_all_advance(input_text, answer=None)
+        result = mask_numbers_advance(input_text, answer=None)
         status = "✓ PASS" if result == expected else "✗ FAIL"
 
         if result == expected:
@@ -111,7 +111,7 @@ def test_answer_hard_rule():
     failed = 0
 
     for input_text, answer, expected, description in answer_test_cases:
-        result = mask_numbers_all_advance(input_text, answer=answer)
+        result = mask_numbers_advance(input_text, answer=answer)
         status = "✓ PASS" if result == expected else "✗ FAIL"
 
         if result == expected:

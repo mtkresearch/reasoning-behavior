@@ -14,6 +14,7 @@ experiment scripts including:
 import json
 import os
 import re
+import random
 from typing import List, Dict
 from datetime import datetime
 
@@ -123,6 +124,369 @@ def extract_nonempty_lines(text: str) -> List[str]:
     """
     lines = text.strip().split('\n')
     return [line for line in lines if line.strip()]
+
+
+# =============================================================================
+# Text Masking Utilities
+# =============================================================================
+
+def mask_numbers_in_reasoning(reasoning: str, mask_char: str = '█') -> str:
+    """
+    Mask all numbers (digits 0-9) in reasoning with specified mask character
+
+    Args:
+        reasoning: Original reasoning content
+        mask_char: Character to use for masking (default: '█')
+
+    Returns:
+        Reasoning content with all digits replaced by mask_char
+
+    Examples:
+        >>> mask_numbers_in_reasoning("The answer is 42")
+        'The answer is ██'
+
+        >>> mask_numbers_in_reasoning("1 + 2 = 3", mask_char='*')
+        '* + * = *'
+    """
+    # Replace all digits (0-9) with mask_char
+    masked_reasoning = re.sub(r'\d', mask_char, reasoning)
+
+    return masked_reasoning
+
+
+def mask_answer_only_in_reasoning(reasoning: str, answer: str, mask_char: str = '█') -> str:
+    """
+    Mask only the answer number in reasoning with specified mask character
+
+    Args:
+        reasoning: Original reasoning content
+        answer: The ground truth answer to mask
+        mask_char: Character to use for masking (default: '█')
+
+    Returns:
+        Reasoning content with only answer occurrences replaced by mask_char
+
+    Examples:
+        >>> mask_answer_only_in_reasoning("The answer is 42", "42")
+        'The answer is ██'
+
+        >>> mask_answer_only_in_reasoning("We have 123 and 23", "23")
+        'We have 123 and ██'
+    """
+    # Clean answer string (remove potential whitespace)
+    answer_clean = answer.strip()
+
+    # Escape special regex characters in answer
+    answer_escaped = re.escape(answer_clean)
+
+    # Replace all occurrences of the answer with masked version
+    # Use word boundaries to avoid partial matches
+    masked_answer = mask_char * len(answer_clean)
+    masked_reasoning = re.sub(r'\b' + answer_escaped + r'\b', masked_answer, reasoning)
+
+    return masked_reasoning
+
+
+def mask_numbers_in_lines_with_answer(reasoning: str, answer: str, mask_char: str = '█') -> str:
+    """
+    Mask all numbers in lines that contain the answer
+
+    Args:
+        reasoning: Original reasoning content
+        answer: The ground truth answer to identify relevant lines
+        mask_char: Character to use for masking (default: '█')
+
+    Returns:
+        Reasoning content with all numbers masked in lines containing the answer
+
+    Examples:
+        >>> mask_numbers_in_lines_with_answer("Line 1: 10\\nAnswer: 42", "42")
+        'Line 1: 10\\nAnswer: ██'
+    """
+    # Clean answer string (remove potential whitespace)
+    answer_clean = answer.strip()
+
+    # Escape special regex characters in answer for matching
+    answer_escaped = re.escape(answer_clean)
+
+    # Split reasoning into lines
+    lines = reasoning.split('\n')
+    masked_lines = []
+
+    for line in lines:
+        # Check if this line contains the answer (with word boundaries)
+        if re.search(r'\b' + answer_escaped + r'\b', line):
+            # Mask all digits in this line
+            masked_line = re.sub(r'\d', mask_char, line)
+            masked_lines.append(masked_line)
+        else:
+            # Keep line as is
+            masked_lines.append(line)
+
+    return '\n'.join(masked_lines)
+
+
+def mask_numbers_in_nlines_with_answer(reasoning: str, answer: str, n: int = 1, mask_char: str = '█') -> str:
+    """
+    Mask all numbers in the line containing answer and the N non-empty lines before it
+
+    Args:
+        reasoning: Original reasoning content
+        answer: The ground truth answer to identify relevant lines
+        n: Number of previous non-empty lines to mask (default: 1)
+        mask_char: Character to use for masking (default: '█')
+
+    Returns:
+        Reasoning content with all numbers masked in the answer line and previous N non-empty lines
+
+    Examples:
+        >>> mask_numbers_in_nlines_with_answer("L1: 10\\nL2: 20\\nAnswer: 42", "42", n=1)
+        'L1: 10\\nL█: ██\\nAnswer: ██'
+    """
+    # Clean answer string (remove potential whitespace)
+    answer_clean = answer.strip()
+
+    # Escape special regex characters in answer for matching
+    answer_escaped = re.escape(answer_clean)
+
+    # Split reasoning into lines
+    lines = reasoning.split('\n')
+
+    # Build mapping of non-empty lines: valid_index -> original_index
+    non_empty_indices = []
+    for i, line in enumerate(lines):
+        if line.strip():  # Only count non-empty lines
+            non_empty_indices.append(i)
+
+    # Find lines that contain the answer (in non-empty lines)
+    answer_line_positions = []  # positions in non_empty_indices
+    for pos, orig_idx in enumerate(non_empty_indices):
+        line = lines[orig_idx]
+        if re.search(r'\b' + answer_escaped + r'\b', line):
+            answer_line_positions.append(pos)
+
+    # Build set of original line indices to mask
+    lines_to_mask = set()
+    for pos in answer_line_positions:
+        # Mask the answer line
+        orig_idx = non_empty_indices[pos]
+        lines_to_mask.add(orig_idx)
+
+        # Mask the previous N non-empty lines (if exist)
+        for i in range(1, n + 1):
+            if pos >= i:  # If there's an i-th previous non-empty line
+                prev_orig_idx = non_empty_indices[pos - i]
+                lines_to_mask.add(prev_orig_idx)
+
+    # Apply masking
+    masked_lines = []
+    for i, line in enumerate(lines):
+        if i in lines_to_mask:
+            # Mask all digits in this line
+            masked_line = re.sub(r'\d', mask_char, line)
+            masked_lines.append(masked_line)
+        else:
+            # Keep line as is
+            masked_lines.append(line)
+
+    return '\n'.join(masked_lines)
+
+
+def mask_alphabet_in_reasoning(reasoning: str, mask_char: str = '█') -> str:
+    """
+    Mask all alphabetic characters (A-Z and a-z) in reasoning with specified mask character
+
+    Args:
+        reasoning: Original reasoning content
+        mask_char: Character to use for masking (default: '█')
+
+    Returns:
+        Reasoning content with all letters replaced by mask_char
+
+    Examples:
+        >>> mask_alphabet_in_reasoning("Hello 123")
+        '█████ 123'
+    """
+    # Replace all alphabetic characters (A-Z and a-z) with mask_char
+    masked_reasoning = re.sub(r'[A-Za-z]', mask_char, reasoning)
+
+    return masked_reasoning
+
+
+def mask_alphabet_and_answer_in_reasoning(reasoning: str, answer: str, mask_char: str = '█') -> str:
+    """
+    Mask all alphabetic characters (A-Z and a-z) AND the answer number in reasoning
+
+    Args:
+        reasoning: Original reasoning content
+        answer: The ground truth answer to mask
+        mask_char: Character to use for masking (default: '█')
+
+    Returns:
+        Reasoning content with all letters and answer occurrences replaced by mask_char
+
+    Examples:
+        >>> mask_alphabet_and_answer_in_reasoning("The answer is 42", "42")
+        '███ ██████ ██ ██'
+    """
+    # First mask all alphabetic characters
+    masked_reasoning = re.sub(r'[A-Za-z]', mask_char, reasoning)
+
+    # Then mask the answer (same logic as mask_answer_only_in_reasoning)
+    answer_clean = answer.strip()
+    answer_escaped = re.escape(answer_clean)
+    masked_answer = mask_char * len(answer_clean)
+    masked_reasoning = re.sub(r'\b' + answer_escaped + r'\b', masked_answer, masked_reasoning)
+
+    return masked_reasoning
+
+
+def mask_numbers_advance(reasoning: str, answer: str = None, mask_char: str = '█') -> str:
+    """
+    Mask numbers with advanced rules: keep numbers adjacent to letters/underscores
+
+    This mode masks computational numbers while preserving algebraic notation.
+
+    Rules (in priority order):
+    1. HARD RULE: If number equals answer → ALWAYS mask (highest priority)
+    2. Number with [A-Za-z_] immediately before or after → Don't mask (algebraic)
+    3. Number with inequality symbols (< > ≤ ≥ etc.) nearby (with optional spaces) → Don't mask
+    4. Exception: "digit + x + digit" pattern → Force mask (multiplication like 3x3)
+    5. Other numbers → Mask (computational values)
+
+    Examples:
+        >>> mask_numbers_advance("A12 and 1+2")
+        'A12 and █+█'
+
+        >>> mask_numbers_advance("x42", answer="42")
+        'x██'
+    """
+    # Exception: Handle "digit+x+digit" multiplication pattern first
+    # This must be done before the main rule to catch patterns like 3x3, 10x5
+    reasoning = re.sub(
+        r'\b(\d+)x(\d+)\b',
+        lambda m: mask_char * len(m.group(1)) + 'x' + mask_char * len(m.group(2)),
+        reasoning
+    )
+
+    # Main rule: Check each number sequence
+    def should_mask_number(match):
+        pos = match.start()
+        text = match.string
+        number = match.group()
+
+        # HARD RULE: If number equals answer, ALWAYS mask (highest priority)
+        if answer is not None and number == answer.strip():
+            return mask_char * len(number)
+
+        # Check character immediately before the number
+        char_before = text[pos - 1] if pos > 0 else ''
+        is_letter_before = char_before.isalpha() or char_before == '_'
+
+        # Check character immediately after the number
+        char_after = text[pos + len(number)] if pos + len(number) < len(text) else ''
+        is_letter_after = char_after.isalpha() or char_after == '_'
+
+        # Don't mask if adjacent to letter or underscore
+        if is_letter_before or is_letter_after:
+            return number
+
+        # Check for inequality symbols near the number (with optional spaces)
+        # Look for: <, >, ≤, ≥, \leq, \geq, \le, \ge, <=, >=
+        # Search in a window around the number
+        window_start = max(0, pos - 10)
+        window_end = min(len(text), pos + len(number) + 10)
+        window = text[window_start:window_end]
+
+        # Inequality patterns (including LaTeX commands)
+        inequality_patterns = [
+            r'<', r'>', r'≤', r'≥', r'≦', r'≧',
+            r'<=', r'>=',
+            r'\\leq', r'\\geq', r'\\le', r'\\ge',
+            r'\\lt', r'\\gt'
+        ]
+
+        has_inequality = any(re.search(pattern, window) for pattern in inequality_patterns)
+
+        if has_inequality:
+            return number
+        else:
+            return mask_char * len(number)
+
+    # Apply main masking rule
+    masked_reasoning = re.sub(r'\d+', should_mask_number, reasoning)
+
+    return masked_reasoning
+
+
+# =============================================================================
+# Text Preprocessing Utilities
+# =============================================================================
+
+def remove_answer_and_after(reasoning: str, answer: str) -> str:
+    """
+    Remove the line containing the answer and all subsequent lines
+
+    Args:
+        reasoning: Original reasoning content
+        answer: The ground truth answer to identify the line to remove from
+
+    Returns:
+        Reasoning content with answer line and all lines after it removed
+
+    Examples:
+        >>> remove_answer_and_after("L1\\nAnswer: 42\\nL3", "42")
+        'L1'
+    """
+    # Clean answer string (remove potential whitespace)
+    answer_clean = answer.strip()
+
+    # Escape special regex characters in answer for matching
+    answer_escaped = re.escape(answer_clean)
+
+    # Split reasoning into lines
+    lines = reasoning.split('\n')
+
+    # Find the first line that contains the answer (with word boundaries)
+    answer_line_index = None
+    for i, line in enumerate(lines):
+        if re.search(r'\b' + answer_escaped + r'\b', line):
+            answer_line_index = i
+            break
+
+    # If answer is found, keep only lines before it
+    if answer_line_index is not None:
+        lines = lines[:answer_line_index]
+
+    return '\n'.join(lines)
+
+
+def shuffle_lines(reasoning: str, seed: int = None) -> str:
+    """
+    Shuffle reasoning content line-by-line
+
+    Args:
+        reasoning: Original reasoning content
+        seed: Random seed for reproducibility
+
+    Returns:
+        Shuffled reasoning content
+
+    Examples:
+        >>> shuffle_lines("L1\\nL2\\nL3", seed=42)
+        # Returns shuffled lines with deterministic order due to seed
+    """
+    if seed is not None:
+        random.seed(seed)
+
+    lines = reasoning.strip().split('\n')
+    # Remove empty lines
+    lines = [line for line in lines if line.strip()]
+
+    # Shuffle
+    random.shuffle(lines)
+
+    return '\n'.join(lines)
 
 
 # =============================================================================
