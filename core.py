@@ -582,3 +582,147 @@ Determine if these two answers are the same or equivalent.
 - Answer with \\boxed{{YES}} if they are the same, or \\boxed{{NO}} if they are different
 
 Provide your reasoning first, then give your final answer in \\boxed{{}}."""
+
+
+# =============================================================================
+# Truncate Functions
+# =============================================================================
+
+def truncate_reasoning_lines(reasoning: str, del_last_line: float) -> str:
+    """
+    Remove last n lines or ratio of lines from reasoning content
+
+    Args:
+        reasoning: Original reasoning content
+        del_last_line: If >= 1, number of lines to remove from the end (integer)
+                      If 0 < del_last_line < 1, ratio of lines to remove (float)
+
+    Returns:
+        Truncated reasoning content
+    """
+    if del_last_line <= 0:
+        return reasoning
+
+    lines = reasoning.strip().split('\n')
+    # Remove empty lines
+    lines = [line for line in lines if line.strip()]
+
+    # Calculate number of lines to remove
+    if del_last_line < 1:
+        # Ratio mode: remove a percentage of lines
+        lines_to_remove = int(len(lines) * del_last_line)
+    else:
+        # Count mode: remove specific number of lines
+        lines_to_remove = int(del_last_line)
+
+    # Remove last n lines
+    if lines_to_remove >= len(lines):
+        # If trying to remove more lines than available, return first line
+        return lines[0] if lines else ""
+
+    if lines_to_remove == 0:
+        return reasoning
+
+    truncated_lines = lines[:-lines_to_remove]
+    return '\n'.join(truncated_lines)
+
+
+# =============================================================================
+# Shuffle Functions
+# =============================================================================
+
+# Global tokenizer cache for token-level shuffle
+_TOKENIZER_CACHE = {}
+
+
+def shuffle_reasoning_words(reasoning: str, seed: int = None) -> str:
+    """
+    Shuffle reasoning content word-by-word
+
+    Args:
+        reasoning: Original reasoning content
+        seed: Random seed for reproducibility (optional)
+
+    Returns:
+        Shuffled reasoning content with words shuffled
+    """
+    if seed is not None:
+        random.seed(seed)
+
+    # Split by whitespace to get words
+    words = reasoning.split()
+
+    # Shuffle words
+    random.shuffle(words)
+
+    # Rejoin with single space
+    return ' '.join(words)
+
+
+def shuffle_reasoning_tokens(reasoning: str, tokenizer_model: str = "gpt2", seed: int = None) -> str:
+    """
+    Shuffle reasoning content token-by-token using the model's tokenizer
+
+    Args:
+        reasoning: Original reasoning content
+        tokenizer_model: Model name for tokenizer (default: gpt2)
+        seed: Random seed for reproducibility (optional)
+
+    Returns:
+        Shuffled reasoning content with tokens shuffled
+    """
+    from transformers import AutoTokenizer
+
+    if seed is not None:
+        random.seed(seed)
+
+    # Handle empty string
+    if not reasoning:
+        return ""
+
+    # Load tokenizer (with caching to avoid reloading)
+    if tokenizer_model not in _TOKENIZER_CACHE:
+        debug_print(f"Loading tokenizer for {tokenizer_model}...")
+        _TOKENIZER_CACHE[tokenizer_model] = AutoTokenizer.from_pretrained(
+            tokenizer_model, trust_remote_code=True
+        )
+
+    tokenizer = _TOKENIZER_CACHE[tokenizer_model]
+
+    # Tokenize
+    tokens = tokenizer.encode(reasoning, add_special_tokens=False)
+
+    # Shuffle token IDs
+    random.shuffle(tokens)
+
+    # Decode back to text
+    shuffled_text = tokenizer.decode(tokens, skip_special_tokens=True)
+
+    return shuffled_text
+
+
+def shuffle_reasoning(reasoning: str, mode: str = 'line', seed: int = None, **kwargs) -> str:
+    """
+    Unified shuffle interface supporting multiple shuffle modes
+
+    Args:
+        reasoning: Original reasoning content
+        mode: Type of shuffle - 'line', 'word', or 'token'
+        seed: Random seed for reproducibility (optional)
+        **kwargs: Additional arguments (e.g., tokenizer_model for token mode)
+
+    Returns:
+        Shuffled reasoning content
+
+    Raises:
+        ValueError: If mode is not one of 'line', 'word', or 'token'
+    """
+    if mode == 'line':
+        return shuffle_lines(reasoning, seed=seed)
+    elif mode == 'word':
+        return shuffle_reasoning_words(reasoning, seed=seed)
+    elif mode == 'token':
+        tokenizer_model = kwargs.get('tokenizer_model', 'gpt2')
+        return shuffle_reasoning_tokens(reasoning, tokenizer_model=tokenizer_model, seed=seed)
+    else:
+        raise ValueError(f"Invalid shuffle mode: {mode}. Must be 'line', 'word', or 'token'")
