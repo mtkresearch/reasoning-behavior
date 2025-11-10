@@ -4,7 +4,7 @@ Mask Numbers Experiment on result.traj
 
 This script:
 1. Loads results.json with result.traj as reasoning
-2. Masks numbers in reasoning (six modes available):
+2. Masks numbers in reasoning (seven modes available):
    - all: Mask all numbers (0-9) with '█' (default)
    - answer: Mask only the answer number
    - line: Mask all numbers in lines containing the answer
@@ -13,6 +13,7 @@ This script:
    - all-advance: Mask computational numbers while preserving algebraic notation
                   (keeps numbers adjacent to letters/underscores like A12, x_1, 3x)
    - alphabet: Mask all alphabetic characters (A-Z and a-z) instead of numbers
+   - alphabet-and-answer: Mask all alphabetic characters (A-Z and a-z) AND the answer number
 3. Optionally shuffles lines after masking (--shuffle)
 4. Generates new answers with masked (and optionally shuffled) reasoning
 5. Grades answers and calculates accuracy
@@ -198,6 +199,30 @@ def mask_alphabet_in_reasoning(reasoning: str, mask_char: str = '█') -> str:
     return masked_reasoning
 
 
+def mask_alphabet_and_answer_in_reasoning(reasoning: str, answer: str, mask_char: str = '█') -> str:
+    """
+    Mask all alphabetic characters (A-Z and a-z) AND the answer number in reasoning
+
+    Args:
+        reasoning: Original reasoning content
+        answer: The ground truth answer to mask
+        mask_char: Character to use for masking (default: '█')
+
+    Returns:
+        Reasoning content with all letters and answer occurrences replaced by mask_char
+    """
+    # First mask all alphabetic characters
+    masked_reasoning = re.sub(r'[A-Za-z]', mask_char, reasoning)
+
+    # Then mask the answer (same logic as mask_answer_only_in_reasoning)
+    answer_clean = answer.strip()
+    answer_escaped = re.escape(answer_clean)
+    masked_answer = mask_char * len(answer_clean)
+    masked_reasoning = re.sub(r'\b' + answer_escaped + r'\b', masked_answer, masked_reasoning)
+
+    return masked_reasoning
+
+
 def mask_numbers_all_advance(reasoning: str, answer: str = None, mask_char: str = '█') -> str:
     """
     Mask numbers with advanced rules: keep numbers adjacent to letters/underscores
@@ -341,13 +366,14 @@ def prepare_mask_task(
         item: Result item from results.json
         model_type: Model type
         mask_char: Character to use for masking numbers (default: '█')
-        mask_mode: Masking mode - 'all', 'answer', 'line', 'n-lines', 'all-advance', or 'alphabet'
+        mask_mode: Masking mode - 'all', 'answer', 'line', 'n-lines', 'all-advance', 'alphabet', or 'alphabet-and-answer'
                   'all': mask all numbers
                   'answer': mask only answer occurrences
                   'line': mask all numbers in lines containing answer
                   'n-lines': mask all numbers in answer line and N previous non-empty lines
                   'all-advance': mask computational numbers, keep algebraic notation
                   'alphabet': mask all alphabetic characters (A-Z and a-z)
+                  'alphabet-and-answer': mask all alphabetic characters AND the answer number
         num_prev_lines: Number of previous non-empty lines to mask (used with 'n-lines' mode)
         shuffle: If True, shuffle lines after masking
         seed_base: Base seed for shuffling
@@ -374,6 +400,8 @@ def prepare_mask_task(
         masked_reasoning = mask_numbers_all_advance(original_reasoning, answer=ground_truth, mask_char=mask_char)
     elif mask_mode == 'alphabet':
         masked_reasoning = mask_alphabet_in_reasoning(original_reasoning, mask_char)
+    elif mask_mode == 'alphabet-and-answer':
+        masked_reasoning = mask_alphabet_and_answer_in_reasoning(original_reasoning, ground_truth, mask_char)
     else:  # 'all'
         masked_reasoning = mask_numbers_in_reasoning(original_reasoning, mask_char)
 
@@ -514,7 +542,8 @@ def run_experiment(
         'line': 'Mask all numbers in lines containing answer',
         'n-lines': f'Mask all numbers in answer line and {num_prev_lines} previous non-empty line(s)',
         'all-advance': 'Mask computational numbers, keep algebraic notation (numbers adjacent to letters/underscores)',
-        'alphabet': 'Mask all alphabetic characters (A-Z and a-z)'
+        'alphabet': 'Mask all alphabetic characters (A-Z and a-z)',
+        'alphabet-and-answer': 'Mask all alphabetic characters (A-Z and a-z) AND the answer number'
     }
 
     print(f"Total questions: {len(data)}")
@@ -589,7 +618,8 @@ def run_experiment(
         'line': 'Lines with Answer Masked',
         'n-lines': f'N-Lines Masked (Answer + Previous {num_prev_lines} Line(s))',
         'all-advance': 'Advanced Masking (Computational Numbers Only)',
-        'alphabet': 'All Alphabetic Characters Masked'
+        'alphabet': 'All Alphabetic Characters Masked',
+        'alphabet-and-answer': 'All Alphabetic Characters AND Answer Masked'
     }
 
     title = mode_titles.get(mask_mode, 'Masked')
@@ -653,12 +683,13 @@ def main():
         '--mask-mode',
         type=str,
         default='all',
-        choices=['all', 'answer', 'line', 'n-lines', 'all-advance', 'alphabet'],
+        choices=['all', 'answer', 'line', 'n-lines', 'all-advance', 'alphabet', 'alphabet-and-answer'],
         help='Masking mode: "all" (mask all numbers), "answer" (mask only answer), '
              '"line" (mask all numbers in lines containing answer), '
              '"n-lines" (mask all numbers in answer line and N previous non-empty lines), '
              '"all-advance" (mask computational numbers, keep algebraic notation), '
-             '"alphabet" (mask all alphabetic characters A-Z and a-z)'
+             '"alphabet" (mask all alphabetic characters A-Z and a-z), '
+             '"alphabet-and-answer" (mask all alphabetic characters AND the answer number)'
     )
     parser.add_argument(
         '--num-prev-lines',
