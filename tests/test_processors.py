@@ -146,6 +146,24 @@ This should be removed."""
         assert "The answer is 12" not in result
         assert "This should be removed" not in result
 
+    def test_truncate_processor_before_answer(self, sample_context):
+        """Test TruncateProcessor with mode='before_answer'"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='before_answer')
+        reasoning = """Step 1: Calculate something
+Step 2: Do more work
+The answer is 12.
+This should be kept."""
+        context = {"answer": "12"}
+
+        result = processor.process(reasoning, context)
+
+        assert "Step 1" not in result
+        assert "Step 2" not in result
+        assert "The answer is 12" in result
+        assert "This should be kept" in result
+
     def test_truncate_processor_last_n_lines(self, sample_context):
         """Test TruncateProcessor with mode='last_n_lines'"""
         from processors import TruncateProcessor

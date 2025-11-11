@@ -4,11 +4,12 @@ Unit tests for preprocessing functions
 
 This test file covers all preprocessing functions that will be extracted to core.py:
 - remove_answer_and_after()
+- remove_before_answer()
 - shuffle_lines()
 """
 
 import pytest
-from core import remove_answer_and_after, shuffle_lines
+from core import remove_answer_and_after, remove_before_answer, shuffle_lines
 
 
 class TestRemoveAnswerAndAfter:
@@ -71,6 +72,90 @@ class TestRemoveAnswerAndAfter:
         answer = "3.14"
         result = remove_answer_and_after(reasoning, answer)
         assert result == "Line 1"
+
+
+class TestRemoveBeforeAnswer:
+    """Tests for remove_before_answer()"""
+
+    def test_remove_lines_before_answer(self):
+        """Test removing all lines before answer line (answer line kept)"""
+        reasoning = "Line 1\nLine 2\nAnswer is 42\nLine 4\nLine 5"
+        answer = "42"
+        result = remove_before_answer(reasoning, answer)
+        assert result == "Answer is 42\nLine 4\nLine 5"
+
+    def test_answer_in_first_line(self):
+        """Test when answer is in the first line (no lines before)"""
+        reasoning = "Answer is 42\nLine 2\nLine 3"
+        answer = "42"
+        result = remove_before_answer(reasoning, answer)
+        assert result == "Answer is 42\nLine 2\nLine 3"
+
+    def test_answer_in_last_line(self):
+        """Test when answer is in the last line"""
+        reasoning = "Line 1\nLine 2\nAnswer is 42"
+        answer = "42"
+        result = remove_before_answer(reasoning, answer)
+        assert result == "Answer is 42"
+
+    def test_answer_not_present(self):
+        """Test when answer doesn't exist (keep original)"""
+        reasoning = "Line 1\nLine 2\nLine 3"
+        answer = "99"
+        result = remove_before_answer(reasoning, answer)
+        assert result == "Line 1\nLine 2\nLine 3"
+
+    def test_multiple_answer_occurrences(self):
+        """Test keeping from first occurrence"""
+        reasoning = "Line 1 with 42\nLine 2\nLine 3 with 42\nLine 4"
+        answer = "42"
+        result = remove_before_answer(reasoning, answer)
+        # Should keep from first occurrence
+        assert result == "Line 1 with 42\nLine 2\nLine 3 with 42\nLine 4"
+
+    def test_word_boundary_protection(self):
+        """Test word boundary prevents partial matches"""
+        reasoning = "Line 1 with 123\nLine 2 with 23\nLine 3"
+        answer = "23"
+        result = remove_before_answer(reasoning, answer)
+        # Should keep from line with "23", not "123"
+        assert result == "Line 2 with 23\nLine 3"
+
+    def test_empty_string(self):
+        """Test empty string handling"""
+        reasoning = ""
+        answer = "42"
+        result = remove_before_answer(reasoning, answer)
+        assert result == ""
+
+    def test_answer_with_special_chars(self):
+        """Test answer with special regex characters"""
+        reasoning = "Line 1\nValue is 3.14\nLine 3"
+        answer = "3.14"
+        result = remove_before_answer(reasoning, answer)
+        assert result == "Value is 3.14\nLine 3"
+
+    def test_opposite_of_remove_answer_and_after(self):
+        """Test that remove_before_answer is the opposite of remove_answer_and_after"""
+        reasoning = "Line 1\nLine 2\nAnswer is 42\nLine 4\nLine 5"
+        answer = "42"
+
+        # Test complementary behavior
+        before = remove_answer_and_after(reasoning, answer)
+        after = remove_before_answer(reasoning, answer)
+
+        # before should be: "Line 1\nLine 2"
+        # after should be: "Answer is 42\nLine 4\nLine 5"
+        assert before == "Line 1\nLine 2"
+        assert after == "Answer is 42\nLine 4\nLine 5"
+
+        # Together they should cover all lines (except they don't overlap on answer line)
+        before_lines = before.split('\n') if before else []
+        after_lines = after.split('\n') if after else []
+        original_lines = reasoning.split('\n')
+
+        # before + after should have all original lines
+        assert len(before_lines) + len(after_lines) == len(original_lines)
 
 
 class TestShuffleLines:

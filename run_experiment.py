@@ -39,6 +39,7 @@ Available Processors
 
    Modes:
    - 'answer_and_after': Remove answer line and all lines after it
+   - 'before_answer': Remove all lines before answer line (answer line kept)
    - 'last_n_lines': Remove last N lines (specify n=N)
    - 'last_ratio': Remove last X% of lines (specify ratio=X, e.g., 0.3 for 30%)
 

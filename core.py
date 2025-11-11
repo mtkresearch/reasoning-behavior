@@ -461,6 +461,46 @@ def remove_answer_and_after(reasoning: str, answer: str) -> str:
     return '\n'.join(lines)
 
 
+def remove_before_answer(reasoning: str, answer: str) -> str:
+    """
+    Remove all lines before the line containing the answer (excluding the answer line itself)
+
+    This is the opposite of remove_answer_and_after().
+
+    Args:
+        reasoning: Original reasoning content
+        answer: The ground truth answer to identify the line to keep from
+
+    Returns:
+        Reasoning content with all lines before the answer line removed (answer line and after are kept)
+
+    Examples:
+        >>> remove_before_answer("L1\\nL2\\nAnswer: 42\\nL4", "42")
+        'Answer: 42\\nL4'
+    """
+    # Clean answer string (remove potential whitespace)
+    answer_clean = answer.strip()
+
+    # Escape special regex characters in answer for matching
+    answer_escaped = re.escape(answer_clean)
+
+    # Split reasoning into lines
+    lines = reasoning.split('\n')
+
+    # Find the first line that contains the answer (with word boundaries)
+    answer_line_index = None
+    for i, line in enumerate(lines):
+        if re.search(r'\b' + answer_escaped + r'\b', line):
+            answer_line_index = i
+            break
+
+    # If answer is found, keep only lines from the answer line onwards
+    if answer_line_index is not None:
+        lines = lines[answer_line_index:]
+
+    return '\n'.join(lines)
+
+
 def shuffle_lines(reasoning: str, seed: int = None) -> str:
     """
     Shuffle reasoning content line-by-line
