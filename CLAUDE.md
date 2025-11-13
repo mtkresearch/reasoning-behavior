@@ -25,20 +25,17 @@ reasoning-behavior/
 ├── datasets/                   # Dataset sources
 │   └── AIME2025/
 │
-├── data/                       # Experimental results
-│   ├── [dataset]__[R{n}]/     # Main results
-│   ├── shuffle_comparison_exp/ # Shuffle experiments
-│   └── consistency_data/       # Consistency analysis
+├── data/                       # Source experimental results
+│   └── [dataset]__[R{n}]/     # Baseline results with reasoning
+│
+├── exp/                        # Pipeline experiment results
+│   └── [processor1]/[processor2]/.../results.json
 │
 ├── llm_client.py              # Core LLM abstraction
 ├── core.py                    # Shared utilities for all experiments
-├── comparison_shuffle_reasoning.py  # Experiment: shuffle comparison
-├── insert_noise_reasoning.py        # Experiment: noise insertion
-├── insert_crossreasoning_noise.py   # Experiment: cross-reasoning
-├── no_reasoning_baseline.py         # Experiment: no-reasoning baseline
-├── analyze_shuffle_results.py       # Analysis utility
-├── filter_by_consensus.py           # Filtering utility
-└── run_shuffle_reasoning.sh         # Batch experiment runner
+├── pipeline.py                # Pipeline framework for processor composition
+├── run_experiment.py          # Pipeline-based experiment runner
+└── view_experiment.py         # Web visualization server
 ```
 
 ## Core Architecture
@@ -101,11 +98,11 @@ from core import (
 
 ### Main Components
 
-**Experiment Scripts** (in root directory):
-- `comparison_shuffle_reasoning.py` - Normal vs shuffled reasoning
-- `insert_noise_reasoning.py` - Noise insertion robustness test
-- `insert_crossreasoning_noise.py` - Cross-question reasoning noise
-- `no_reasoning_baseline.py` - No-reasoning baseline
+**Pipeline Experiment Framework**:
+- `run_experiment.py` - Configurable pipeline for processing reasoning (mask, truncate, shuffle, insert) with automatic result caching and grading
+- `view_experiment.py` - Web visualization server for browsing experiment results with tree structure and conditional probability analysis
+- `pipeline.py` - Core pipeline infrastructure with processor composition
+- Output structure: `exp/<processor1>/<processor2>/.../results.json`
 
 ## Datasets
 
@@ -127,18 +124,16 @@ uv pip install -r requirements.txt
 ### Experiment Scripts
 
 ```bash
-# Shuffle reasoning comparison (supports multiple truncation ratios and methods)
-bash run_shuffle_reasoning.sh
+# Run processing pipeline (mask, truncate, shuffle, insert) and evaluate
+python run_experiment.py --flow "mask('number'),shuffle('line')" \
+    --results_path data/AIME2025__R10/gpt-oss/p1/results.json \
+    --model_type gpt-oss
 
-# Noise insertion experiments
-python insert_noise_reasoning.py [target] [model_type] [system_type]
-python insert_crossreasoning_noise.py [target] [model_type] [system_type]
+# Auto-generate output path based on flow
+python run_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('alphabet')"
 
-# No-reasoning baseline
-python no_reasoning_baseline.py [target] [model_type] [system_type]
-
-# Analyze shuffle results
-python analyze_shuffle_results.py [data_folder]
+# View experiment results in web interface
+python view_experiment.py [--port 5000] [--host 127.0.0.1] [--exp-dir exp/]
 ```
 
 ## Key Design Patterns
@@ -173,86 +168,40 @@ Most scripts have `CONCURRENCY` parameter (typically 4-50) controlling parallel 
 
 ## Data Organization
 
-The project uses a hierarchical structure for organizing experimental data:
-
-### Main Experiment Results
-
 ```
-data/
-├── [dataset]__[R{repetitions}]/     # e.g., AIME2025__R10
-│   ├── [model]/                     # e.g., gpt-oss, deepseek, qwen3
-│   │   ├── [prompt]/                # e.g., p1, p2, p3
-│   │   │   ├── results.json         # Inference results
-│   │   │   ├── grades.json          # Grading results
-│   │   │   ├── metrics.json         # Evaluation metrics
-│   │   │   ├── behavior.jsonl       # Extracted behaviors
-│   │   │   ├── summary.pdf          # Generated report
-│   │   │   ├── no_reasoning.json    # No-reasoning baseline
-│   │   │   ├── insert-noise-*.json  # Noise insertion experiments
-│   │   │   └── shuffle-insert-*.json # Shuffle+noise experiments
-│   │
-│   └── MATH500/                     # MATH500 dataset results
-│       ├── deepseek/
-│       ├── gpt-oss/
-│       └── qwen3/
-```
+data/                                # Source experimental results
+└── [dataset]__[R{repetitions}]/     # e.g., AIME2025__R10
+    └── [model]/                     # e.g., gpt-oss, deepseek, qwen3
+        └── [prompt]/                # e.g., p1, p2, p3
+            └── results.json         # Baseline reasoning results
 
-### Specialized Experiment Results
+exp/                                 # Pipeline experiment results
+└── [processor1]/                    # e.g., mask_number
+    └── [processor2]/                # e.g., shuffle_line
+        └── .../                     # nested processors
+            ├── results.json         # Final results with metadata
+            ├── results_stage1.jsonl # Generation stage (cached)
+            └── results_stage2.jsonl # Grading stage (cached)
 
-```
-data/
-├── shuffle_comparison_exp/          # Shuffle and truncation experiments
-│   ├── empty_question_f00/          # Empty question test
-│   ├── token_turncate_f00/          # Token-level truncation
-│   ├── word_turncate_f00/           # Word-level truncation
-│   ├── turncate_0/                  # 0 count truncation (baseline)
-│   ├── turncate_3/                  # 3 count truncation
-│   ├── turncate_5/                  # 5 count truncation
-│   ├── turncate_7/                  # 7 count truncation
-│   ├── turncate_9/                  # 9 count truncation
-│   ├── turncate_f01/                # 10% truncation
-│   ├── turncate_f03/                # 30% truncation (float)
-│   ├── turncate_f05/                # 50% truncation (float)
-│   ├── turncate_f07/                # 70% truncation (float)
-│   └── turncate_f09/                # 90% truncation (float)
-│
-└── consistency_data/                # Consistency analysis results
-    ├── consistency_data.json
-    ├── consistency_deepseek.json
-    ├── consistency_gpt-oss.json
-    ├── consistency_gpt-oss-reasoning.json
-    └── consistency_gpt5.json
-```
-
-### Dataset Sources
-
-```
-datasets/
+datasets/                            # Dataset sources
 └── AIME2025/                        # AIME 2025 problems
-    └── [problem files...]
 ```
 
 ## Working with This Codebase
 
 ### Code Organization Principles
 
-1. **Two-layer architecture**:
-   - **Root directory**: Specialized experiment scripts that use the core pipeline
-   - **behavior_analysis/**: Core pipeline tools and advanced analysis modules (deprecated)
+1. **Pipeline Architecture**: Use `run_experiment.py` with `--flow` parameter to compose processing steps (mask, truncate, shuffle, insert)
 
-2. **Shared utilities layer**: `core.py` provides common functions used across experiments:
-   - Data loading and parsing functions
+2. **Shared utilities layer**: `core.py` provides common functions:
+   - Data loading and parsing
    - Text processing utilities
    - Prompt construction helpers
    - Standard prompt templates
-   - This eliminates code duplication and ensures consistency across experiments
 
-3. **Standalone scripts**: Each Python file is designed to be run independently with clear command-line interfaces
+3. **Results are cached**: JSONL-based incremental saving with automatic resume capability
+   - Stage 1: Generation results (`results_stage1.jsonl`)
+   - Stage 2: Grading results (`results_stage2.jsonl`)
+   - Final: Aggregated JSON (`results.json`)
 
-4. **Results are cached**: All scripts check for existing results and skip completed work to support resumable execution
-
-5. **No unit tests**: This is a research codebase; validation happens through experimental results and comparative analysis
-
-6. **Incremental development**: Experiments build on each other; check related scripts before adding new ones
-
-7. **Token-level operations**: Some experiments use transformers tokenizer for fine-grained text manipulation (shuffling, truncation at token boundaries)
+4. **Visualization**: Use `view_experiment.py` to browse results with tree structure and conditional probability analysis
