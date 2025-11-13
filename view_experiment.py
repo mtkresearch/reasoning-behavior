@@ -140,13 +140,10 @@ MAIN_TEMPLATE = """
         }
 
         .controls {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             gap: 10px;
+            margin-bottom: 20px;
         }
 
         .control-btn {
@@ -156,7 +153,6 @@ MAIN_TEMPLATE = """
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.9em;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
             transition: all 0.2s ease;
             white-space: nowrap;
         }
@@ -172,7 +168,6 @@ MAIN_TEMPLATE = """
 
         .restore-btn:hover {
             background: #2980b9;
-            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
         }
 
         .align-btn {
@@ -181,7 +176,6 @@ MAIN_TEMPLATE = """
 
         .align-btn:hover {
             background: #8e44ad;
-            box-shadow: 0 4px 12px rgba(155, 89, 182, 0.4);
         }
 
         .align-btn.active {
@@ -194,7 +188,6 @@ MAIN_TEMPLATE = """
 
         .screenshot-btn:hover {
             background: #229954;
-            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.4);
         }
 
         .screenshot-btn:disabled {
@@ -438,6 +431,12 @@ MAIN_TEMPLATE = """
             <p class="subtitle">Reasoning Processing Pipeline Experiments</p>
         </header>
 
+        <div class="controls">
+            <button id="align-btn" class="control-btn align-btn">⚖️ 對齊實例</button>
+            <button id="screenshot-btn" class="control-btn screenshot-btn">📸 截圖到剪貼板</button>
+            <button id="restore-btn" class="control-btn restore-btn">恢復所有行</button>
+        </div>
+
         <div class="table-container">
             <div id="loading" class="loading">
                 <div class="spinner"></div>
@@ -457,12 +456,6 @@ MAIN_TEMPLATE = """
                 <tbody id="table-body">
                 </tbody>
             </table>
-        </div>
-
-        <div class="controls">
-            <button id="align-btn" class="control-btn align-btn">⚖️ 對齊實例</button>
-            <button id="screenshot-btn" class="control-btn screenshot-btn">📸 截圖到剪貼板</button>
-            <button id="restore-btn" class="control-btn restore-btn">恢復所有行</button>
         </div>
     </div>
 
@@ -1113,19 +1106,12 @@ MAIN_TEMPLATE = """
             btn.textContent = '📸 處理中...';
 
             try {
-                // Hide controls before screenshot
-                const controls = document.querySelector('.controls');
-                controls.style.display = 'none';
-
-                // Create canvas from the table container
+                // Create canvas from the entire body (including controls)
                 const canvas = await html2canvas(document.body, {
                     backgroundColor: '#f5f7fa',
                     scale: 2,  // Higher quality
                     logging: false
                 });
-
-                // Show controls again
-                controls.style.display = 'flex';
 
                 // Convert canvas to blob
                 canvas.toBlob(async function(blob) {
@@ -1164,7 +1150,6 @@ MAIN_TEMPLATE = """
 
             } catch (err) {
                 console.error('Screenshot failed:', err);
-                controls.style.display = 'flex';
                 btn.textContent = '❌ 截圖失敗';
                 setTimeout(() => {
                     btn.textContent = '📸 截圖到剪貼板';
