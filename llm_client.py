@@ -20,6 +20,7 @@ class Request:
     system_prompt: str = "You are a helpful assistant"
     reasoning_on: bool = True
     temperature: Optional[float] = None
+    min_tokens: Optional[int] = None
 
 
 @dataclass
@@ -28,6 +29,7 @@ class CompletionRequest:
     model_type: str = 'gpt-oss'
     temperature: Optional[float] = None
     max_tokens: int = 20480
+    min_tokens: Optional[int] = None
 
 
 @dataclass
@@ -75,6 +77,7 @@ class LLMClient:
         self.client = OpenAI(
             api_key=self.api_key,
             base_url=self.base_url,
+            timeout=180.0,  # 3 minutes connection timeout
         )
 
     def _get_model(self, model_type):
@@ -121,29 +124,52 @@ class LLMClient:
                 messages.append({"role": "assistant", "content": content})
                 messages.append({"role": "user", "content": request.queries[k]})
 
-            response = self.client.chat.completions.create(
-                model=self._get_model(request.model_type),
-                messages=messages,
-                timeout=timeout,
-                temperature=request.temperature,
+            params = {
+                'model': self._get_model(request.model_type),
+                'messages': messages,
+                'timeout': timeout,
+                'temperature': request.temperature,
                 **kwargs,
-            )
+            }
+
+            # Note: min_tokens is not supported by OpenRouter API
+            # if request.min_tokens is not None:
+            #     params['min_tokens'] = request.min_tokens
+
+            response = self.client.chat.completions.create(**params)
+
+            # Check for errors in response
+            if not response.choices or len(response.choices) == 0:
+                raise Exception("OpenRouter API returned no choices")
+
+            choice = response.choices[0]
+
+            # Check finish_reason for errors
+            if hasattr(choice, 'finish_reason'):
+                if choice.finish_reason == 'error':
+                    error_msg = getattr(choice, 'error', 'Unknown error')
+                    raise Exception(f"OpenRouter API error: {error_msg}")
+                elif choice.finish_reason == 'content_filter':
+                    raise Exception("OpenRouter API: Content filtered")
+                elif choice.finish_reason == 'length':
+                    # This is a warning, not an error - content was truncated due to max_tokens
+                    pass
 
             reasoning_content = None
             if request.model_type == 'deepseek':
                 if request.reasoning_on:
-                    reasoning_content, content = self._parse_deepseek_reasoning_content(response.choices[0].message.content)
+                    reasoning_content, content = self._parse_deepseek_reasoning_content(choice.message.content)
                 else:
-                    content = response.choices[0].message.content
+                    content = choice.message.content
 
             elif request.model_type == 'gpt-oss':
                 if request.reasoning_on:
-                    reasoning_content = response.choices[0].message.reasoning_content
-                content = response.choices[0].message.content
+                    reasoning_content = choice.message.reasoning_content
+                content = choice.message.content
 
             elif request.model_type == 'qwen3':
                 if request.reasoning_on:
-                    reasoning_content, content = self._parse_deepseek_reasoning_content(response.choices[0].message.content)
+                    reasoning_content, content = self._parse_deepseek_reasoning_content(choice.message.content)
                 else:
                     raise NotImplementedError
 
@@ -151,15 +177,38 @@ class LLMClient:
 
     def complete(self, request: CompletionRequest, timeout=3600*2):
         """Text completion (not chat completion)"""
-        response = self.client.completions.create(
-            model=self._get_model(request.model_type),
-            prompt=request.prompt,
-            timeout=timeout,
-            temperature=request.temperature,
-            max_tokens=request.max_tokens,
-        )
+        params = {
+            'model': self._get_model(request.model_type),
+            'prompt': request.prompt,
+            'timeout': timeout,
+            'temperature': request.temperature,
+            'max_tokens': request.max_tokens,
+        }
 
-        content = response.choices[0].text
+        # Note: min_tokens is not supported by OpenRouter API
+        # if request.min_tokens is not None:
+        #     params['min_tokens'] = request.min_tokens
+
+        response = self.client.completions.create(**params)
+
+        # Check for errors in response
+        if not response.choices or len(response.choices) == 0:
+            raise Exception("OpenRouter API returned no choices")
+
+        choice = response.choices[0]
+
+        # Check finish_reason for errors
+        if hasattr(choice, 'finish_reason'):
+            if choice.finish_reason == 'error':
+                error_msg = getattr(choice, 'error', 'Unknown error')
+                raise Exception(f"OpenRouter API error: {error_msg}")
+            elif choice.finish_reason == 'content_filter':
+                raise Exception("OpenRouter API: Content filtered")
+            elif choice.finish_reason == 'length':
+                # This is a warning, not an error - content was truncated due to max_tokens
+                pass
+
+        content = choice.text
         return content
 
     def generate_concurrent(self, tasks, max_workers=None):
