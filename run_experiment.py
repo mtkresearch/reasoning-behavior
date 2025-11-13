@@ -249,7 +249,7 @@ def rebuild_json_from_jsonl(
     total = len(results)
     generation_successful = sum(1 for r in results if r.get('generation_success', False))
     generation_failed = total - generation_successful
-    grading_successful = sum(1 for r in results if r.get('grading_success', False))
+    grading_successful = sum(1 for r in results if r.get('success', False))
     grading_failed = generation_successful - grading_successful
     correct = sum(1 for r in results if r.get('is_correct', False))
     accuracy = correct / grading_successful if grading_successful > 0 else 0.0
@@ -506,7 +506,7 @@ def task_to_result(task: Task) -> Dict:
         'is_correct': None,
         'grading_reasoning': None,
         'generation_success': success,
-        'grading_success': False,
+        'success': False,
         'error': error,
         'retry_count': 0  # Track retry attempts
     }
@@ -567,7 +567,7 @@ def _save_results_with_metadata(
     # Calculate summary statistics
     # Support both new format (generation_success) and legacy format (success)
     generation_successful = [r for r in results if r.get('generation_success', r.get('success', False))]
-    grading_successful = [r for r in results if r.get('grading_success', False)]
+    grading_successful = [r for r in results if r.get('success', False)]
     correct_count = sum(1 for r in grading_successful if r.get('is_correct', False))
 
     summary = {
@@ -811,7 +811,7 @@ def run_experiment(
     # Identify which need grading
     need_grading = [
         r for r in stage1_successful
-        if r['unique_id'] not in stage2_results_map or not stage2_results_map[r['unique_id']].get('grading_success', False)
+        if r['unique_id'] not in stage2_results_map or not stage2_results_map[r['unique_id']].get('success', False)
     ]
 
     print(f"Total successful generations: {len(stage1_successful)}")
@@ -836,7 +836,7 @@ def run_experiment(
                 graded_result = stage1_results_map[result_id].copy()
                 graded_result['is_correct'] = parse_yes_no_response(grading_task.response.content)
                 graded_result['grading_reasoning'] = grading_task.response.content
-                graded_result['grading_success'] = True
+                graded_result['success'] = True
 
                 # Update Stage 2 map
                 stage2_results_map[result_id] = graded_result

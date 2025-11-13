@@ -47,13 +47,17 @@ def scan_experiments(exp_dir: Path) -> List[Dict[str, Any]]:
             summary = data.get('summary', {})
             results = data.get('results', [])
 
-            # Build results map (unique_id -> is_correct)
+            # Build results map (unique_id -> {is_correct, success})
             results_map = {}
             for result in results:
                 unique_id = result.get('unique_id')
                 is_correct = result.get('is_correct', False)
+                success = result.get('success', True)  # Default to True if not specified
                 if unique_id:
-                    results_map[unique_id] = is_correct
+                    results_map[unique_id] = {
+                        'is_correct': is_correct,
+                        'success': success
+                    }
 
             # Construct relative path from exp/
             rel_path = results_file.relative_to(exp_dir)
@@ -169,6 +173,19 @@ MAIN_TEMPLATE = """
         .restore-btn:hover {
             background: #2980b9;
             box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+        }
+
+        .align-btn {
+            background: #9b59b6;
+        }
+
+        .align-btn:hover {
+            background: #8e44ad;
+            box-shadow: 0 4px 12px rgba(155, 89, 182, 0.4);
+        }
+
+        .align-btn.active {
+            background: #f39c12;
         }
 
         .screenshot-btn {
@@ -443,6 +460,7 @@ MAIN_TEMPLATE = """
         </div>
 
         <div class="controls">
+            <button id="align-btn" class="control-btn align-btn">⚖️ 對齊實例</button>
             <button id="screenshot-btn" class="control-btn screenshot-btn">📸 截圖到剪貼板</button>
             <button id="restore-btn" class="control-btn restore-btn">恢復所有行</button>
         </div>
@@ -456,6 +474,10 @@ MAIN_TEMPLATE = """
         let deletedRows = new Set();
         let rowIndex = 0;
 
+        // Alignment state
+        let alignmentMode = true;  // Default to alignment mode
+        let alignmentCache = null;  // Cache for aligned experiments
+
         async function loadExperiments() {
             try {
                 const response = await fetch('/api/experiments');
@@ -467,10 +489,35 @@ MAIN_TEMPLATE = """
                     return;
                 }
 
-                // Calculate min and max accuracy for normalization
-                const accuracies = experiments.map(e => e.accuracy);
-                minAcc = Math.min(...accuracies);
-                maxAcc = Math.max(...accuracies);
+                // Apply alignment by default
+                if (alignmentMode) {
+                    const aligned = alignExperiments();
+                    if (aligned !== null) {
+                        // Store original and use aligned data
+                        window.originalExperiments = experiments;
+
+                        // Calculate min/max accuracy from aligned data
+                        const accuracies = aligned.map(e => e.accuracy);
+                        minAcc = Math.min(...accuracies);
+                        maxAcc = Math.max(...accuracies);
+
+                        // Update button state
+                        const btn = document.getElementById('align-btn');
+                        btn.classList.add('active');
+                        btn.textContent = '✅ 已對齊 (點擊取消)';
+                    } else {
+                        // If alignment fails, use original data
+                        alignmentMode = false;
+                        const accuracies = experiments.map(e => e.accuracy);
+                        minAcc = Math.min(...accuracies);
+                        maxAcc = Math.max(...accuracies);
+                    }
+                } else {
+                    // Calculate min and max accuracy for normalization
+                    const accuracies = experiments.map(e => e.accuracy);
+                    minAcc = Math.min(...accuracies);
+                    maxAcc = Math.max(...accuracies);
+                }
 
                 renderTable();
             } catch (error) {
@@ -682,9 +729,24 @@ MAIN_TEMPLATE = """
             // Reset row index
             rowIndex = 0;
 
+            // Use aligned data if in alignment mode
+            let dataToRender = experiments;
+            if (alignmentMode && alignmentCache) {
+                dataToRender = alignmentCache;
+            }
+
+            // Temporarily swap experiments for tree building
+            const originalExperiments = experiments;
+            if (alignmentMode && alignmentCache) {
+                experiments = alignmentCache;
+            }
+
             // Always render in tree structure with baseline first
             treeStructure = buildFlowTree();
             renderTreeRows(tbody, treeStructure, [], 0, true, null, null);
+
+            // Restore original experiments
+            experiments = originalExperiments;
 
             // Show table, hide loading
             document.getElementById('loading').style.display = 'none';
@@ -901,14 +963,14 @@ MAIN_TEMPLATE = """
             }
 
             // Count: parent correct
-            const parentCorrect = commonIds.filter(id => parentMap[id]);
+            const parentCorrect = commonIds.filter(id => parentMap[id].is_correct);
 
             if (parentCorrect.length === 0) {
                 return { probability: 0, bothCorrect: 0, parentCorrect: 0 };
             }
 
             // Count: both correct
-            const bothCorrect = parentCorrect.filter(id => childMap[id]);
+            const bothCorrect = parentCorrect.filter(id => childMap[id].is_correct);
 
             // Calculate conditional probability
             return {
@@ -918,8 +980,131 @@ MAIN_TEMPLATE = """
             };
         }
 
+        function alignExperiments() {
+            /**
+             * Align all experiments to use only common successful instances
+             * Uses cached computation for performance
+             */
+            if (alignmentCache !== null) {
+                // Use cached result
+                return alignmentCache;
+            }
+
+            console.time('alignExperiments');
+
+            // Step 1: Find all unique instance IDs across all experiments
+            const allInstanceIds = new Set();
+            experiments.forEach(exp => {
+                if (exp.results_map) {
+                    Object.keys(exp.results_map).forEach(id => allInstanceIds.add(id));
+                }
+            });
+
+            console.log(`Total unique instances: ${allInstanceIds.size}`);
+
+            // Step 2: For each instance, check if it's successful in ALL experiments
+            const commonSuccessfulIds = Array.from(allInstanceIds).filter(instanceId => {
+                return experiments.every(exp => {
+                    const result = exp.results_map?.[instanceId];
+                    // Instance must exist and be successful in this experiment
+                    return result && result.success;
+                });
+            });
+
+            console.log(`Common successful instances: ${commonSuccessfulIds.length}`);
+
+            if (commonSuccessfulIds.length === 0) {
+                console.warn('No common successful instances found!');
+                return null;
+            }
+
+            // Step 3: Recalculate accuracy for each experiment using only common successful instances
+            const alignedExperiments = experiments.map(exp => {
+                const alignedResultsMap = {};
+                let correct = 0;
+
+                commonSuccessfulIds.forEach(instanceId => {
+                    const result = exp.results_map[instanceId];
+                    alignedResultsMap[instanceId] = result;
+                    if (result.is_correct) {
+                        correct++;
+                    }
+                });
+
+                const total = commonSuccessfulIds.length;
+                const accuracy = total > 0 ? correct / total : 0;
+
+                return {
+                    ...exp,
+                    results_map: alignedResultsMap,
+                    correct: correct,
+                    successful: total,
+                    total: total,
+                    accuracy: accuracy,
+                    aligned: true
+                };
+            });
+
+            console.timeEnd('alignExperiments');
+
+            // Cache the result
+            alignmentCache = alignedExperiments;
+
+            return alignedExperiments;
+        }
+
+        function toggleAlignment() {
+            const btn = document.getElementById('align-btn');
+
+            if (alignmentMode) {
+                // Switch to normal mode
+                alignmentMode = false;
+                btn.classList.remove('active');
+                btn.textContent = '⚖️ 對齊實例';
+
+                // Restore original experiments
+                if (window.originalExperiments) {
+                    experiments = window.originalExperiments;
+                    window.originalExperiments = null;
+                }
+
+                // Recalculate min/max accuracy for original data
+                const accuracies = experiments.map(e => e.accuracy);
+                minAcc = Math.min(...accuracies);
+                maxAcc = Math.max(...accuracies);
+
+                renderTable();
+            } else {
+                // Switch to alignment mode
+                const aligned = alignExperiments();
+
+                if (aligned === null) {
+                    alert('無法對齊：沒有找到所有實驗都成功的共同實例');
+                    return;
+                }
+
+                alignmentMode = true;
+                btn.classList.add('active');
+                btn.textContent = '✅ 已對齊 (點擊取消)';
+
+                // Store original experiments and use aligned version
+                window.originalExperiments = experiments;
+                experiments = aligned;
+
+                // Recalculate min/max accuracy for aligned data
+                const accuracies = experiments.map(e => e.accuracy);
+                minAcc = Math.min(...accuracies);
+                maxAcc = Math.max(...accuracies);
+
+                renderTable();
+            }
+        }
+
         // Setup restore button
         document.getElementById('restore-btn').addEventListener('click', restoreAllRows);
+
+        // Setup alignment button
+        document.getElementById('align-btn').addEventListener('click', toggleAlignment);
 
         // Setup screenshot button
         document.getElementById('screenshot-btn').addEventListener('click', async function() {
