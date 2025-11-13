@@ -54,6 +54,17 @@ Available Processors
    Optional parameters:
    - seed: Random seed for reproducibility
 
+4. insert(mode, sentence='...', count=1, seed=None)
+   Insert text into reasoning chain at random positions.
+
+   Modes:
+   - 'fix': Insert fixed text at random positions
+
+   Parameters:
+   - sentence: Text to insert (default: 'Maybe the answer is 123.')
+   - count: Number of times to insert the text (default: 1)
+   - seed: Random seed for reproducibility
+
 -----------------------------------------------------------------------------
 Examples
 -----------------------------------------------------------------------------
@@ -82,6 +93,15 @@ python mask_experiment.py --flow "mask('n-lines',num_prev_lines=2)"
 # Example 8: Complex combination
 python mask_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('number-advance'),shuffle('line',seed=123)"
 
+# Example 9: Insert noise at random positions
+python mask_experiment.py --flow "insert('fix',sentence='Maybe the answer is 123.',count=5)"
+
+# Example 10: Combine insert with other processors
+python mask_experiment.py --flow "insert('fix',sentence='Thus answer: 123.',count=3),shuffle('line')"
+
+# Example 11: Insert with specific seed for reproducibility
+python mask_experiment.py --flow "insert('fix',sentence='Answer: 456.',count=5,seed=42)"
+
 -----------------------------------------------------------------------------
 Other Parameters
 -----------------------------------------------------------------------------
@@ -102,8 +122,10 @@ import argparse
 from pathlib import Path
 from typing import List, Dict
 from tqdm import tqdm
+import logging
 
 from llm_client import LLMClient, Task, Request, CompletionRequest
+from logger_config import setup_logger
 from core import (
     parse_answer_from_completion,
     parse_yes_no_response,
@@ -122,7 +144,10 @@ from core import (
 from pipeline import parse_flow, Pipeline
 
 CONCURRENCY = 10
-MAX_TRY = 3
+MAX_RETRY = 3
+
+# Setup logger
+logger = setup_logger(__name__, log_file='logs/run_experiment.log')
 
 
 # =============================================================================
@@ -142,9 +167,12 @@ def generate_output_path_from_flow(results_path: str, flow: str) -> str:
     Returns:
         Generated output path
 
-    Example:
+    Examples:
         flow = "mask('number'),shuffle('line')"
         -> exp/mask_number/shuffle_line/results.json
+
+        flow = "insert('fix',sentence='Answer: 123.',count=5)"
+        -> exp/insert_fix_sentence_Answer_123_count_5/results.json
     """
     import re
     from pathlib import Path
@@ -155,21 +183,19 @@ def generate_output_path_from_flow(results_path: str, flow: str) -> str:
     # Parse flow to extract processor steps
     processors = parse_flow(flow)
 
-    # Build path segments
+    # Build path segments by sanitizing the flow string directly
     segments = []
-    for proc in processors:
-        proc_type = proc.__class__.__name__.replace('Processor', '').lower()
 
-        # Get processor-specific info
-        if hasattr(proc, 'mode'):
-            mode = proc.mode
-            # Sanitize mode for filesystem (replace all non-alphanumeric chars with underscore)
-            mode_safe = re.sub(r'[^\w]', '_', mode)
-            segment = f"{proc_type}_{mode_safe}"
-        else:
-            segment = proc_type
+    # Split flow by comma to get individual processor calls
+    flow_steps = re.split(r',(?![^()]*\))', flow)
 
-        segments.append(segment)
+    for step in flow_steps:
+        step = step.strip()
+        # Sanitize: replace non-alphanumeric chars with underscore, collapse multiple underscores
+        sanitized = re.sub(r'[^\w]+', '_', step)
+        # Remove leading/trailing underscores
+        sanitized = sanitized.strip('_')
+        segments.append(sanitized)
 
     # Construct path: exp/<seg1>/<seg2>/.../<segN>/results.json
     output_path = Path("exp") / Path(*segments) / "results.json"
@@ -340,7 +366,8 @@ def prepare_task(
     # Extract index from unique_id (e.g., "aime2025-I-0-2" -> 2)
     try:
         index = int(unique_id.split('-')[-1])
-    except:
+    except (ValueError, IndexError, AttributeError) as e:
+        logger.debug(f"Failed to extract index from {unique_id}: {e}")
         index = hash(unique_id) % 10000
 
     # Determine flow string
@@ -359,14 +386,6 @@ def prepare_task(
     # Process reasoning using Pipeline
     if flow_str:
         processors = parse_flow(flow_str)
-
-        # Assign default seed to shuffle processors that don't have one specified
-        # All questions will use the same seed for consistent shuffle behavior
-        from processors import ShuffleProcessor
-        for proc in processors:
-            if isinstance(proc, ShuffleProcessor) and proc.seed is None:
-                proc.seed = seed_base
-
         pipeline = Pipeline(processors)
         context = {
             'question': question,
@@ -389,6 +408,7 @@ def prepare_task(
         model_type=model_type,
         temperature=0.5,
         max_tokens=5000
+        # Note: min_tokens not supported by OpenRouter API
     )
 
     # Create Task with metadata
@@ -416,40 +436,35 @@ def task_to_result(task: Task) -> Dict:
     metadata = task.metadata
     response = task.response
 
-    if response.success:
-        generated_answer = response.content
+    # Check if response is successful and has non-empty content
+    success = response.success and bool(response.content)
 
-        result = {
-            'unique_id': metadata['unique_id'],
-            'question_id': task.index,
-            'question': metadata['question'],
-            'ground_truth': metadata['ground_truth'],
-            'original_reasoning': metadata['original_reasoning'],
-            'processed_reasoning': metadata.get('processed_reasoning', metadata.get('masked_reasoning', '')),
-            'flow': metadata.get('flow', ''),
-            'processing_metadata': metadata.get('processing_metadata', []),
-            'generated_answer': generated_answer,
-            'is_correct': None,  # Will be filled by grading
-            'grading_reasoning': None,
-            'success': True,
-            'error': None
-        }
+    # Determine error message
+    if not response.success:
+        error = response.err_message
+    elif not response.content:
+        error = 'Empty generated_answer from API'
     else:
-        result = {
-            'unique_id': metadata['unique_id'],
-            'question_id': task.index,
-            'question': metadata['question'],
-            'ground_truth': metadata['ground_truth'],
-            'original_reasoning': metadata['original_reasoning'],
-            'processed_reasoning': metadata.get('processed_reasoning', metadata.get('masked_reasoning', '')),
-            'flow': metadata.get('flow', ''),
-            'processing_metadata': metadata.get('processing_metadata', []),
-            'generated_answer': None,
-            'is_correct': False,
-            'grading_reasoning': None,
-            'success': False,
-            'error': response.err_message
-        }
+        error = None
+
+    # Build result dict
+    result = {
+        'unique_id': metadata['unique_id'],
+        'question_id': task.index,
+        'question': metadata['question'],
+        'ground_truth': metadata['ground_truth'],
+        'original_reasoning': metadata['original_reasoning'],
+        'processed_reasoning': metadata.get('processed_reasoning', metadata.get('masked_reasoning', '')),
+        'flow': metadata.get('flow', ''),
+        'processing_metadata': metadata.get('processing_metadata', []),
+        'generated_answer': response.content if success else None,
+        'is_correct': None,
+        'grading_reasoning': None,
+        'generation_success': success,
+        'grading_success': False,
+        'error': error,
+        'retry_count': 0  # Track retry attempts
+    }
 
     return result
 
@@ -489,6 +504,7 @@ def _save_results_with_metadata(
             })
     except Exception as e:
         # If flow parsing fails, create minimal config
+        logger.warning(f"Flow parsing failed for '{flow_str}': {e}")
         flow_config = [{'step': 1, 'processor': 'unknown', 'params': {'flow': flow_str}}]
 
     # Extract dataset name from results_path
@@ -500,19 +516,23 @@ def _save_results_with_metadata(
             data_index = path_parts.index('data')
             if len(path_parts) > data_index + 1:
                 dataset_name = path_parts[data_index + 1]
-    except Exception:
-        pass
+    except (ValueError, IndexError, AttributeError) as e:
+        logger.debug(f"Failed to extract dataset name from '{results_path}': {e}")
 
     # Calculate summary statistics
-    successful_results = [r for r in results if r.get('success', False)]
-    correct_count = sum(1 for r in successful_results if r.get('is_correct', False))
+    # Support both new format (generation_success) and legacy format (success)
+    generation_successful = [r for r in results if r.get('generation_success', r.get('success', False))]
+    grading_successful = [r for r in results if r.get('grading_success', False)]
+    correct_count = sum(1 for r in grading_successful if r.get('is_correct', False))
 
     summary = {
         'total_questions': len(results),
-        'successful': len(successful_results),
-        'failed': len(results) - len(successful_results),
+        'generation_successful': len(generation_successful),
+        'generation_failed': len(results) - len(generation_successful),
+        'grading_successful': len(grading_successful),
+        'grading_failed': len(generation_successful) - len(grading_successful),
         'correct': correct_count,
-        'accuracy': correct_count / len(successful_results) if successful_results else 0
+        'accuracy': correct_count / len(grading_successful) if grading_successful else 0
     }
 
     # Build experiment metadata
@@ -560,6 +580,7 @@ def create_grading_tasks(results: List[Dict], judge_model_type: str = 'gpt-oss')
                 system_prompt="You are a helpful mathematical grading assistant.",
                 reasoning_on=False,
                 temperature=0.01
+                # Note: min_tokens not supported by OpenRouter API
             ),
             metadata={'result_id': result['unique_id']}
         ))
@@ -614,14 +635,25 @@ def run_experiment(
                     existing_results = existing_data['results']
                 elif isinstance(existing_data, list):
                     existing_results = existing_data
-                completed_ids = {r['unique_id'] for r in existing_results if r.get('success')}
-                print(f"Found {len(completed_ids)} completed results in {output_path}")
-        except Exception as e:
-            print(f"Warning: Failed to load existing results: {e}")
 
-    # Filter out completed items
+                # Only skip tasks that are SUCCESSFULLY completed
+                # Check both 'generation_success' (new format) and 'success' (legacy format)
+                completed_ids = {
+                    r['unique_id'] for r in existing_results
+                    if r.get('generation_success', r.get('success', False))
+                }
+
+                # Count for logging
+                successful_count = len(completed_ids)
+                failed_count = len(existing_results) - successful_count
+                logger.info(f"Found {len(existing_results)} existing results: {successful_count} successful, {failed_count} to retry")
+                print(f"Found {len(existing_results)} existing results: {successful_count} successful, {failed_count} to retry")
+        except Exception as e:
+            logger.warning(f"Failed to load existing results: {e}")
+
+    # Filter out only successfully completed items
     data = [item for item in data if item['unique_id'] not in completed_ids]
-    print(f"Remaining questions to process: {len(data)}")
+    print(f"Tasks to process: {len(data)}")
 
     # Determine flow string
     if flow:
@@ -671,61 +703,167 @@ def run_experiment(
         tasks.append(task)
 
     # Phase 1: Generate answers with masked reasoning
-    results = []
-    print(f"\n=== Phase 1: Generating answers with masked reasoning ({len(tasks)} tasks) ===")
+    results = existing_results.copy()  # Start with existing results
 
-    for completed_task in tqdm(client.complete_concurrent(tasks, max_workers=CONCURRENCY), total=len(tasks)):
-        result = task_to_result(completed_task)
-        results.append(result)
+    if len(tasks) > 0:
+        print(f"\n=== Phase 1: Generating answers with masked reasoning ({len(tasks)} tasks) ===")
 
-        # Save incrementally in new format
-        _save_results_with_metadata(output_path, results, results_path, model_type, flow_str)
+        # Collect all results first
+        for completed_task in tqdm(client.complete_concurrent(tasks, max_workers=CONCURRENCY), total=len(tasks)):
+            new_result = task_to_result(completed_task)
+
+            # Check if this result already exists (from previous failed attempt)
+            existing_idx = None
+            for idx, r in enumerate(results):
+                if r['unique_id'] == new_result['unique_id']:
+                    existing_idx = idx
+                    break
+
+            if existing_idx is not None:
+                # Update existing result instead of appending
+                results[existing_idx] = new_result
+            else:
+                # New result, append it
+                results.append(new_result)
+
+            # Save incrementally after each task
+            _save_results_with_metadata(output_path, results, results_path, model_type, flow_str)
+
+        # Unified retry logic for failed tasks
+        for retry_attempt in range(MAX_RETRY):
+            # Identify ALL failed tasks (not just empty answers)
+            failed_results = [
+                r for r in results
+                if (not r.get('generation_success')) or  # API failure
+                   (r.get('generation_success') and not r.get('generated_answer'))  # Empty answer
+            ]
+
+            if not failed_results:
+                break
+
+            print(f"\n=== Retry attempt {retry_attempt + 1}/{MAX_RETRY}: {len(failed_results)} failed tasks ===")
+
+            # Prepare retry tasks
+            retry_tasks = []
+            for result in failed_results:
+                # Find original task
+                original_task = next(
+                    (t for t in tasks if t.metadata['unique_id'] == result['unique_id']),
+                    None
+                )
+                if original_task:
+                    retry_tasks.append(original_task)
+
+            # Execute retry tasks with error handling
+            try:
+                for completed_task in tqdm(client.complete_concurrent(retry_tasks, max_workers=CONCURRENCY),
+                                          total=len(retry_tasks)):
+                    # Update corresponding result
+                    for result in results:
+                        if result['unique_id'] == completed_task.metadata['unique_id']:
+                            # Update with new response
+                            response = completed_task.response
+                            if response.success and response.content:
+                                result['generated_answer'] = response.content
+                                result['generation_success'] = True
+                                result['error'] = None
+                                result['retry_count'] = retry_attempt + 1
+                            else:
+                                result['retry_count'] = retry_attempt + 1
+                                result['generation_success'] = response.success
+                                result['error'] = response.err_message if response.err_message else result.get('error')
+                                print(f"Retry {retry_attempt + 1} failed for {result['unique_id']}: {result['error']}")
+
+                            # Save incrementally after each retry
+                            _save_results_with_metadata(output_path, results, results_path, model_type, flow_str)
+                            break
+
+            except Exception as e:
+                logger.error(f"Retry batch failed with exception: {e}", exc_info=True)
+                print(f"\nERROR: Retry batch failed with exception: {e}")
+                print("Continuing with remaining retries...")
+                continue  # Don't crash, try next retry round
+
+        # Final warning for still-failed tasks
+        still_failed = [
+            r for r in results
+            if not r.get('generation_success') or (r.get('generation_success') and not r.get('generated_answer'))
+        ]
+        if still_failed:
+            logger.warning(f"{len(still_failed)} tasks still failed after {MAX_RETRY} retries")
+            print(f"\nWarning: {len(still_failed)} tasks still failed after {MAX_RETRY} retries")
+            for result in still_failed:
+                error_msg = result.get('error', 'Unknown error')
+                logger.warning(f"Failed task: {result['unique_id']}: {error_msg}")
+                print(f"  - {result['unique_id']}: {error_msg}")
+    else:
+        print(f"\n=== Phase 1: All tasks already completed, skipping generation ===")
 
     # Phase 2: Grade answers
     print(f"\n=== Phase 2: Grading answers ===")
-    grading_tasks = create_grading_tasks(results, judge_model_type=model_type)
+    # Grade ALL results with generation_success=True
+    # This ensures we always have complete grading information
+    results_to_grade = [r for r in results if r.get('generation_success', False)]
 
-    print(f"Grading {len(grading_tasks)} answers...")
-    for grading_task in tqdm(client.generate_concurrent(grading_tasks, max_workers=CONCURRENCY),
-                             total=len(grading_tasks)):
-        if not grading_task.response.success:
-            print(f"\nError in grading task {grading_task.index}: {grading_task.response.err_message}")
-            continue
+    # Count how many already have grading
+    already_graded = sum(1 for r in results_to_grade if r.get('grading_success', False))
+    print(f"Total successful generations: {len(results_to_grade)}")
+    print(f"Already graded: {already_graded}")
+    print(f"Need to grade: {len(results_to_grade) - already_graded}")
 
-        result_id = grading_task.metadata['result_id']
-        # Find corresponding result
-        for result in results:
-            if result['unique_id'] == result_id:
-                result['is_correct'] = parse_yes_no_response(grading_task.response.content)
-                result['grading_reasoning'] = grading_task.response.content
-                break
+    grading_tasks = create_grading_tasks(results_to_grade, judge_model_type=model_type)
 
-        # Save incrementally after grading in new format
-        _save_results_with_metadata(output_path, results, results_path, model_type, flow_str)
+    if len(grading_tasks) > 0:
+        print(f"Grading {len(grading_tasks)} answers...")
+        for grading_task in tqdm(client.generate_concurrent(grading_tasks, max_workers=CONCURRENCY),
+                                 total=len(grading_tasks)):
+            if not grading_task.response.success:
+                logger.error(f"Error in grading task {grading_task.index}: {grading_task.response.err_message}")
+                print(f"\nError in grading task {grading_task.index}: {grading_task.response.err_message}")
+                continue
+
+            result_id = grading_task.metadata['result_id']
+            # Find corresponding result
+            for result in results:
+                if result['unique_id'] == result_id:
+                    result['is_correct'] = parse_yes_no_response(grading_task.response.content)
+                    result['grading_reasoning'] = grading_task.response.content
+                    result['grading_success'] = True
+                    break
+
+            # Save incrementally after grading in new format
+            _save_results_with_metadata(output_path, results, results_path, model_type, flow_str)
+    else:
+        print(f"All results already graded, skipping grading phase")
 
     # Calculate statistics
-    successful_results = [r for r in results if r['success']]
-    correct_count = sum(1 for r in successful_results if r.get('is_correct', False))
+    generation_successful = [r for r in results if r.get('generation_success', False)]
+    grading_successful = [r for r in results if r.get('grading_success', False)]
+    correct_count = sum(1 for r in grading_successful if r.get('is_correct', False))
 
     stats = {
-        'total_questions': len(data),
-        'successful': len(successful_results),
-        'failed': len(data) - len(successful_results),
+        'total_questions': len(results),
+        'generation_successful': len(generation_successful),
+        'generation_failed': len(results) - len(generation_successful),
+        'grading_successful': len(grading_successful),
+        'grading_failed': len(generation_successful) - len(grading_successful),
         'correct': correct_count,
-        'accuracy': correct_count / len(successful_results) if successful_results else 0
+        'accuracy': correct_count / len(grading_successful) if grading_successful else 0
     }
 
     # Print experiment summary
     print("\n" + "="*60)
     print("EXPERIMENT RESULTS")
     print("="*60)
-    print(f"Flow:                {flow_str}")
-    print(f"Model:               {model_type}")
-    print(f"Total Questions:     {stats['total_questions']}")
-    print(f"Successful:          {stats['successful']}")
-    print(f"Failed:              {stats['failed']}")
-    print(f"Correct Answers:     {stats['correct']}")
-    print(f"Accuracy:            {stats['accuracy']:.2%}")
+    print(f"Flow:                         {flow_str}")
+    print(f"Model:                        {model_type}")
+    print(f"Total Questions:              {stats['total_questions']}")
+    print(f"Generation Successful:        {stats['generation_successful']}")
+    print(f"Generation Failed:            {stats['generation_failed']}")
+    print(f"Grading Successful:           {stats['grading_successful']}")
+    print(f"Grading Failed:               {stats['grading_failed']}")
+    print(f"Correct Answers:              {stats['correct']}")
+    print(f"Accuracy:                     {stats['accuracy']:.2%}")
     print("="*60)
 
     print(f"\nResults saved to: {output_path}")

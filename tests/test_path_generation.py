@@ -59,7 +59,7 @@ class TestGenerateOutputPathFromFlow:
         flow = "truncate('last_ratio',ratio=0.3)"
         path = generate_output_path_from_flow("dummy.json", flow)
 
-        assert path == "exp/truncate_last_ratio/results.json"
+        assert path == "exp/truncate_last_ratio_ratio_0_3/results.json"
 
     def test_word_shuffle(self):
         """Test path generation with word shuffle"""
@@ -86,4 +86,22 @@ class TestGenerateOutputPathFromFlow:
         flow = "truncate('last_ratio',ratio=0.3),mask('number-advance'),shuffle('token')"
         path = generate_output_path_from_flow("dummy.json", flow)
 
-        assert path == "exp/truncate_last_ratio/mask_number_advance/shuffle_token/results.json"
+        assert path == "exp/truncate_last_ratio_ratio_0_3/mask_number_advance/shuffle_token/results.json"
+
+    def test_insert_processor(self):
+        """Test path generation with insert processor"""
+        from run_experiment import generate_output_path_from_flow
+
+        flow = "insert('fix',sentence='Answer: 123.',count=5)"
+        path = generate_output_path_from_flow("dummy.json", flow)
+
+        assert path == "exp/insert_fix_sentence_Answer_123_count_5/results.json"
+
+    def test_insert_with_shuffle(self):
+        """Test path generation with insert and shuffle"""
+        from run_experiment import generate_output_path_from_flow
+
+        flow = "insert('fix',sentence='Noise',count=3),shuffle('line')"
+        path = generate_output_path_from_flow("dummy.json", flow)
+
+        assert path == "exp/insert_fix_sentence_Noise_count_3/shuffle_line/results.json"
