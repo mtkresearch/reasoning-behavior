@@ -674,6 +674,13 @@ def truncate_reasoning_lines(reasoning: str, del_last_line: float) -> str:
 # Global tokenizer cache for token-level shuffle
 _TOKENIZER_CACHE = {}
 
+# Model type to tokenizer name mapping
+MODEL_TYPE_TO_TOKENIZER = {
+    'deepseek': 'deepseek-ai/DeepSeek-V3',
+    'gpt-oss': 'openai/gpt-oss-120b',
+    'qwen3': 'deepseek-ai/DeepSeek-R1-0528-Qwen3-8B',
+}
+
 
 def shuffle_reasoning_words(reasoning: str, seed: int = None) -> str:
     """
@@ -699,17 +706,21 @@ def shuffle_reasoning_words(reasoning: str, seed: int = None) -> str:
     return ' '.join(words)
 
 
-def shuffle_reasoning_tokens(reasoning: str, tokenizer_model: str = "gpt2", seed: int = None) -> str:
+def shuffle_reasoning_tokens(reasoning: str, tokenizer_model: str = None, model_type: str = None, seed: int = None) -> str:
     """
     Shuffle reasoning content token-by-token using the model's tokenizer
 
     Args:
         reasoning: Original reasoning content
-        tokenizer_model: Model name for tokenizer (default: gpt2)
+        tokenizer_model: Model name for tokenizer (optional, will use model_type if not provided)
+        model_type: Model type ('deepseek', 'gpt-oss', 'qwen3') to automatically select tokenizer
         seed: Random seed for reproducibility (optional)
 
     Returns:
         Shuffled reasoning content with tokens shuffled
+
+    Raises:
+        ValueError: If neither tokenizer_model nor model_type is provided, or if model_type is invalid
     """
     from transformers import AutoTokenizer
 
@@ -719,6 +730,17 @@ def shuffle_reasoning_tokens(reasoning: str, tokenizer_model: str = "gpt2", seed
     # Handle empty string
     if not reasoning:
         return ""
+
+    # Determine tokenizer model to use
+    if tokenizer_model is None:
+        if model_type is None:
+            raise ValueError("Either tokenizer_model or model_type must be provided")
+
+        if model_type not in MODEL_TYPE_TO_TOKENIZER:
+            raise ValueError(f"Invalid model_type: {model_type}. Must be one of {list(MODEL_TYPE_TO_TOKENIZER.keys())}")
+
+        tokenizer_model = MODEL_TYPE_TO_TOKENIZER[model_type]
+        debug_print(f"Using tokenizer for {model_type}: {tokenizer_model}")
 
     # Load tokenizer (with caching to avoid reloading)
     if tokenizer_model not in _TOKENIZER_CACHE:
@@ -749,7 +771,7 @@ def shuffle_reasoning(reasoning: str, mode: str = 'line', seed: int = None, **kw
         reasoning: Original reasoning content
         mode: Type of shuffle - 'line', 'word', or 'token'
         seed: Random seed for reproducibility (optional)
-        **kwargs: Additional arguments (e.g., tokenizer_model for token mode)
+        **kwargs: Additional arguments (e.g., tokenizer_model or model_type for token mode)
 
     Returns:
         Shuffled reasoning content
@@ -762,7 +784,8 @@ def shuffle_reasoning(reasoning: str, mode: str = 'line', seed: int = None, **kw
     elif mode == 'word':
         return shuffle_reasoning_words(reasoning, seed=seed)
     elif mode == 'token':
-        tokenizer_model = kwargs.get('tokenizer_model', 'gpt2')
-        return shuffle_reasoning_tokens(reasoning, tokenizer_model=tokenizer_model, seed=seed)
+        tokenizer_model = kwargs.get('tokenizer_model')
+        model_type = kwargs.get('model_type')
+        return shuffle_reasoning_tokens(reasoning, tokenizer_model=tokenizer_model, model_type=model_type, seed=seed)
     else:
         raise ValueError(f"Invalid shuffle mode: {mode}. Must be 'line', 'word', or 'token'")

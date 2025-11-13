@@ -242,6 +242,73 @@ class TestShuffleReasoningTokens:
         result = shuffle_reasoning_tokens("", tokenizer_model="gpt2", seed=42)
         assert result == ""
 
+    def test_shuffle_tokens_with_model_type_deepseek(self):
+        """Test token shuffling with model_type='deepseek'"""
+        from core import shuffle_reasoning_tokens
+
+        reasoning = "The quick brown fox jumps over the lazy dog"
+        result = shuffle_reasoning_tokens(reasoning, model_type="deepseek", seed=42)
+
+        # Result should not be empty
+        assert len(result) > 0
+
+        # With high probability, order should be different
+        assert result != reasoning
+
+    def test_shuffle_tokens_with_model_type_gpt_oss(self):
+        """Test token shuffling with model_type='gpt-oss'"""
+        from core import shuffle_reasoning_tokens
+
+        reasoning = "The quick brown fox jumps over the lazy dog"
+        result = shuffle_reasoning_tokens(reasoning, model_type="gpt-oss", seed=42)
+
+        # Result should not be empty
+        assert len(result) > 0
+
+        # With high probability, order should be different
+        assert result != reasoning
+
+    def test_shuffle_tokens_with_model_type_qwen3(self):
+        """Test token shuffling with model_type='qwen3'"""
+        from core import shuffle_reasoning_tokens
+
+        reasoning = "The quick brown fox jumps over the lazy dog"
+        result = shuffle_reasoning_tokens(reasoning, model_type="qwen3", seed=42)
+
+        # Result should not be empty
+        assert len(result) > 0
+
+        # With high probability, order should be different
+        assert result != reasoning
+
+    def test_shuffle_tokens_model_type_reproducible(self):
+        """Test that model_type with same seed produces same shuffle"""
+        from core import shuffle_reasoning_tokens
+
+        reasoning = "The quick brown fox jumps over the lazy dog"
+        result1 = shuffle_reasoning_tokens(reasoning, model_type="gpt-oss", seed=42)
+        result2 = shuffle_reasoning_tokens(reasoning, model_type="gpt-oss", seed=42)
+
+        assert result1 == result2
+
+    def test_shuffle_tokens_invalid_model_type(self):
+        """Test that invalid model_type raises ValueError"""
+        from core import shuffle_reasoning_tokens
+        import pytest
+
+        reasoning = "The quick brown fox"
+        with pytest.raises(ValueError, match="Invalid model_type"):
+            shuffle_reasoning_tokens(reasoning, model_type="invalid_model")
+
+    def test_shuffle_tokens_missing_both_args(self):
+        """Test that missing both tokenizer_model and model_type raises ValueError"""
+        from core import shuffle_reasoning_tokens
+        import pytest
+
+        reasoning = "The quick brown fox"
+        with pytest.raises(ValueError, match="Either tokenizer_model or model_type must be provided"):
+            shuffle_reasoning_tokens(reasoning)
+
 
 class TestShuffleReasoningUnified:
     """Tests for unified shuffle_reasoning() interface"""
@@ -297,3 +364,33 @@ Line 4"""
         # This should work - tokenizer_model is provided
         result = shuffle_reasoning("Test", mode='token', seed=42, tokenizer_model='gpt2')
         assert len(result) > 0
+
+    def test_shuffle_reasoning_token_mode_with_model_type(self):
+        """Test shuffle_reasoning with mode='token' using model_type"""
+        from core import shuffle_reasoning
+
+        reasoning = "The quick brown fox jumps over the lazy dog"
+
+        # Test with different model types
+        for model_type in ['deepseek', 'gpt-oss', 'qwen3']:
+            result = shuffle_reasoning(reasoning, mode='token', seed=42, model_type=model_type)
+            assert len(result) > 0, f"Failed for model_type={model_type}"
+
+    def test_shuffle_reasoning_token_mode_model_type_reproducible(self):
+        """Test that model_type in shuffle_reasoning produces reproducible results"""
+        from core import shuffle_reasoning
+
+        reasoning = "The quick brown fox jumps over the lazy dog"
+        result1 = shuffle_reasoning(reasoning, mode='token', seed=42, model_type='gpt-oss')
+        result2 = shuffle_reasoning(reasoning, mode='token', seed=42, model_type='gpt-oss')
+
+        assert result1 == result2
+
+    def test_shuffle_reasoning_token_mode_missing_both_args(self):
+        """Test that token mode without tokenizer_model or model_type raises error"""
+        from core import shuffle_reasoning
+        import pytest
+
+        reasoning = "The quick brown fox"
+        with pytest.raises(ValueError, match="Either tokenizer_model or model_type must be provided"):
+            shuffle_reasoning(reasoning, mode='token', seed=42)

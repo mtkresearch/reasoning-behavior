@@ -310,6 +310,37 @@ Line 3"""
         assert 'input_stats' in metadata
         assert 'output_stats' in metadata
 
+    def test_shuffle_processor_token_mode_with_model_type(self, sample_context):
+        """Test ShuffleProcessor with mode='token' using model_type parameter"""
+        from processors import ShuffleProcessor
+
+        # Test with different model types
+        for model_type in ['deepseek', 'gpt-oss', 'qwen3']:
+            processor = ShuffleProcessor(mode='token', seed=42, model_type=model_type)
+            reasoning = "The quick brown fox jumps over the lazy dog"
+
+            result = processor.process(reasoning, sample_context)
+
+            assert len(result) > 0, f"Failed for model_type={model_type}"
+
+            # Verify metadata includes model_type
+            metadata = processor.get_metadata()
+            assert metadata['model_type'] == model_type
+
+    def test_shuffle_processor_token_mode_model_type_reproducible(self, sample_context):
+        """Test that ShuffleProcessor with model_type produces reproducible results"""
+        from processors import ShuffleProcessor
+
+        reasoning = "The quick brown fox jumps over the lazy dog"
+
+        processor1 = ShuffleProcessor(mode='token', seed=42, model_type='gpt-oss')
+        processor2 = ShuffleProcessor(mode='token', seed=42, model_type='gpt-oss')
+
+        result1 = processor1.process(reasoning, sample_context)
+        result2 = processor2.process(reasoning, sample_context)
+
+        assert result1 == result2
+
 
 class TestInsertProcessor:
     """Tests for InsertProcessor"""

@@ -216,7 +216,7 @@ class ShuffleProcessor(Processor):
     Supported modes:
     - 'line': Shuffle lines
     - 'word': Shuffle words
-    - 'token': Shuffle tokens using a tokenizer (kwargs: tokenizer_model)
+    - 'token': Shuffle tokens using a tokenizer (kwargs: tokenizer_model or model_type)
     """
 
     def __init__(self, mode: str, seed: int = 42, **kwargs):
@@ -226,7 +226,9 @@ class ShuffleProcessor(Processor):
         Args:
             mode: Shuffle mode (see class docstring)
             seed: Random seed for reproducibility (optional)
-            **kwargs: Additional parameters (tokenizer_model for token mode)
+            **kwargs: Additional parameters
+                - tokenizer_model: Explicit tokenizer model name for token mode (optional)
+                - model_type: Model type ('deepseek', 'gpt-oss', 'qwen3') to auto-select tokenizer (optional)
         """
         self.mode = mode
         self.seed = seed

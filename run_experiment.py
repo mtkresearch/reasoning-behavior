@@ -147,7 +147,7 @@ from core import (
 from pipeline import parse_flow, Pipeline
 
 # Default concurrency (can be overridden by --max_workers)
-DEFAULT_MAX_WORKERS = 5
+DEFAULT_MAX_WORKERS = 10
 # Default max retry (can be overridden by --max_retry)
 DEFAULT_MAX_RETRY = 3
 
