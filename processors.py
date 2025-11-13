@@ -219,7 +219,7 @@ class ShuffleProcessor(Processor):
     - 'token': Shuffle tokens using a tokenizer (kwargs: tokenizer_model)
     """
 
-    def __init__(self, mode: str, seed: int = None, **kwargs):
+    def __init__(self, mode: str, seed: int = 42, **kwargs):
         """
         Initialize ShuffleProcessor
 
@@ -256,6 +256,91 @@ class ShuffleProcessor(Processor):
             'processor': 'shuffle',
             'mode': self.mode,
             'seed': self.seed,
+            'input_stats': self.last_input_stats,
+            'output_stats': self.last_output_stats
+        }
+        metadata.update(self.kwargs)
+        return metadata
+
+
+class InsertProcessor(Processor):
+    """
+    Processor for inserting text into reasoning
+
+    Supported modes:
+    - 'fix': Insert fixed text at random positions
+
+    Position strategy:
+    - 'random': Insert at random positions (only supported strategy)
+    """
+
+    def __init__(self, mode: str, sentence: str = "Maybe the answer is 123.",
+                 position: str = 'random', count: int = 1, seed: int = 42, **kwargs):
+        """
+        Initialize InsertProcessor
+
+        Args:
+            mode: Insertion mode (currently only 'fix' is supported)
+            sentence: Text to insert
+            position: Position strategy (must be 'random')
+            count: Number of times to insert the text
+            seed: Random seed for reproducibility
+            **kwargs: Additional parameters
+        """
+        self.mode = mode
+        self.sentence = sentence
+        self.position = position
+        self.count = count
+        self.seed = seed
+        self.kwargs = kwargs
+        self.last_input_stats = None
+        self.last_output_stats = None
+        self.insertion_positions = []
+
+    def process(self, reasoning: str, context: Dict) -> str:
+        """Apply insertion to reasoning text"""
+        import random
+
+        self.last_input_stats = self._compute_stats(reasoning)
+
+        if self.mode != 'fix':
+            raise ValueError(f"Invalid insert mode: {self.mode}. Currently only 'fix' is supported.")
+
+        if self.position != 'random':
+            raise ValueError(f"Invalid position strategy: {self.position}. Only 'random' is supported.")
+
+        # Split into non-empty lines
+        lines = reasoning.strip().split('\n')
+        lines = [line for line in lines if line.strip()]
+
+        self.insertion_positions = []
+
+        # Use seed if provided
+        if self.seed is not None:
+            random.seed(self.seed)
+
+        # Insert multiple times at random positions
+        for _ in range(self.count):
+            # Random position (0 to len(lines), inclusive)
+            insert_pos = random.randint(0, len(lines))
+            lines.insert(insert_pos, self.sentence)
+            self.insertion_positions.append(insert_pos)
+
+        result = '\n'.join(lines)
+        self.last_output_stats = self._compute_stats(result)
+
+        return result
+
+    def get_metadata(self) -> Dict:
+        """Get metadata about the insertion operation"""
+        metadata = {
+            'processor': 'insert',
+            'mode': self.mode,
+            'sentence': self.sentence,
+            'position': self.position,
+            'count': self.count,
+            'seed': self.seed,
+            'insertion_positions': self.insertion_positions,
             'input_stats': self.last_input_stats,
             'output_stats': self.last_output_stats
         }

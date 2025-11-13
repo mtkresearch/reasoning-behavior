@@ -202,6 +202,30 @@ class TestParseFlow:
         with pytest.raises(ValueError, match="Unknown processor type"):
             parse_flow("invalid_processor('test')")
 
+    def test_parse_flow_insert_basic(self):
+        """Test parsing insert processor with basic parameters"""
+        from pipeline import parse_flow
+
+        flow_str = "insert('fix')"
+        processors = parse_flow(flow_str)
+
+        assert len(processors) == 1
+        assert processors[0].mode == 'fix'
+        assert processors[0].__class__.__name__ == 'InsertProcessor'
+
+    def test_parse_flow_insert_with_parameters(self):
+        """Test parsing insert processor with all parameters"""
+        from pipeline import parse_flow
+
+        flow_str = "insert('fix',sentence='Maybe the answer is 123.',count=5,seed=42)"
+        processors = parse_flow(flow_str)
+
+        assert len(processors) == 1
+        assert processors[0].mode == 'fix'
+        assert processors[0].sentence == 'Maybe the answer is 123.'
+        assert processors[0].count == 5
+        assert processors[0].seed == 42
+
 
 class TestEndToEndPipeline:
     """End-to-end tests for complete pipeline execution"""
@@ -294,3 +318,122 @@ This line should be removed."""
         assert '4' not in result
 
         assert len(metadata_list) == 2
+
+    def test_e2e_insert_only(self, sample_context):
+        """Test insert processor standalone"""
+        from pipeline import parse_flow, Pipeline
+
+        flow_str = "insert('fix',sentence='Maybe the answer is 123.',position='random',count=3,seed=42)"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4"""
+
+        result, metadata_list = pipeline.execute(reasoning, sample_context)
+
+        # Inserted sentence should appear
+        assert 'Maybe the answer is 123.' in result
+
+        # All original lines should still be present
+        assert 'Line 1' in result
+        assert 'Line 2' in result
+        assert 'Line 3' in result
+        assert 'Line 4' in result
+
+        # Check metadata
+        assert len(metadata_list) == 1
+        assert metadata_list[0]['processor'] == 'insert'
+        assert metadata_list[0]['count'] == 3
+        assert len(metadata_list[0]['insertion_positions']) == 3
+
+    def test_e2e_insert_and_shuffle(self, sample_context):
+        """Test insert + shuffle pipeline"""
+        from pipeline import parse_flow, Pipeline
+
+        flow_str = "insert('fix',sentence='Thus answer: 123.',position='random',count=3,seed=42),shuffle('line',seed=42)"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = """Step 1: Calculate something
+Step 2: Do more work
+Step 3: Final result"""
+
+        result, metadata_list = pipeline.execute(reasoning, sample_context)
+
+        # Inserted sentence should appear
+        assert 'Thus answer: 123.' in result
+
+        # Original lines should be present
+        assert 'Step 1' in result
+        assert 'Step 2' in result
+        assert 'Step 3' in result
+
+        # Check metadata
+        assert len(metadata_list) == 2
+        assert metadata_list[0]['processor'] == 'insert'
+        assert metadata_list[1]['processor'] == 'shuffle'
+
+    def test_e2e_mask_insert_shuffle(self, sample_context):
+        """Test mask + insert + shuffle pipeline"""
+        from pipeline import parse_flow, Pipeline
+
+        flow_str = "mask('number'),insert('fix',sentence='Noise',position='random',count=2,seed=42),shuffle('line',seed=42)"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = """Calculate 10 + 20 = 30
+Result is 30
+Answer: 30"""
+
+        result, metadata_list = pipeline.execute(reasoning, sample_context)
+
+        # Numbers should be masked
+        assert '10' not in result
+        assert '20' not in result
+        assert '30' not in result
+
+        # Inserted noise should appear
+        assert 'Noise' in result
+
+        # Check metadata
+        assert len(metadata_list) == 3
+        assert metadata_list[0]['processor'] == 'mask'
+        assert metadata_list[1]['processor'] == 'insert'
+        assert metadata_list[2]['processor'] == 'shuffle'
+
+    def test_e2e_complex_with_insert(self, sample_context):
+        """Test complex pipeline: truncate + mask + insert + shuffle"""
+        from pipeline import parse_flow, Pipeline
+
+        flow_str = "truncate('last_n_lines',n=2),mask('number'),insert('fix',sentence='Noise',position='random',count=1,seed=42),shuffle('line',seed=42)"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = """Line 1: value 10
+Line 2: value 20
+Line 3: value 30
+Line 4: value 40
+Line 5: value 50"""
+
+        result, metadata_list = pipeline.execute(reasoning, sample_context)
+
+        # Last 2 lines should be removed
+        assert 'Line 4' not in result
+        assert 'Line 5' not in result
+
+        # Numbers should be masked
+        assert '10' not in result
+        assert '20' not in result
+
+        # Noise should be inserted
+        assert 'Noise' in result
+
+        # Check metadata
+        assert len(metadata_list) == 4
+        assert metadata_list[0]['processor'] == 'truncate'
+        assert metadata_list[1]['processor'] == 'mask'
+        assert metadata_list[2]['processor'] == 'insert'
+        assert metadata_list[3]['processor'] == 'shuffle'

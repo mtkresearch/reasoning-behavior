@@ -603,6 +603,26 @@ def run_experiment(
         data = data[:limit]
         print(f"Limited to {limit} questions")
 
+    # Load existing results if output file exists
+    existing_results = []
+    completed_ids = set()
+    if Path(output_path).exists():
+        try:
+            with open(output_path, 'r', encoding='utf-8') as f:
+                existing_data = json.load(f)
+                if isinstance(existing_data, dict) and 'results' in existing_data:
+                    existing_results = existing_data['results']
+                elif isinstance(existing_data, list):
+                    existing_results = existing_data
+                completed_ids = {r['unique_id'] for r in existing_results if r.get('success')}
+                print(f"Found {len(completed_ids)} completed results in {output_path}")
+        except Exception as e:
+            print(f"Warning: Failed to load existing results: {e}")
+
+    # Filter out completed items
+    data = [item for item in data if item['unique_id'] not in completed_ids]
+    print(f"Remaining questions to process: {len(data)}")
+
     # Determine flow string
     if flow:
         flow_str = flow

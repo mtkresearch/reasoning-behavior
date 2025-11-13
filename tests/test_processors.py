@@ -6,6 +6,7 @@ This test file covers all Processor classes:
 - MaskProcessor
 - TruncateProcessor
 - ShuffleProcessor
+- InsertProcessor
 """
 
 import pytest
@@ -308,3 +309,268 @@ Line 3"""
         assert metadata['seed'] == 42
         assert 'input_stats' in metadata
         assert 'output_stats' in metadata
+
+
+class TestInsertProcessor:
+    """Tests for InsertProcessor"""
+
+    def test_insert_processor_fix_mode_random_position(self, sample_context):
+        """Test InsertProcessor with mode='fix' and position='random'"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='fix',
+            sentence='Maybe the answer is 123.',
+            position='random',
+            count=3,
+            seed=42
+        )
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Inserted sentence should appear
+        assert 'Maybe the answer is 123.' in result
+
+        # All original lines should still be present
+        assert 'Line 1' in result
+        assert 'Line 2' in result
+        assert 'Line 3' in result
+        assert 'Line 4' in result
+
+        # Should have more lines after insertion
+        original_lines = len([l for l in reasoning.split('\n') if l.strip()])
+        result_lines = len([l for l in result.split('\n') if l.strip()])
+        assert result_lines == original_lines + 3
+
+    def test_insert_processor_seed_reproducible(self, sample_context):
+        """Test that same seed produces same insertion positions"""
+        from processors import InsertProcessor
+
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        processor1 = InsertProcessor(
+            mode='fix',
+            sentence='Noise',
+            position='random',
+            count=3,
+            seed=42
+        )
+        processor2 = InsertProcessor(
+            mode='fix',
+            sentence='Noise',
+            position='random',
+            count=3,
+            seed=42
+        )
+
+        result1 = processor1.process(reasoning, sample_context)
+        result2 = processor2.process(reasoning, sample_context)
+
+        # Same seed should produce identical results
+        assert result1 == result2
+
+    def test_insert_processor_different_seeds(self, sample_context):
+        """Test that different seeds produce different insertion positions"""
+        from processors import InsertProcessor
+
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        processor1 = InsertProcessor(
+            mode='fix',
+            sentence='Noise',
+            position='random',
+            count=3,
+            seed=42
+        )
+        processor2 = InsertProcessor(
+            mode='fix',
+            sentence='Noise',
+            position='random',
+            count=3,
+            seed=99
+        )
+
+        result1 = processor1.process(reasoning, sample_context)
+        result2 = processor2.process(reasoning, sample_context)
+
+        # Different seeds should likely produce different results
+        # (not guaranteed, but highly probable)
+        assert result1 != result2
+
+    def test_insert_processor_default_parameters(self, sample_context):
+        """Test InsertProcessor with default parameters"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(mode='fix')
+        reasoning = """Line 1
+Line 2"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Default sentence should appear
+        assert 'Maybe the answer is 123.' in result
+
+        # Original lines should be present
+        assert 'Line 1' in result
+        assert 'Line 2' in result
+
+    def test_insert_processor_get_metadata(self, sample_context):
+        """Test InsertProcessor.get_metadata()"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='fix',
+            sentence='Test insertion.',
+            position='random',
+            count=2,
+            seed=42
+        )
+        reasoning = """Line 1
+Line 2
+Line 3"""
+
+        _ = processor.process(reasoning, sample_context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'insert'
+        assert metadata['mode'] == 'fix'
+        assert metadata['sentence'] == 'Test insertion.'
+        assert metadata['position'] == 'random'
+        assert metadata['count'] == 2
+        assert metadata['seed'] == 42
+        assert 'insertion_positions' in metadata
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+
+        # Check that insertion_positions is a list with correct length
+        assert isinstance(metadata['insertion_positions'], list)
+        assert len(metadata['insertion_positions']) == 2
+
+    def test_insert_processor_invalid_mode(self, sample_context):
+        """Test InsertProcessor with invalid mode raises error"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(mode='invalid_mode')
+        reasoning = "Line 1"
+
+        with pytest.raises(ValueError, match="Invalid insert mode"):
+            processor.process(reasoning, sample_context)
+
+    def test_insert_processor_invalid_position(self, sample_context):
+        """Test InsertProcessor with invalid position raises error"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(mode='fix', position='invalid_position')
+        reasoning = "Line 1"
+
+        with pytest.raises(ValueError, match="Invalid position strategy"):
+            processor.process(reasoning, sample_context)
+
+    def test_insert_processor_count_zero(self, sample_context):
+        """Test InsertProcessor with count=0 (no insertions)"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(mode='fix', count=0)
+        reasoning = """Line 1
+Line 2
+Line 3"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # No insertions should occur
+        assert result == reasoning
+
+    def test_insert_processor_count_multiple(self, sample_context):
+        """Test InsertProcessor with large count"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='fix',
+            sentence='Noise',
+            position='random',
+            count=10,
+            seed=42
+        )
+        reasoning = """Line 1
+Line 2
+Line 3"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should have 10 insertions
+        original_lines = len([l for l in reasoning.split('\n') if l.strip()])
+        result_lines = len([l for l in result.split('\n') if l.strip()])
+        assert result_lines == original_lines + 10
+
+        # Count occurrences of inserted sentence
+        assert result.count('Noise') == 10
+
+    def test_insert_processor_custom_sentence(self, sample_context):
+        """Test InsertProcessor with custom sentence"""
+        from processors import InsertProcessor
+
+        custom_sentence = "This is a custom noise sentence with numbers 999."
+        processor = InsertProcessor(
+            mode='fix',
+            sentence=custom_sentence,
+            position='random',
+            count=1,
+            seed=42
+        )
+        reasoning = "Line 1"
+
+        result = processor.process(reasoning, sample_context)
+
+        # Custom sentence should appear
+        assert custom_sentence in result
+
+    def test_insert_processor_empty_reasoning(self, sample_context):
+        """Test InsertProcessor with empty reasoning"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='fix',
+            sentence='Noise',
+            position='random',
+            count=1,
+            seed=42
+        )
+        reasoning = ""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should insert into empty text
+        assert 'Noise' in result
+
+    def test_insert_processor_single_line(self, sample_context):
+        """Test InsertProcessor with single-line reasoning"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='fix',
+            sentence='Noise',
+            position='random',
+            count=2,
+            seed=42
+        )
+        reasoning = "Single line"
+
+        result = processor.process(reasoning, sample_context)
+
+        # Original line should be present
+        assert 'Single line' in result
+
+        # Should have insertions
+        assert result.count('Noise') == 2
