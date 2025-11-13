@@ -466,6 +466,7 @@ MAIN_TEMPLATE = """
         let treeStructure = null;
         let deletedRows = new Set();
         let rowIndex = 0;
+        let rowPathMap = new Map();  // Map from rowId to path
 
         // Alignment state
         let alignmentMode = true;  // Default to alignment mode
@@ -497,7 +498,7 @@ MAIN_TEMPLATE = """
                         // Update button state
                         const btn = document.getElementById('align-btn');
                         btn.classList.add('active');
-                        btn.textContent = '✅ 已對齊 (點擊取消)';
+                        btn.textContent = '✅ 已對齊所有成功案例來作計算 (點擊取消)';
                     } else {
                         // If alignment fails, use original data
                         alignmentMode = false;
@@ -719,8 +720,9 @@ MAIN_TEMPLATE = """
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
 
-            // Reset row index
+            // Reset row index and path map
             rowIndex = 0;
+            rowPathMap.clear();
 
             // Use aligned data if in alignment mode
             let dataToRender = experiments;
@@ -849,6 +851,10 @@ MAIN_TEMPLATE = """
 
             // Mark row if deleted
             const rowId = exp.full_path;
+
+            // Store path for this row
+            rowPathMap.set(rowId, path);
+
             if (deletedRows.has(rowId)) {
                 row.classList.add('row-deleted');
             }
@@ -910,7 +916,35 @@ MAIN_TEMPLATE = """
         }
 
         function deleteRow(rowId) {
+            // Add the current row to deleted set
             deletedRows.add(rowId);
+
+            // Get the path of the deleted row
+            const deletedPath = rowPathMap.get(rowId);
+
+            if (deletedPath) {
+                // Find all rows that are children of this path
+                // A row is a child if its path starts with the deleted path
+                rowPathMap.forEach((path, id) => {
+                    if (id !== rowId) {
+                        // Check if this path is a descendant
+                        // A descendant's path starts with all elements of the deleted path
+                        if (path.length > deletedPath.length) {
+                            let isDescendant = true;
+                            for (let i = 0; i < deletedPath.length; i++) {
+                                if (path[i] !== deletedPath[i]) {
+                                    isDescendant = false;
+                                    break;
+                                }
+                            }
+                            if (isDescendant) {
+                                deletedRows.add(id);
+                            }
+                        }
+                    }
+                });
+            }
+
             updateRestoreButton();
             renderTable();
         }
@@ -1078,7 +1112,7 @@ MAIN_TEMPLATE = """
 
                 alignmentMode = true;
                 btn.classList.add('active');
-                btn.textContent = '✅ 已對齊 (點擊取消)';
+                btn.textContent = '✅ 已對齊所有成功案例來作計算 (點擊取消)';
 
                 // Store original experiments and use aligned version
                 window.originalExperiments = experiments;
