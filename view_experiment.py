@@ -70,7 +70,7 @@ def scan_experiments(exp_dir: Path) -> List[Dict[str, Any]]:
                 'total': summary.get('total_questions', 0),
                 'correct': summary.get('correct', 0),
                 'accuracy': summary.get('accuracy', 0.0),
-                'successful': summary.get('successful', 0),
+                'successful': summary.get('successful') or summary.get('grading_successful', 0),
                 'failed': summary.get('failed', 0),
                 'results_map': results_map  # Add results map for conditional probability
             })
