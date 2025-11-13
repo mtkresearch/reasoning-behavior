@@ -1,7 +1,7 @@
 import json
 import os
 
-from openai import OpenAI
+import requests
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -74,16 +74,19 @@ class LLMClient:
         else:
             raise ValueError(f"Invalid mode: {mode}. Must be 'openrouter' or 'local'")
 
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url,
-            timeout=180.0,  # 3 minutes connection timeout
-        )
+        self.timeout = 180.0  # 3 minutes connection timeout
 
     def _get_model(self, model_type):
         if self.mode == 'local':
-            models = self.client.models.list()
-            return models.data[0].id
+            # Use requests to get model list
+            response = requests.get(
+                f"{self.base_url}/models",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+            models = response.json()
+            return models['data'][0]['id']
         elif self.mode == 'openrouter':
             assert model_type == 'gpt-oss'
             return 'openai/gpt-oss-120b'
@@ -103,73 +106,102 @@ class LLMClient:
                 {"role": "assistant", "content": "<think>Hmm</think>I am DeepSeek"},
                 {"role": "user", "content": request.queries[0]},
             ]
-            kwargs = {
-                'extra_body': {"chat_template_kwargs": {"thinking": request.reasoning_on}} 
-            }
+            extra_body = {"chat_template_kwargs": {"thinking": request.reasoning_on}}
         elif request.model_type == 'gpt-oss':
             messages = [
                 {"role": "system", "content": request.system_prompt},
                 {"role": "user", "content": request.queries[0]},
             ]
-            kwargs = {"reasoning_effort": "high"} if request.reasoning_on else {"reasoning_effort": "low"}
+            extra_body = {
+                "reasoning": {"enabled": request.reasoning_on},
+                'provider': {'quantizations': ['bf16', 'fp16']},
+            }
         elif request.model_type == 'qwen3':
             messages = [
                 {"role": "system", "content": request.system_prompt},
                 {"role": "user", "content": request.queries[0]},
             ]
-            kwargs = {}
+            extra_body = {}
+
+        # Initialize variables to be used across iterations
+        reasoning_details = None
+        content = None
 
         for k in range(len(request.queries)):
             if k >= 1:
-                messages.append({"role": "assistant", "content": content})
+                # Preserve reasoning_details when appending assistant message
+                assistant_msg = {"role": "assistant", "content": content}
+                if reasoning_details is not None:
+                    assistant_msg["reasoning_details"] = reasoning_details
+                messages.append(assistant_msg)
                 messages.append({"role": "user", "content": request.queries[k]})
 
-            params = {
+            payload = {
                 'model': self._get_model(request.model_type),
                 'messages': messages,
-                'timeout': timeout,
                 'temperature': request.temperature,
-                **kwargs,
             }
+
+            if extra_body:
+                payload['extra_body'] = extra_body
 
             # Note: min_tokens is not supported by OpenRouter API
             # if request.min_tokens is not None:
-            #     params['min_tokens'] = request.min_tokens
+            #     payload['min_tokens'] = request.min_tokens
 
-            response = self.client.chat.completions.create(**params)
+            # Make API request using requests library
+            response = requests.post(
+                url=f"{self.base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                data=json.dumps(payload),
+                timeout=timeout
+            )
+
+            # Check HTTP errors
+            response.raise_for_status()
+
+            # Parse JSON response
+            response_data = response.json()
 
             # Check for errors in response
-            if not response.choices or len(response.choices) == 0:
-                raise Exception("OpenRouter API returned no choices")
+            if not response_data.get('choices') or len(response_data['choices']) == 0:
+                raise Exception("API returned no choices")
 
-            choice = response.choices[0]
+            choice = response_data['choices'][0]
+            message = choice.get('message', {})
 
             # Check finish_reason for errors
-            if hasattr(choice, 'finish_reason'):
-                if choice.finish_reason == 'error':
-                    error_msg = getattr(choice, 'error', 'Unknown error')
-                    raise Exception(f"OpenRouter API error: {error_msg}")
-                elif choice.finish_reason == 'content_filter':
-                    raise Exception("OpenRouter API: Content filtered")
-                elif choice.finish_reason == 'length':
-                    # This is a warning, not an error - content was truncated due to max_tokens
-                    pass
+            finish_reason = choice.get('finish_reason')
+            if finish_reason == 'error':
+                error_msg = choice.get('error', 'Unknown error')
+                raise Exception(f"API error: {error_msg}")
+            elif finish_reason == 'content_filter':
+                raise Exception("API: Content filtered")
+            elif finish_reason == 'length':
+                # This is a warning, not an error - content was truncated due to max_tokens
+                pass
+
+            # Extract reasoning_details for preservation in next turn
+            reasoning_details = message.get('reasoning_details')
 
             reasoning_content = None
             if request.model_type == 'deepseek':
                 if request.reasoning_on:
-                    reasoning_content, content = self._parse_deepseek_reasoning_content(choice.message.content)
+                    reasoning_content, content = self._parse_deepseek_reasoning_content(message.get('content'))
                 else:
-                    content = choice.message.content
+                    content = message.get('content')
 
             elif request.model_type == 'gpt-oss':
                 if request.reasoning_on:
-                    reasoning_content = choice.message.reasoning_content
-                content = choice.message.content
+                    reasoning_content = message.get('reasoning_content')
+                content = message.get('content')
 
             elif request.model_type == 'qwen3':
                 if request.reasoning_on:
-                    reasoning_content, content = self._parse_deepseek_reasoning_content(choice.message.content)
+                    reasoning_content, content = self._parse_deepseek_reasoning_content(message.get('content'))
                 else:
                     raise NotImplementedError
 
@@ -177,38 +209,52 @@ class LLMClient:
 
     def complete(self, request: CompletionRequest, timeout=3600*2):
         """Text completion (not chat completion)"""
-        params = {
+        payload = {
             'model': self._get_model(request.model_type),
             'prompt': request.prompt,
-            'timeout': timeout,
             'temperature': request.temperature,
             'max_tokens': request.max_tokens,
         }
 
         # Note: min_tokens is not supported by OpenRouter API
         # if request.min_tokens is not None:
-        #     params['min_tokens'] = request.min_tokens
+        #     payload['min_tokens'] = request.min_tokens
 
-        response = self.client.completions.create(**params)
+        # Make API request using requests library
+        response = requests.post(
+            url=f"{self.base_url}/completions",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            data=json.dumps(payload),
+            timeout=timeout
+        )
+
+        # Check HTTP errors
+        response.raise_for_status()
+
+        # Parse JSON response
+        response_data = response.json()
 
         # Check for errors in response
-        if not response.choices or len(response.choices) == 0:
-            raise Exception("OpenRouter API returned no choices")
+        if not response_data.get('choices') or len(response_data['choices']) == 0:
+            raise Exception("API returned no choices")
 
-        choice = response.choices[0]
+        choice = response_data['choices'][0]
 
         # Check finish_reason for errors
-        if hasattr(choice, 'finish_reason'):
-            if choice.finish_reason == 'error':
-                error_msg = getattr(choice, 'error', 'Unknown error')
-                raise Exception(f"OpenRouter API error: {error_msg}")
-            elif choice.finish_reason == 'content_filter':
-                raise Exception("OpenRouter API: Content filtered")
-            elif choice.finish_reason == 'length':
-                # This is a warning, not an error - content was truncated due to max_tokens
-                pass
+        finish_reason = choice.get('finish_reason')
+        if finish_reason == 'error':
+            error_msg = choice.get('error', 'Unknown error')
+            raise Exception(f"API error: {error_msg}")
+        elif finish_reason == 'content_filter':
+            raise Exception("API: Content filtered")
+        elif finish_reason == 'length':
+            # This is a warning, not an error - content was truncated due to max_tokens
+            pass
 
-        content = choice.text
+        content = choice.get('text')
         return content
 
     def generate_concurrent(self, tasks, max_workers=None):

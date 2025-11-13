@@ -204,61 +204,6 @@ def generate_output_path_from_flow(results_path: str, flow: str) -> str:
 
 
 # =============================================================================
-# Legacy Params to Flow Conversion
-# =============================================================================
-
-def legacy_params_to_flow(
-    mask_mode: str = None,
-    mask_char: str = '█',
-    num_prev_lines: int = 1,
-    shuffle: bool = False,
-    remove_answer_after: bool = False
-) -> str:
-    """
-    Convert legacy parameters to flow string
-
-    Args:
-        mask_mode: Legacy masking mode
-        mask_char: Masking character
-        num_prev_lines: Number of previous lines (for n-lines mode)
-        shuffle: Whether to shuffle
-        remove_answer_after: Whether to remove answer and after
-
-    Returns:
-        Flow string representation
-
-    Examples:
-        >>> legacy_params_to_flow(mask_mode='number')
-        "mask('number')"
-        >>> legacy_params_to_flow(mask_mode='number', shuffle=True)
-        "mask('number'),shuffle('line')"
-        >>> legacy_params_to_flow(remove_answer_after=True, mask_mode='number')
-        "truncate('answer_and_after'),mask('number')"
-    """
-    steps = []
-
-    # Step 1: Truncate (if requested)
-    if remove_answer_after:
-        steps.append("truncate('answer_and_after')")
-
-    # Step 2: Mask (if mode specified)
-    if mask_mode:
-        mask_step = f"mask('{mask_mode}'"
-        if mask_char != '█':
-            mask_step += f",mask_char='{mask_char}'"
-        if mask_mode == 'n-lines' and num_prev_lines != 1:
-            mask_step += f",num_prev_lines={num_prev_lines}"
-        mask_step += ")"
-        steps.append(mask_step)
-
-    # Step 3: Shuffle (if requested)
-    if shuffle:
-        steps.append("shuffle('line')")
-
-    return ','.join(steps) if steps else ""
-
-
-# =============================================================================
 # Masking Strategy Registry
 # =============================================================================
 
@@ -330,33 +275,17 @@ def prepare_task(
     item: Dict,
     model_type: str,
     flow: str = None,
-    seed_base: int = 42,
-
-    mask_char: str = '█',
-    mask_mode: str = 'number',
-    num_prev_lines: int = 1,
-    shuffle: bool = False,
-    remove_answer_after: bool = False,
 ) -> Task:
     """
     Prepare a Task for reasoning processing (masking, truncating, shuffling, etc.)
 
-    Note: This function supports both the new --flow syntax and legacy parameters.
-    When --flow is provided, it takes precedence over legacy parameters.
+    Note: This function supports both the new --flow syntax.
 
     Args:
         item: Result item from results.json
         model_type: Model type
         flow: Flow string (e.g., "mask('number'),shuffle('line')").
-              If provided, takes precedence over legacy params.
         seed_base: Base seed for shuffling (used when flow doesn't specify seed)
-
-        Legacy parameters (automatically converted to flow if flow is None):
-        mask_char: Character to use for masking numbers (default: '█')
-        mask_mode: Masking mode ('number', 'answer', 'line', 'n-lines', etc.)
-        num_prev_lines: Number of previous non-empty lines to mask (used with 'n-lines' mode)
-        shuffle: If True, shuffle lines after masking
-        remove_answer_after: If True, remove the line containing answer and all lines after it
     """
     unique_id = item['unique_id']
     question = item['question']
@@ -371,17 +300,7 @@ def prepare_task(
         index = hash(unique_id) % 10000
 
     # Determine flow string
-    if flow:
-        flow_str = flow
-    else:
-        # Convert legacy params to flow
-        flow_str = legacy_params_to_flow(
-            mask_mode=mask_mode,
-            mask_char=mask_char,
-            num_prev_lines=num_prev_lines,
-            shuffle=shuffle,
-            remove_answer_after=remove_answer_after
-        )
+    flow_str = flow
 
     # Process reasoning using Pipeline
     if flow_str:
@@ -565,7 +484,7 @@ def create_grading_tasks(results: List[Dict], judge_model_type: str = 'gpt-oss')
     tasks = []
 
     for result in results:
-        if not result.get('success', False):
+        if not result.get('generation_success', False):
             continue
 
         tasks.append(Task(
@@ -594,11 +513,6 @@ def run_experiment(
     model_type: str = 'gpt-oss',
     mode: str = 'openrouter',
     flow: str = None,
-    mask_char: str = '█',
-    mask_mode: str = 'number',
-    num_prev_lines: int = 1,
-    shuffle: bool = False,
-    remove_answer_after: bool = False,
     limit: int = None
 ):
     """
@@ -609,12 +523,7 @@ def run_experiment(
         output_path: Path to save output
         model_type: Model type
         mode: 'openrouter' or 'local'
-        flow: Flow string (takes precedence over legacy params)
-        mask_char: Character to use for masking numbers (default: '█') [LEGACY]
-        mask_mode: Masking mode [LEGACY]
-        num_prev_lines: Number of previous non-empty lines to mask [LEGACY]
-        shuffle: If True, shuffle lines after masking [LEGACY]
-        remove_answer_after: If True, remove the line containing answer and all lines after it [LEGACY]
+        flow: Flow string
         limit: Limit number of questions (for testing)
     """
     print(f"Loading results from {results_path}")
@@ -656,34 +565,9 @@ def run_experiment(
     print(f"Tasks to process: {len(data)}")
 
     # Determine flow string
-    if flow:
-        flow_str = flow
-        print(f"Using flow: {flow_str}")
-    else:
-        flow_str = legacy_params_to_flow(
-            mask_mode=mask_mode,
-            mask_char=mask_char,
-            num_prev_lines=num_prev_lines,
-            shuffle=shuffle,
-            remove_answer_after=remove_answer_after
-        )
-        print(f"Using legacy params converted to flow: {flow_str}")
+    flow_str = flow
+    print(f"Using flow: {flow_str}")
 
-        # Show legacy mode descriptions
-        mode_descriptions = {
-            'number': 'Mask all numbers',
-            'answer': 'Mask only answer',
-            'line': 'Mask all numbers in lines containing answer',
-            'n-lines': f'Mask all numbers in answer line and {num_prev_lines} previous non-empty line(s)',
-            'number-advance': 'Mask computational numbers, keep algebraic notation',
-            'alphabet': 'Mask all alphabetic characters (A-Z and a-z)',
-            'alphabet-and-answer': 'Mask all alphabetic characters AND the answer number'
-        }
-        print(f"Mask mode: {mode_descriptions.get(mask_mode, mask_mode)}")
-        if mask_mode == 'n-lines':
-            print(f"Previous lines: {num_prev_lines}")
-        print(f"Shuffle lines: {'Yes' if shuffle else 'No'}")
-        print(f"Remove answer and after: {'Yes' if remove_answer_after else 'No'}")
 
     print(f"Total questions: {len(data)}")
 
@@ -694,12 +578,7 @@ def run_experiment(
     print("Preparing processing tasks...")
     tasks = []
     for item in data:
-        task = prepare_task(
-            item, model_type, flow=flow_str,
-            mask_char=mask_char, mask_mode=mask_mode,
-            num_prev_lines=num_prev_lines, shuffle=shuffle,
-            remove_answer_after=remove_answer_after
-        )
+        task = prepare_task(item, model_type, flow=flow_str)
         tasks.append(task)
 
     # Phase 1: Generate answers with masked reasoning
@@ -900,45 +779,10 @@ def main():
         help='LLM client mode'
     )
     parser.add_argument(
-        '--mask_char',
-        type=str,
-        default='█',
-        help='[LEGACY] Character to use for masking numbers (default: █)'
-    )
-    parser.add_argument(
         '--flow',
         type=str,
-        default=None,
+        default="",
         help='Processing flow string (e.g., "mask(\'number\'),shuffle(\'line\')"). '
-             'Takes precedence over legacy parameters.'
-    )
-    parser.add_argument(
-        '--mask-mode',
-        type=str,
-        default='number',
-        choices=['number', 'answer', 'line', 'n-lines', 'number-advance', 'alphabet', 'alphabet-and-answer'],
-        help='[LEGACY] Masking mode: "number" (mask all numbers), "answer" (mask only answer), '
-             '"line" (mask all numbers in lines containing answer), '
-             '"n-lines" (mask all numbers in answer line and N previous non-empty lines), '
-             '"number-advance" (mask computational numbers, keep algebraic notation), '
-             '"alphabet" (mask all alphabetic characters A-Z and a-z), '
-             '"alphabet-and-answer" (mask all alphabetic characters AND the answer number)'
-    )
-    parser.add_argument(
-        '--num-prev-lines',
-        type=int,
-        default=1,
-        help='[LEGACY] Number of previous non-empty lines to mask (used with --mask-mode n-lines, default: 1)'
-    )
-    parser.add_argument(
-        '--shuffle',
-        action='store_true',
-        help='[LEGACY] If set, shuffle lines after masking'
-    )
-    parser.add_argument(
-        '--remove-answer-after',
-        action='store_true',
-        help='[LEGACY] If set, remove the line containing answer and all lines after it (applied before masking)'
     )
     parser.add_argument(
         '--limit',
@@ -949,21 +793,8 @@ def main():
 
     args = parser.parse_args()
 
-    # Warning if using both flow and legacy params
-    if args.flow and (args.mask_mode != 'number' or args.shuffle or args.remove_answer_after):
-        print("WARNING: --flow parameter takes precedence over legacy parameters (--mask-mode, --shuffle, --remove-answer-after)")
-
     # Determine flow string
-    if args.flow:
-        flow_str = args.flow
-    else:
-        flow_str = legacy_params_to_flow(
-            mask_mode=args.mask_mode,
-            mask_char=args.mask_char,
-            num_prev_lines=args.num_prev_lines,
-            shuffle=args.shuffle,
-            remove_answer_after=args.remove_answer_after
-        )
+    flow_str = args.flow
 
     # Auto-generate output path if not specified
     if args.output_path is None:
@@ -981,11 +812,6 @@ def main():
         model_type=args.model_type,
         mode=args.mode,
         flow=args.flow,
-        mask_char=args.mask_char,
-        mask_mode=args.mask_mode,
-        num_prev_lines=args.num_prev_lines,
-        shuffle=args.shuffle,
-        remove_answer_after=args.remove_answer_after,
         limit=args.limit
     )
 
