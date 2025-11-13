@@ -395,6 +395,22 @@ MAIN_TEMPLATE = """
             color: #856404;
             margin-left: 8px;
         }
+
+        .section-separator {
+            background: linear-gradient(90deg, #e3f2fd 0%, #f5f7fa 100%);
+            font-weight: 600;
+            color: #1565c0;
+            padding: 12px 16px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-top: 2px solid #90caf9;
+            border-bottom: 1px solid #bbdefb;
+        }
+
+        .section-separator-cell {
+            padding: 0 !important;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
@@ -482,6 +498,19 @@ MAIN_TEMPLATE = """
             return `rgb(${red}, ${green}, ${blue})`;
         }
 
+        function extractOperationType(processorStr) {
+            /**
+             * Extract operation type from processor string
+             * Examples:
+             *   "mask('number')" -> "mask"
+             *   "shuffle('line')" -> "shuffle"
+             *   "truncate('answer_and_after')" -> "truncate"
+             */
+            if (!processorStr) return null;
+            const match = processorStr.match(/^(\w+)\(/);
+            return match ? match[1] : processorStr;
+        }
+
         function buildFlowTree() {
             // Separate baseline and non-baseline experiments
             const baselineExps = [];
@@ -495,25 +524,41 @@ MAIN_TEMPLATE = """
                 }
             });
 
-            const tree = {};
+            // Build trees grouped by root operation type
+            const treesByRootOp = {};
 
             // Add baseline first
             if (baselineExps.length > 0) {
                 const key = '[baseline]';
-                tree[key] = {
-                    processorStr: null,
-                    experiments: baselineExps,
-                    children: {},
-                    depth: 0,
-                    path: [key]
+                treesByRootOp[key] = {
+                    [key]: {
+                        processorStr: null,
+                        experiments: baselineExps,
+                        children: {},
+                        depth: 0,
+                        path: [key],
+                        rootOperation: '[baseline]'
+                    }
                 };
             }
 
-            // Build tree for non-baseline experiments
+            // Build tree for non-baseline experiments, grouped by root operation
             nonBaselineExps.forEach(exp => {
                 const flowStr = exp.flow;
                 const processors = parseFlowString(flowStr);
-                let current = tree;
+
+                if (processors.length === 0) return;
+
+                // Get root operation type
+                const rootProcessor = processors[0];
+                const rootOp = extractOperationType(rootProcessor);
+
+                // Initialize tree for this root operation if not exists
+                if (!treesByRootOp[rootOp]) {
+                    treesByRootOp[rootOp] = {};
+                }
+
+                let current = treesByRootOp[rootOp];
 
                 // Build path
                 const path = [];
@@ -526,7 +571,8 @@ MAIN_TEMPLATE = """
                             experiments: [],
                             children: {},
                             depth: idx,
-                            path: [...path]
+                            path: [...path],
+                            rootOperation: rootOp
                         };
                     }
 
@@ -539,7 +585,25 @@ MAIN_TEMPLATE = """
                 });
             });
 
-            return tree;
+            // Flatten trees into single structure with sections
+            // Order: baseline first, then other operations alphabetically
+            const flatTree = {};
+
+            // Add baseline first
+            if (treesByRootOp['[baseline]']) {
+                Object.assign(flatTree, treesByRootOp['[baseline]']);
+            }
+
+            // Add other root operations (sorted alphabetically)
+            const otherRootOps = Object.keys(treesByRootOp)
+                .filter(op => op !== '[baseline]')
+                .sort();
+
+            otherRootOps.forEach(rootOp => {
+                Object.assign(flatTree, treesByRootOp[rootOp]);
+            });
+
+            return flatTree;
         }
 
         function parseFlowString(flowStr) {
@@ -620,14 +684,14 @@ MAIN_TEMPLATE = """
 
             // Always render in tree structure with baseline first
             treeStructure = buildFlowTree();
-            renderTreeRows(tbody, treeStructure, [], 0, true);
+            renderTreeRows(tbody, treeStructure, [], 0, true, null, null);
 
             // Show table, hide loading
             document.getElementById('loading').style.display = 'none';
             document.getElementById('results-table').style.display = 'table';
         }
 
-        function renderTreeRows(tbody, tree, parentPath, depth, isLastArray, parentNode = null) {
+        function renderTreeRows(tbody, tree, parentPath, depth, isLastArray, parentNode = null, lastRootOp = null) {
             const entries = Object.entries(tree);
 
             entries.forEach(([key, node], index) => {
@@ -636,6 +700,11 @@ MAIN_TEMPLATE = """
                 const pathKey = currentPath.join('→');
                 const hasChildren = Object.keys(node.children).length > 0;
                 const hasExperiments = node.experiments.length > 0;
+
+                // Update lastRootOp for tracking (but don't insert separator row)
+                if (depth === 0 && node.rootOperation && node.rootOperation !== lastRootOp) {
+                    lastRootOp = node.rootOperation;
+                }
 
                 // Show experiments at this level
                 if (hasExperiments) {
@@ -654,7 +723,7 @@ MAIN_TEMPLATE = """
 
                 // Always render children (fully expanded)
                 if (hasChildren) {
-                    renderTreeRows(tbody, node.children, currentPath, depth + 1, isLast, node);
+                    renderTreeRows(tbody, node.children, currentPath, depth + 1, isLast, node, lastRootOp);
                 }
             });
         }
