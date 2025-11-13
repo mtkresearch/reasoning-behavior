@@ -51,7 +51,7 @@ class Task:
 
 
 class LLMClient:
-    def __init__(self, mode: str = "openrouter", api_key: Optional[str] = None, base_url: Optional[str] = None):
+    def __init__(self, mode: str = "openrouter", api_key: Optional[str] = None, base_url: Optional[str] = None, timeout: int = 180):
         """
         Initialize LLM Client with mode selection.
 
@@ -74,7 +74,7 @@ class LLMClient:
         else:
             raise ValueError(f"Invalid mode: {mode}. Must be 'openrouter' or 'local'")
 
-        self.timeout = 180.0  # 3 minutes connection timeout
+        self.timeout = timeout
 
     def _get_model(self, model_type):
         if self.mode == 'local':
@@ -97,8 +97,26 @@ class LLMClient:
             raise ValueError(f"Expected exactly 1 </think> tag, found {think_count}")
         reasoning_content, content = content.split('</think>')
         return reasoning_content, content
+    
+    def _get_extra_body(self, request, task='chat'):
+        extra_body = {}
+        if request.model_type == 'deepseek':
+            if task == 'chat':
+                extra_body["chat_template_kwargs"] = {"thinking": request.reasoning_on}
+        elif request.model_type == 'gpt-oss':
+            if task == 'chat':
+                extra_body["reasoning"] = {"enabled": request.reasoning_on}
+        elif request.model_type == 'qwen3':
+            pass
+        return extra_body
 
-    def generate(self, request, timeout=3600*2):
+    def _get_provider_preferences(self, request):
+        """Get provider preferences for OpenRouter API"""
+        if request.model_type == 'gpt-oss':
+            return {'quantizations': ['bf16', 'fp16']}
+        return None
+
+    def generate(self, request):
         if request.model_type == 'deepseek':
             messages = [
                 {"role": "system", "content": request.system_prompt},
@@ -106,22 +124,20 @@ class LLMClient:
                 {"role": "assistant", "content": "<think>Hmm</think>I am DeepSeek"},
                 {"role": "user", "content": request.queries[0]},
             ]
-            extra_body = {"chat_template_kwargs": {"thinking": request.reasoning_on}}
+
         elif request.model_type == 'gpt-oss':
             messages = [
                 {"role": "system", "content": request.system_prompt},
                 {"role": "user", "content": request.queries[0]},
             ]
-            extra_body = {
-                "reasoning": {"enabled": request.reasoning_on},
-                'provider': {'quantizations': ['bf16', 'fp16']},
-            }
+
         elif request.model_type == 'qwen3':
             messages = [
                 {"role": "system", "content": request.system_prompt},
                 {"role": "user", "content": request.queries[0]},
             ]
-            extra_body = {}
+
+        extra_body = self._get_extra_body(request)
 
         # Initialize variables to be used across iterations
         reasoning_details = None
@@ -145,6 +161,11 @@ class LLMClient:
             if extra_body:
                 payload['extra_body'] = extra_body
 
+            # Add provider preferences if available
+            provider_prefs = self._get_provider_preferences(request)
+            if provider_prefs:
+                payload['provider'] = provider_prefs
+
             # Note: min_tokens is not supported by OpenRouter API
             # if request.min_tokens is not None:
             #     payload['min_tokens'] = request.min_tokens
@@ -157,7 +178,7 @@ class LLMClient:
                     "Content-Type": "application/json",
                 },
                 data=json.dumps(payload),
-                timeout=timeout
+                timeout=self.timeout
             )
 
             # Check HTTP errors
@@ -207,7 +228,7 @@ class LLMClient:
 
         return reasoning_content, content, messages
 
-    def complete(self, request: CompletionRequest, timeout=3600*2):
+    def complete(self, request: CompletionRequest):
         """Text completion (not chat completion)"""
         payload = {
             'model': self._get_model(request.model_type),
@@ -215,6 +236,15 @@ class LLMClient:
             'temperature': request.temperature,
             'max_tokens': request.max_tokens,
         }
+
+        extra_body = self._get_extra_body(request, task='completion')
+        if extra_body:
+            payload['extra_body'] = extra_body
+
+        # Add provider preferences if available
+        provider_prefs = self._get_provider_preferences(request)
+        if provider_prefs:
+            payload['provider'] = provider_prefs
 
         # Note: min_tokens is not supported by OpenRouter API
         # if request.min_tokens is not None:
@@ -228,7 +258,7 @@ class LLMClient:
                 "Content-Type": "application/json",
             },
             data=json.dumps(payload),
-            timeout=timeout
+            timeout=self.timeout
         )
 
         # Check HTTP errors

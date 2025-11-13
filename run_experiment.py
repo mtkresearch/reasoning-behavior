@@ -119,10 +119,13 @@ import json
 import re
 import random
 import argparse
+import os
 from pathlib import Path
 from typing import List, Dict
 from tqdm import tqdm
 import logging
+import tempfile
+import shutil
 
 from llm_client import LLMClient, Task, Request, CompletionRequest
 from logger_config import setup_logger
@@ -143,11 +146,134 @@ from core import (
 )
 from pipeline import parse_flow, Pipeline
 
-CONCURRENCY = 10
-MAX_RETRY = 3
+# Default concurrency (can be overridden by --max_workers)
+DEFAULT_MAX_WORKERS = 5
+# Default max retry (can be overridden by --max_retry)
+DEFAULT_MAX_RETRY = 3
 
 # Setup logger
 logger = setup_logger(__name__, log_file='logs/run_experiment.log')
+
+
+# =============================================================================
+# Safe File Operations - JSONL Strategy
+# =============================================================================
+
+def append_to_jsonl(filepath: Path, data: dict):
+    """
+    Append single result to JSONL file (append-only, never corrupts)
+
+    Args:
+        filepath: Path to JSONL file
+        data: Single result dictionary
+    """
+    with open(filepath, 'a', encoding='utf-8') as f:
+        f.write(json.dumps(data, ensure_ascii=False) + '\n')
+
+
+def load_from_jsonl(filepath: Path) -> List[dict]:
+    """
+    Load all results from JSONL file
+
+    Args:
+        filepath: Path to JSONL file
+
+    Returns:
+        List of result dictionaries
+    """
+    results = []
+    if filepath.exists():
+        with open(filepath, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        results.append(json.loads(line))
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"Failed to parse JSONL line: {e}")
+                        continue
+    return results
+
+
+def atomic_save_json(filepath: Path, data: dict):
+    """
+    Atomic write to JSON file (write to temp, then rename)
+    Ensures original file is never corrupted during write
+
+    Args:
+        filepath: Path to JSON file
+        data: Data to save
+    """
+    filepath = Path(filepath)
+
+    # Create temp file in same directory (required for atomic rename)
+    temp_fd, temp_path = tempfile.mkstemp(
+        dir=filepath.parent,
+        prefix=f'.{filepath.name}.tmp',
+        suffix='.json'
+    )
+
+    try:
+        with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+        # Atomic rename (replaces old file safely)
+        shutil.move(temp_path, filepath)
+    except Exception as e:
+        # Clean up temp file on error
+        if Path(temp_path).exists():
+            os.unlink(temp_path)
+        raise e
+
+
+def rebuild_json_from_jsonl(
+    stage2_jsonl: Path,
+    output_json: Path,
+    experiment_metadata: dict
+):
+    """
+    Rebuild results.json from stage2.jsonl with metadata and summary
+
+    Args:
+        stage2_jsonl: Path to stage 2 JSONL file (with grading)
+        output_json: Path to final JSON output
+        experiment_metadata: Experiment metadata dictionary
+    """
+    # Load all results from stage 2
+    results = load_from_jsonl(stage2_jsonl)
+
+    # Sort by question_id for consistency
+    results.sort(key=lambda x: x.get('question_id', 0))
+
+    # Calculate summary statistics
+    total = len(results)
+    generation_successful = sum(1 for r in results if r.get('generation_success', False))
+    generation_failed = total - generation_successful
+    grading_successful = sum(1 for r in results if r.get('grading_success', False))
+    grading_failed = generation_successful - grading_successful
+    correct = sum(1 for r in results if r.get('is_correct', False))
+    accuracy = correct / grading_successful if grading_successful > 0 else 0.0
+
+    summary = {
+        'total_questions': total,
+        'generation_successful': generation_successful,
+        'generation_failed': generation_failed,
+        'grading_successful': grading_successful,
+        'grading_failed': grading_failed,
+        'correct': correct,
+        'accuracy': accuracy
+    }
+
+    # Build final structure
+    output_data = {
+        'experiment_metadata': experiment_metadata,
+        'summary': summary,
+        'results': results
+    }
+
+    # Atomic write to JSON
+    atomic_save_json(output_json, output_data)
+    logger.info(f"Rebuilt {output_json} from {stage2_jsonl}")
 
 
 # =============================================================================
@@ -513,18 +639,27 @@ def run_experiment(
     model_type: str = 'gpt-oss',
     mode: str = 'openrouter',
     flow: str = None,
-    limit: int = None
+    limit: int = None,
+    max_workers: int = DEFAULT_MAX_WORKERS,
+    max_retry: int = DEFAULT_MAX_RETRY
 ):
     """
-    Run the mask numbers experiment
+    Run the mask numbers experiment using JSONL strategy
 
     Args:
         results_path: Path to results.json
-        output_path: Path to save output
+        output_path: Path to save output (e.g., exp/mask_number/results.json)
         model_type: Model type
         mode: 'openrouter' or 'local'
         flow: Flow string
         limit: Limit number of questions (for testing)
+        max_workers: Maximum concurrent workers
+        max_retry: Maximum retry attempts
+
+    File Strategy:
+        - Stage 1 (generation): Write to {output_path}_stage1.jsonl
+        - Stage 2 (grading): Write to {output_path}_stage2.jsonl
+        - Final: Rebuild {output_path}.json from stage2.jsonl
     """
     print(f"Loading results from {results_path}")
     data = load_results_json(results_path)
@@ -533,41 +668,38 @@ def run_experiment(
         data = data[:limit]
         print(f"Limited to {limit} questions")
 
-    # Load existing results if output file exists
-    existing_results = []
-    completed_ids = set()
-    if Path(output_path).exists():
-        try:
-            with open(output_path, 'r', encoding='utf-8') as f:
-                existing_data = json.load(f)
-                if isinstance(existing_data, dict) and 'results' in existing_data:
-                    existing_results = existing_data['results']
-                elif isinstance(existing_data, list):
-                    existing_results = existing_data
+    # Prepare file paths
+    output_path = Path(output_path)
+    stage1_jsonl = output_path.parent / f"{output_path.stem}_stage1.jsonl"
+    stage2_jsonl = output_path.parent / f"{output_path.stem}_stage2.jsonl"
+    output_json = output_path  # e.g., results.json
 
-                # Only skip tasks that are SUCCESSFULLY completed
-                # Check both 'generation_success' (new format) and 'success' (legacy format)
-                completed_ids = {
-                    r['unique_id'] for r in existing_results
-                    if r.get('generation_success', r.get('success', False))
-                }
+    # Ensure output directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-                # Count for logging
-                successful_count = len(completed_ids)
-                failed_count = len(existing_results) - successful_count
-                logger.info(f"Found {len(existing_results)} existing results: {successful_count} successful, {failed_count} to retry")
-                print(f"Found {len(existing_results)} existing results: {successful_count} successful, {failed_count} to retry")
-        except Exception as e:
-            logger.warning(f"Failed to load existing results: {e}")
+    print(f"Stage 1 JSONL: {stage1_jsonl}")
+    print(f"Stage 2 JSONL: {stage2_jsonl}")
+    print(f"Final JSON: {output_json}")
+
+    # Load existing Stage 1 results from JSONL
+    existing_stage1 = load_from_jsonl(stage1_jsonl)
+    completed_stage1_ids = {
+        r['unique_id'] for r in existing_stage1
+        if r.get('generation_success', False)
+    }
+
+    successful_count = len(completed_stage1_ids)
+    failed_count = len(existing_stage1) - successful_count
+    logger.info(f"Found {len(existing_stage1)} Stage 1 results: {successful_count} successful, {failed_count} to retry")
+    print(f"Found {len(existing_stage1)} Stage 1 results: {successful_count} successful, {failed_count} to retry")
 
     # Filter out only successfully completed items
-    data = [item for item in data if item['unique_id'] not in completed_ids]
+    data = [item for item in data if item['unique_id'] not in completed_stage1_ids]
     print(f"Tasks to process: {len(data)}")
 
     # Determine flow string
     flow_str = flow
     print(f"Using flow: {flow_str}")
-
 
     print(f"Total questions: {len(data)}")
 
@@ -581,38 +713,28 @@ def run_experiment(
         task = prepare_task(item, model_type, flow=flow_str)
         tasks.append(task)
 
-    # Phase 1: Generate answers with masked reasoning
-    results = existing_results.copy()  # Start with existing results
+    # Phase 1: Generate answers with processed reasoning
+    # Build in-memory map from existing Stage 1 JSONL
+    stage1_results_map = {r['unique_id']: r for r in existing_stage1}
 
     if len(tasks) > 0:
-        print(f"\n=== Phase 1: Generating answers with masked reasoning ({len(tasks)} tasks) ===")
+        print(f"\n=== Phase 1: Generating answers with processed reasoning ({len(tasks)} tasks) ===")
 
-        # Collect all results first
-        for completed_task in tqdm(client.complete_concurrent(tasks, max_workers=CONCURRENCY), total=len(tasks)):
+        # Execute generation tasks
+        for completed_task in tqdm(client.complete_concurrent(tasks, max_workers=max_workers), total=len(tasks)):
             new_result = task_to_result(completed_task)
 
-            # Check if this result already exists (from previous failed attempt)
-            existing_idx = None
-            for idx, r in enumerate(results):
-                if r['unique_id'] == new_result['unique_id']:
-                    existing_idx = idx
-                    break
+            # Update in-memory map
+            stage1_results_map[new_result['unique_id']] = new_result
 
-            if existing_idx is not None:
-                # Update existing result instead of appending
-                results[existing_idx] = new_result
-            else:
-                # New result, append it
-                results.append(new_result)
-
-            # Save incrementally after each task
-            _save_results_with_metadata(output_path, results, results_path, model_type, flow_str)
+            # Append to Stage 1 JSONL (append-only, never corrupts)
+            append_to_jsonl(stage1_jsonl, new_result)
 
         # Unified retry logic for failed tasks
-        for retry_attempt in range(MAX_RETRY):
-            # Identify ALL failed tasks (not just empty answers)
+        for retry_attempt in range(max_retry):
+            # Identify ALL failed tasks from in-memory map
             failed_results = [
-                r for r in results
+                r for r in stage1_results_map.values()
                 if (not r.get('generation_success')) or  # API failure
                    (r.get('generation_success') and not r.get('generated_answer'))  # Empty answer
             ]
@@ -620,7 +742,7 @@ def run_experiment(
             if not failed_results:
                 break
 
-            print(f"\n=== Retry attempt {retry_attempt + 1}/{MAX_RETRY}: {len(failed_results)} failed tasks ===")
+            print(f"\n=== Retry attempt {retry_attempt + 1}/{max_retry}: {len(failed_results)} failed tasks ===")
 
             # Prepare retry tasks
             retry_tasks = []
@@ -635,27 +757,25 @@ def run_experiment(
 
             # Execute retry tasks with error handling
             try:
-                for completed_task in tqdm(client.complete_concurrent(retry_tasks, max_workers=CONCURRENCY),
+                for completed_task in tqdm(client.complete_concurrent(retry_tasks, max_workers=max_workers),
                                           total=len(retry_tasks)):
-                    # Update corresponding result
-                    for result in results:
-                        if result['unique_id'] == completed_task.metadata['unique_id']:
-                            # Update with new response
-                            response = completed_task.response
-                            if response.success and response.content:
-                                result['generated_answer'] = response.content
-                                result['generation_success'] = True
-                                result['error'] = None
-                                result['retry_count'] = retry_attempt + 1
-                            else:
-                                result['retry_count'] = retry_attempt + 1
-                                result['generation_success'] = response.success
-                                result['error'] = response.err_message if response.err_message else result.get('error')
-                                print(f"Retry {retry_attempt + 1} failed for {result['unique_id']}: {result['error']}")
+                    # Update with new response
+                    unique_id = completed_task.metadata['unique_id']
+                    response = completed_task.response
 
-                            # Save incrementally after each retry
-                            _save_results_with_metadata(output_path, results, results_path, model_type, flow_str)
-                            break
+                    if response.success and response.content:
+                        stage1_results_map[unique_id]['generated_answer'] = response.content
+                        stage1_results_map[unique_id]['generation_success'] = True
+                        stage1_results_map[unique_id]['error'] = None
+                        stage1_results_map[unique_id]['retry_count'] = retry_attempt + 1
+                    else:
+                        stage1_results_map[unique_id]['retry_count'] = retry_attempt + 1
+                        stage1_results_map[unique_id]['generation_success'] = response.success
+                        stage1_results_map[unique_id]['error'] = response.err_message if response.err_message else stage1_results_map[unique_id].get('error')
+                        print(f"Retry {retry_attempt + 1} failed for {unique_id}: {stage1_results_map[unique_id]['error']}")
+
+                    # Append updated result to Stage 1 JSONL
+                    append_to_jsonl(stage1_jsonl, stage1_results_map[unique_id])
 
             except Exception as e:
                 logger.error(f"Retry batch failed with exception: {e}", exc_info=True)
@@ -665,12 +785,12 @@ def run_experiment(
 
         # Final warning for still-failed tasks
         still_failed = [
-            r for r in results
+            r for r in stage1_results_map.values()
             if not r.get('generation_success') or (r.get('generation_success') and not r.get('generated_answer'))
         ]
         if still_failed:
-            logger.warning(f"{len(still_failed)} tasks still failed after {MAX_RETRY} retries")
-            print(f"\nWarning: {len(still_failed)} tasks still failed after {MAX_RETRY} retries")
+            logger.warning(f"{len(still_failed)} tasks still failed after {max_retry} retries")
+            print(f"\nWarning: {len(still_failed)} tasks still failed after {max_retry} retries")
             for result in still_failed:
                 error_msg = result.get('error', 'Unknown error')
                 logger.warning(f"Failed task: {result['unique_id']}: {error_msg}")
@@ -680,21 +800,29 @@ def run_experiment(
 
     # Phase 2: Grade answers
     print(f"\n=== Phase 2: Grading answers ===")
-    # Grade ALL results with generation_success=True
-    # This ensures we always have complete grading information
-    results_to_grade = [r for r in results if r.get('generation_success', False)]
 
-    # Count how many already have grading
-    already_graded = sum(1 for r in results_to_grade if r.get('grading_success', False))
-    print(f"Total successful generations: {len(results_to_grade)}")
-    print(f"Already graded: {already_graded}")
-    print(f"Need to grade: {len(results_to_grade) - already_graded}")
+    # Load existing Stage 2 results from JSONL
+    existing_stage2 = load_from_jsonl(stage2_jsonl)
+    stage2_results_map = {r['unique_id']: r for r in existing_stage2}
 
-    grading_tasks = create_grading_tasks(results_to_grade, judge_model_type=model_type)
+    # Get all successful Stage 1 results
+    stage1_successful = [r for r in stage1_results_map.values() if r.get('generation_success', False)]
+
+    # Identify which need grading
+    need_grading = [
+        r for r in stage1_successful
+        if r['unique_id'] not in stage2_results_map or not stage2_results_map[r['unique_id']].get('grading_success', False)
+    ]
+
+    print(f"Total successful generations: {len(stage1_successful)}")
+    print(f"Already graded: {len(stage1_successful) - len(need_grading)}")
+    print(f"Need to grade: {len(need_grading)}")
+
+    grading_tasks = create_grading_tasks(need_grading, judge_model_type=model_type)
 
     if len(grading_tasks) > 0:
         print(f"Grading {len(grading_tasks)} answers...")
-        for grading_task in tqdm(client.generate_concurrent(grading_tasks, max_workers=CONCURRENCY),
+        for grading_task in tqdm(client.generate_concurrent(grading_tasks, max_workers=max_workers),
                                  total=len(grading_tasks)):
             if not grading_task.response.success:
                 logger.error(f"Error in grading task {grading_task.index}: {grading_task.response.err_message}")
@@ -702,33 +830,73 @@ def run_experiment(
                 continue
 
             result_id = grading_task.metadata['result_id']
-            # Find corresponding result
-            for result in results:
-                if result['unique_id'] == result_id:
-                    result['is_correct'] = parse_yes_no_response(grading_task.response.content)
-                    result['grading_reasoning'] = grading_task.response.content
-                    result['grading_success'] = True
-                    break
 
-            # Save incrementally after grading in new format
-            _save_results_with_metadata(output_path, results, results_path, model_type, flow_str)
+            # Get result from Stage 1 and add grading info
+            if result_id in stage1_results_map:
+                graded_result = stage1_results_map[result_id].copy()
+                graded_result['is_correct'] = parse_yes_no_response(grading_task.response.content)
+                graded_result['grading_reasoning'] = grading_task.response.content
+                graded_result['grading_success'] = True
+
+                # Update Stage 2 map
+                stage2_results_map[result_id] = graded_result
+
+                # Append to Stage 2 JSONL
+                append_to_jsonl(stage2_jsonl, graded_result)
     else:
         print(f"All results already graded, skipping grading phase")
 
-    # Calculate statistics
-    generation_successful = [r for r in results if r.get('generation_success', False)]
-    grading_successful = [r for r in results if r.get('grading_success', False)]
-    correct_count = sum(1 for r in grading_successful if r.get('is_correct', False))
+    # Rebuild final JSON from Stage 2 JSONL
+    print(f"\n=== Rebuilding final JSON from Stage 2 JSONL ===")
 
-    stats = {
-        'total_questions': len(results),
-        'generation_successful': len(generation_successful),
-        'generation_failed': len(results) - len(generation_successful),
-        'grading_successful': len(grading_successful),
-        'grading_failed': len(generation_successful) - len(grading_successful),
-        'correct': correct_count,
-        'accuracy': correct_count / len(grading_successful) if grading_successful else 0
+    # Prepare experiment metadata
+    from datetime import datetime
+    from pipeline import parse_flow
+
+    # Parse flow to get flow_config
+    try:
+        processors = parse_flow(flow_str)
+        flow_config = []
+        for i, processor in enumerate(processors, 1):
+            metadata = processor.get_metadata()
+            flow_config.append({
+                'step': i,
+                'processor': metadata.get('processor', 'unknown'),
+                'params': {k: v for k, v in metadata.items()
+                          if k not in ['processor', 'input_stats', 'output_stats']}
+            })
+    except Exception as e:
+        logger.warning(f"Flow parsing failed for '{flow_str}': {e}")
+        flow_config = [{'step': 1, 'processor': 'unknown', 'params': {'flow': flow_str}}]
+
+    # Extract dataset name from results_path
+    dataset_name = "unknown"
+    try:
+        path_parts = Path(results_path).parts
+        if 'data' in path_parts:
+            data_index = path_parts.index('data')
+            if len(path_parts) > data_index + 1:
+                dataset_name = path_parts[data_index + 1]
+    except (ValueError, IndexError, AttributeError) as e:
+        logger.debug(f"Failed to extract dataset name from '{results_path}': {e}")
+
+    experiment_metadata = {
+        'experiment_name': output_json.parent.name,
+        'experiment_date': datetime.now().isoformat(),
+        'dataset': dataset_name,
+        'model_type': model_type,
+        'flow': flow_str,
+        'flow_config': flow_config
     }
+
+    # Rebuild JSON from Stage 2 JSONL
+    rebuild_json_from_jsonl(stage2_jsonl, output_json, experiment_metadata)
+
+    # Load final JSON to print statistics
+    with open(output_json, 'r', encoding='utf-8') as f:
+        final_output = json.load(f)
+
+    stats = final_output['summary']
 
     # Print experiment summary
     print("\n" + "="*60)
@@ -745,7 +913,9 @@ def run_experiment(
     print(f"Accuracy:                     {stats['accuracy']:.2%}")
     print("="*60)
 
-    print(f"\nResults saved to: {output_path}")
+    print(f"\nStage 1 JSONL: {stage1_jsonl}")
+    print(f"Stage 2 JSONL: {stage2_jsonl}")
+    print(f"Final JSON:    {output_json}")
 
 
 def main():
@@ -790,6 +960,18 @@ def main():
         default=None,
         help='Limit number of questions to process (for testing)'
     )
+    parser.add_argument(
+        '--max_workers',
+        type=int,
+        default=DEFAULT_MAX_WORKERS,
+        help=f'Maximum number of concurrent workers (default: {DEFAULT_MAX_WORKERS})'
+    )
+    parser.add_argument(
+        '--max_retry',
+        type=int,
+        default=DEFAULT_MAX_RETRY,
+        help=f'Maximum number of retry attempts for failed tasks (default: {DEFAULT_MAX_RETRY})'
+    )
 
     args = parser.parse_args()
 
@@ -812,7 +994,9 @@ def main():
         model_type=args.model_type,
         mode=args.mode,
         flow=args.flow,
-        limit=args.limit
+        limit=args.limit,
+        max_workers=args.max_workers,
+        max_retry=args.max_retry
     )
 
 
