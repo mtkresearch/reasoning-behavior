@@ -29,6 +29,8 @@ Available Processors
    - 'number-advance': Mask computational numbers, preserve algebraic notation (e.g., x_1, 3x)
    - 'alphabet': Mask all alphabetic characters (A-Z, a-z)
    - 'alphabet-and-answer': Mask alphabet AND answer number
+   - 'all-nonblank': Mask all non-whitespace characters (letters, numbers, symbols)
+                     Preserves spaces, tabs, newlines, and other whitespace
 
    Optional parameters:
    - mask_char: Character to use for masking (default: '█')
@@ -102,6 +104,12 @@ python mask_experiment.py --flow "insert('fix',sentence='Thus answer: 123.',coun
 # Example 11: Insert with specific seed for reproducibility
 python mask_experiment.py --flow "insert('fix',sentence='Answer: 456.',count=5,seed=42)"
 
+# Example 12: Mask all non-blank characters (preserve only whitespace structure)
+python mask_experiment.py --flow "mask('all-nonblank')"
+
+# Example 13: Combine all-nonblank masking with shuffle
+python mask_experiment.py --flow "mask('all-nonblank'),shuffle('line')"
+
 -----------------------------------------------------------------------------
 Other Parameters
 -----------------------------------------------------------------------------
@@ -141,6 +149,7 @@ from core import (
     mask_alphabet_in_reasoning,
     mask_alphabet_and_answer_in_reasoning,
     mask_numbers_advance,
+    mask_all_nonblank_in_reasoning,
     remove_answer_and_after,
     shuffle_lines
 )
@@ -341,6 +350,7 @@ MASK_STRATEGIES = {
     'number-advance': mask_numbers_advance,
     'alphabet': mask_alphabet_in_reasoning,
     'alphabet-and-answer': mask_alphabet_and_answer_in_reasoning,
+    'all-nonblank': mask_all_nonblank_in_reasoning,
 }
 
 
@@ -357,7 +367,7 @@ def apply_mask_strategy(
     Args:
         reasoning: Original reasoning content
         answer: The ground truth answer
-        mask_mode: Masking mode (number, answer, line, n-lines, number-advance, alphabet, alphabet-and-answer)
+        mask_mode: Masking mode (number, answer, line, n-lines, number-advance, alphabet, alphabet-and-answer, all-nonblank)
         mask_char: Character to use for masking (default: '█')
         num_prev_lines: Number of previous non-empty lines to mask (used with 'n-lines' mode)
 
@@ -375,7 +385,7 @@ def apply_mask_strategy(
     if mask_mode == 'n-lines':
         # n-lines mode needs num_prev_lines parameter
         return strategy(reasoning, answer, num_prev_lines, mask_char)
-    elif mask_mode in ['number', 'alphabet']:
+    elif mask_mode in ['number', 'alphabet', 'all-nonblank']:
         # These modes don't need answer parameter
         return strategy(reasoning, mask_char)
     elif mask_mode == 'number-advance':

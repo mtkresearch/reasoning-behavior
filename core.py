@@ -341,6 +341,28 @@ def mask_alphabet_and_answer_in_reasoning(reasoning: str, answer: str, mask_char
     return masked_reasoning
 
 
+def mask_all_nonblank_in_reasoning(reasoning: str, mask_char: str = '█') -> str:
+    """
+    Mask all non-blank characters (letters, numbers, symbols) in reasoning text,
+    preserving only whitespace characters (spaces, tabs, newlines).
+
+    Args:
+        reasoning: Original reasoning content
+        mask_char: Character to use for masking (default: '█')
+
+    Returns:
+        Reasoning content with all non-whitespace characters replaced by mask_char
+
+    Examples:
+        >>> mask_all_nonblank_in_reasoning("Hello World\\n123 + 456")
+        '█████ █████\\n███ █ ███'
+    """
+    # Replace all non-whitespace characters with mask_char
+    masked_reasoning = re.sub(r'\S', mask_char, reasoning)
+
+    return masked_reasoning
+
+
 def mask_numbers_advance(reasoning: str, answer: str = None, mask_char: str = '█') -> str:
     """
     Mask numbers with advanced rules: keep numbers adjacent to letters/underscores

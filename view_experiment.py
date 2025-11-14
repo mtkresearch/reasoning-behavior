@@ -322,25 +322,30 @@ MAIN_TEMPLATE = """
             height: 32px;
             border-radius: 6px;
             position: relative;
-            overflow: hidden;
-            background: #ecf0f1;
+            overflow: visible;
+            background: linear-gradient(to right, #95a5a6 0%, #ecf0f1 100%);
         }
 
         .accuracy-fill {
             height: 100%;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
+            padding-left: 8px;
             color: white;
             font-weight: 600;
             font-size: 0.9em;
             transition: width 0.3s ease;
+            border-radius: 6px;
+            position: relative;
         }
 
         .accuracy-text {
-            position: relative;
+            position: absolute;
+            left: 8px;
             z-index: 1;
             text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            white-space: nowrap;
         }
 
         .stats-cell {

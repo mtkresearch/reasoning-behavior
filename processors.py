@@ -3,9 +3,11 @@ Processor classes for reasoning text transformations
 
 This module implements the Processor pattern for applying various transformations
 to reasoning text:
-- MaskProcessor: Mask numbers, answers, or alphabetic characters
+- MaskProcessor: Mask numbers, answers, alphabetic characters, or all non-blank characters
 - TruncateProcessor: Remove answer lines, last N lines, or percentage of lines
 - ShuffleProcessor: Shuffle lines, words, or tokens
+- InsertProcessor: Insert text at random positions
+- QuestionProcessor: Modify or remove question text
 """
 
 from abc import ABC, abstractmethod
@@ -75,6 +77,8 @@ class MaskProcessor(Processor):
     - 'number-advance': Mask computational numbers, preserve algebraic
     - 'alphabet': Mask all alphabetic characters
     - 'alphabet-and-answer': Mask alphabet and answer numbers
+    - 'all-nonblank': Mask all non-whitespace characters (letters, numbers, symbols)
+                      Preserves spaces, tabs, newlines, and other whitespace characters
     """
 
     def __init__(self, mode: str, mask_char: str = '█', **kwargs):
@@ -101,7 +105,8 @@ class MaskProcessor(Processor):
             mask_numbers_in_nlines_with_answer,
             mask_numbers_advance,
             mask_alphabet_in_reasoning,
-            mask_alphabet_and_answer_in_reasoning
+            mask_alphabet_and_answer_in_reasoning,
+            mask_all_nonblank_in_reasoning
         )
 
         self.last_input_stats = self._compute_stats(reasoning)
@@ -125,6 +130,8 @@ class MaskProcessor(Processor):
             result = mask_alphabet_in_reasoning(reasoning, self.mask_char)
         elif self.mode == 'alphabet-and-answer':
             result = mask_alphabet_and_answer_in_reasoning(reasoning, answer, self.mask_char)
+        elif self.mode == 'all-nonblank':
+            result = mask_all_nonblank_in_reasoning(reasoning, self.mask_char)
         else:
             raise ValueError(f"Invalid mask mode: {self.mode}")
 
