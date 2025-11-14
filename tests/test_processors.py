@@ -605,3 +605,42 @@ Line 3"""
 
         # Should have insertions
         assert result.count('Noise') == 2
+
+
+class TestQuestionProcessor:
+    """Tests for QuestionProcessor"""
+
+    def test_question_remove_mode(self, sample_context):
+        """Test QuestionProcessor with mode='remove'"""
+        from processors import QuestionProcessor
+
+        processor = QuestionProcessor(mode='remove')
+        reasoning = "Step 1: Calculate something\nStep 2: Get answer"
+
+        # Context should be modified in place
+        context = sample_context.copy()
+        original_question = context['question']
+
+        result = processor.process(reasoning, context)
+
+        # Reasoning should be unchanged
+        assert result == reasoning
+
+        # Question should be empty
+        assert context['question'] == ''
+
+        # Original question should be stored in metadata
+        metadata = processor.get_metadata()
+        assert metadata['processor'] == 'question'
+        assert metadata['mode'] == 'remove'
+        assert metadata['original_question'] == original_question
+
+    def test_question_invalid_mode(self, sample_context):
+        """Test QuestionProcessor with invalid mode"""
+        from processors import QuestionProcessor
+
+        processor = QuestionProcessor(mode='invalid')
+        reasoning = "Test reasoning"
+
+        with pytest.raises(ValueError, match="Invalid question mode"):
+            processor.process(reasoning, sample_context)

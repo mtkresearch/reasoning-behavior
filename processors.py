@@ -351,3 +351,54 @@ class InsertProcessor(Processor):
         }
         metadata.update(self.kwargs)
         return metadata
+
+
+class QuestionProcessor(Processor):
+    """
+    Processor for modifying question text
+
+    Supported modes:
+    - 'remove': Remove entire question (set to empty string)
+
+    This processor modifies the 'question' field in context instead of the reasoning text.
+    """
+
+    def __init__(self, mode: str, **kwargs):
+        """
+        Initialize QuestionProcessor
+
+        Args:
+            mode: Processing mode (currently only 'remove' is supported)
+            **kwargs: Additional parameters (reserved for future use)
+        """
+        self.mode = mode
+        self.kwargs = kwargs
+        self.original_question = None
+
+    def process(self, reasoning: str, context: Dict) -> str:
+        """
+        Apply processing to question text in context
+
+        Note: This processor modifies the context['question'] field and returns
+        the reasoning text unchanged.
+        """
+        if self.mode != 'remove':
+            raise ValueError(f"Invalid question mode: {self.mode}. Currently only 'remove' is supported.")
+
+        self.original_question = context.get('question', '')
+
+        # Modify context in place
+        context['question'] = ''
+
+        # Return reasoning unchanged
+        return reasoning
+
+    def get_metadata(self) -> Dict:
+        """Get metadata about the question processing operation"""
+        metadata = {
+            'processor': 'question',
+            'mode': self.mode,
+            'original_question': self.original_question,
+        }
+        metadata.update(self.kwargs)
+        return metadata

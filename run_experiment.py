@@ -439,13 +439,16 @@ def prepare_task(
         }
 
         processed_reasoning, processing_metadata = pipeline.execute(original_reasoning, context)
+        # Use question from context (may be modified by processors like truncate_question)
+        final_question = context['question']
     else:
         # No processing
         processed_reasoning = original_reasoning
         processing_metadata = []
+        final_question = question
 
     # Build prompt with processed reasoning
-    prompt = build_gpt_oss_prompt_with_reasoning(question, processed_reasoning)
+    prompt = build_gpt_oss_prompt_with_reasoning(final_question, processed_reasoning)
 
     # Create CompletionRequest
     request = CompletionRequest(

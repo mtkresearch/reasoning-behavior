@@ -437,3 +437,39 @@ Line 5: value 50"""
         assert metadata_list[1]['processor'] == 'mask'
         assert metadata_list[2]['processor'] == 'insert'
         assert metadata_list[3]['processor'] == 'shuffle'
+
+    def test_parse_flow_question(self):
+        """Test parsing question processor"""
+        from pipeline import parse_flow
+
+        flow_str = "question('remove')"
+        processors = parse_flow(flow_str)
+
+        assert len(processors) == 1
+        assert processors[0].__class__.__name__ == 'QuestionProcessor'
+        assert processors[0].mode == 'remove'
+
+    def test_pipeline_with_question(self, sample_context):
+        """Test pipeline execution with question processor"""
+        from pipeline import Pipeline, parse_flow
+
+        flow_str = "question('remove')"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = "Step 1: Calculate\nStep 2: Answer"
+        context = sample_context.copy()
+        original_question = context['question']
+
+        result, metadata_list = pipeline.execute(reasoning, context)
+
+        # Reasoning should be unchanged
+        assert result == reasoning
+
+        # Question should be empty
+        assert context['question'] == ''
+
+        # Check metadata
+        assert len(metadata_list) == 1
+        assert metadata_list[0]['processor'] == 'question'
+        assert metadata_list[0]['original_question'] == original_question

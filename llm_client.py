@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+DEBUG = False
+
 
 @dataclass
 class Request:
@@ -236,6 +238,8 @@ class LLMClient:
             'temperature': request.temperature,
             'max_tokens': request.max_tokens,
         }
+        if DEBUG:
+            print('prompt:', request.prompt)
 
         extra_body = self._get_extra_body(request, task='completion')
         if extra_body:
