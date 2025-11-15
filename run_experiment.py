@@ -3,7 +3,7 @@
 Reasoning Processing Experiment with Pipeline Architecture
 
 This script processes reasoning text through a configurable pipeline of transformations
-(masking, truncating, shuffling) and evaluates model performance on the processed reasoning.
+(masking, truncating, shuffling, inserting, removing) and evaluates model performance on the processed reasoning.
 
 =============================================================================
 USAGE
@@ -67,6 +67,35 @@ Available Processors
    - count: Number of times to insert the text (default: 1)
    - seed: Random seed for reproducibility
 
+5. remove(mode)
+   Remove or consolidate whitespace characters in reasoning.
+
+   Modes:
+   - 'blank': Consolidate all continuous blank characters (spaces, tabs, newlines)
+              into a single space. Strips leading/trailing whitespace.
+
+   Examples:
+   - Input:  "hello\n\n\n   world   \t\ntest"
+   - Output: "hello world test"
+
+6. replace(pattern, replacement='')
+   Replace text using regular expressions.
+
+   Parameters:
+   - pattern: Regular expression pattern to match (e.g., '\\s', '\\d', '\\w+')
+   - replacement: String to replace matches with (default: empty string)
+
+   Common use cases:
+   - Replace all whitespace with single space: pattern='\\s', replacement=' '
+   - Replace all digits with 'X': pattern='\\d', replacement='X'
+   - Remove specific pattern: pattern='\\d+', replacement=''
+
+   Examples:
+   - Input:  "hello\nworld" with pattern='\\s', replacement=' '
+   - Output: "hello world"
+   - Input:  "Calculate 2 + 2 = 4" with pattern='\\d', replacement='X'
+   - Output: "Calculate X + X = X"
+
 -----------------------------------------------------------------------------
 Examples
 -----------------------------------------------------------------------------
@@ -109,6 +138,24 @@ python mask_experiment.py --flow "mask('all-nonblank')"
 
 # Example 13: Combine all-nonblank masking with shuffle
 python mask_experiment.py --flow "mask('all-nonblank'),shuffle('line')"
+
+# Example 14: Remove all continuous blank characters (consolidate to single space)
+python mask_experiment.py --flow "remove('blank')"
+
+# Example 15: Combine remove with other processors
+python mask_experiment.py --flow "mask('number'),remove('blank')"
+
+# Example 16: Multi-step processing with blank removal
+python mask_experiment.py --flow "truncate('last_ratio',ratio=0.2),mask('alphabet'),remove('blank')"
+
+# Example 17: Replace all whitespace with single space
+python mask_experiment.py --flow "replace('\\s',replacement=' ')"
+
+# Example 18: Replace all digits with 'X'
+python mask_experiment.py --flow "replace('\\d',replacement='X')"
+
+# Example 19: Combine replace with other processors
+python mask_experiment.py --flow "mask('alphabet',mask_char=' '),replace('\\s+',replacement=' ')"
 
 -----------------------------------------------------------------------------
 Other Parameters

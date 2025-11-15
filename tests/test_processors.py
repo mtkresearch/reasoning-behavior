@@ -7,6 +7,9 @@ This test file covers all Processor classes:
 - TruncateProcessor
 - ShuffleProcessor
 - InsertProcessor
+- QuestionProcessor
+- RemoveProcessor
+- ReplaceProcessor
 """
 
 import pytest
@@ -644,3 +647,341 @@ class TestQuestionProcessor:
 
         with pytest.raises(ValueError, match="Invalid question mode"):
             processor.process(reasoning, sample_context)
+
+
+class TestRemoveProcessor:
+    """Tests for RemoveProcessor"""
+
+    def test_remove_blank_mode_basic(self, sample_context):
+        """Test RemoveProcessor with mode='blank' on basic text"""
+        from processors import RemoveProcessor
+
+        processor = RemoveProcessor(mode='blank')
+        reasoning = "hello\n\n   world   \t\n\n   test"
+
+        result = processor.process(reasoning, sample_context)
+
+        # All continuous blanks should be consolidated to single space
+        assert result == "hello world test"
+
+    def test_remove_blank_mode_reasoning_text(self, sample_context):
+        """Test RemoveProcessor with mode='blank' on reasoning-like text"""
+        from processors import RemoveProcessor
+
+        processor = RemoveProcessor(mode='blank')
+        reasoning = """Let me solve this problem step by step.
+
+
+First, I will analyze the question.
+
+
+   Then,   I calculate:
+
+x = 5
+
+
+Therefore, the answer is 5."""
+
+        result = processor.process(reasoning, sample_context)
+
+        # All continuous blanks should be consolidated
+        expected = "Let me solve this problem step by step. First, I will analyze the question. Then, I calculate: x = 5 Therefore, the answer is 5."
+        assert result == expected
+
+    def test_remove_blank_mode_multiple_spaces(self, sample_context):
+        """Test RemoveProcessor removes multiple spaces"""
+        from processors import RemoveProcessor
+
+        processor = RemoveProcessor(mode='blank')
+        reasoning = "word1    word2     word3      word4"
+
+        result = processor.process(reasoning, sample_context)
+
+        assert result == "word1 word2 word3 word4"
+
+    def test_remove_blank_mode_multiple_newlines(self, sample_context):
+        """Test RemoveProcessor removes multiple newlines"""
+        from processors import RemoveProcessor
+
+        processor = RemoveProcessor(mode='blank')
+        reasoning = "Line 1\n\n\n\nLine 2\n\n\nLine 3"
+
+        result = processor.process(reasoning, sample_context)
+
+        assert result == "Line 1 Line 2 Line 3"
+
+    def test_remove_blank_mode_tabs(self, sample_context):
+        """Test RemoveProcessor removes tabs"""
+        from processors import RemoveProcessor
+
+        processor = RemoveProcessor(mode='blank')
+        reasoning = "word1\t\t\tword2\t\tword3"
+
+        result = processor.process(reasoning, sample_context)
+
+        assert result == "word1 word2 word3"
+
+    def test_remove_blank_mode_mixed_whitespace(self, sample_context):
+        """Test RemoveProcessor with mixed whitespace characters"""
+        from processors import RemoveProcessor
+
+        processor = RemoveProcessor(mode='blank')
+        reasoning = "word1 \t\n\n  \t  word2   \n\t   word3"
+
+        result = processor.process(reasoning, sample_context)
+
+        assert result == "word1 word2 word3"
+
+    def test_remove_blank_mode_leading_trailing_whitespace(self, sample_context):
+        """Test RemoveProcessor strips leading/trailing whitespace"""
+        from processors import RemoveProcessor
+
+        processor = RemoveProcessor(mode='blank')
+        reasoning = "   \n\n  hello world  \n\n   "
+
+        result = processor.process(reasoning, sample_context)
+
+        assert result == "hello world"
+
+    def test_remove_blank_mode_empty_string(self, sample_context):
+        """Test RemoveProcessor with empty string"""
+        from processors import RemoveProcessor
+
+        processor = RemoveProcessor(mode='blank')
+        reasoning = ""
+
+        result = processor.process(reasoning, sample_context)
+
+        assert result == ""
+
+    def test_remove_blank_mode_only_whitespace(self, sample_context):
+        """Test RemoveProcessor with only whitespace"""
+        from processors import RemoveProcessor
+
+        processor = RemoveProcessor(mode='blank')
+        reasoning = "   \n\n\t\t   \n   "
+
+        result = processor.process(reasoning, sample_context)
+
+        assert result == ""
+
+    def test_remove_blank_mode_single_word(self, sample_context):
+        """Test RemoveProcessor with single word"""
+        from processors import RemoveProcessor
+
+        processor = RemoveProcessor(mode='blank')
+        reasoning = "hello"
+
+        result = processor.process(reasoning, sample_context)
+
+        assert result == "hello"
+
+    def test_remove_blank_mode_preserves_content(self, sample_context):
+        """Test RemoveProcessor preserves non-whitespace content"""
+        from processors import RemoveProcessor
+
+        processor = RemoveProcessor(mode='blank')
+        reasoning = "Calculate  \n\n  2 + 2  =   \n  4   and   multiply   \n\n by  3:   \n 4 × 3 = 12"
+
+        result = processor.process(reasoning, sample_context)
+
+        # All non-whitespace characters should be preserved
+        assert "Calculate" in result
+        assert "2 + 2 = 4" in result
+        assert "multiply" in result
+        assert "3:" in result
+        assert "4 × 3 = 12" in result
+
+    def test_remove_processor_get_metadata(self, sample_context):
+        """Test RemoveProcessor.get_metadata()"""
+        from processors import RemoveProcessor
+
+        processor = RemoveProcessor(mode='blank')
+        reasoning = "hello\n\n\nworld   test"
+
+        _ = processor.process(reasoning, sample_context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'remove'
+        assert metadata['mode'] == 'blank'
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+
+        # Verify stats are computed correctly
+        assert metadata['input_stats']['lines'] > 0
+        assert metadata['output_stats']['lines'] > 0
+
+    def test_remove_processor_invalid_mode(self, sample_context):
+        """Test RemoveProcessor with invalid mode raises error"""
+        from processors import RemoveProcessor
+
+        processor = RemoveProcessor(mode='invalid_mode')
+        reasoning = "Test reasoning"
+
+        with pytest.raises(ValueError, match="Invalid remove mode"):
+            processor.process(reasoning, sample_context)
+
+
+class TestReplaceProcessor:
+    """Tests for ReplaceProcessor"""
+
+    def test_replace_processor_whitespace_basic(self, sample_context):
+        """Test ReplaceProcessor replacing all whitespace with single space"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern=r'\s', replacement=' ')
+        reasoning = "hello\nworld\ttest"
+
+        result = processor.process(reasoning, sample_context)
+
+        # All whitespace should be replaced with single space
+        assert result == "hello world test"
+
+    def test_replace_processor_digits(self, sample_context):
+        """Test ReplaceProcessor replacing all digits"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern=r'\d', replacement='X')
+        reasoning = "Calculate 2 + 2 = 4"
+
+        result = processor.process(reasoning, sample_context)
+
+        # All digits should be replaced with 'X'
+        assert result == "Calculate X + X = X"
+
+    def test_replace_processor_word(self, sample_context):
+        """Test ReplaceProcessor replacing specific word"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern=r'\banswer\b', replacement='result')
+        reasoning = "The answer is 42. Calculate the answer."
+
+        result = processor.process(reasoning, sample_context)
+
+        # Word 'answer' should be replaced with 'result'
+        assert result == "The result is 42. Calculate the result."
+
+    def test_replace_processor_remove_pattern(self, sample_context):
+        """Test ReplaceProcessor removing pattern (empty replacement)"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern=r'\d+', replacement='')
+        reasoning = "Step 1: Calculate 42 in step 2."
+
+        result = processor.process(reasoning, sample_context)
+
+        # All digits should be removed
+        assert result == "Step : Calculate  in step ."
+
+    def test_replace_processor_multiple_replacements(self, sample_context):
+        """Test ReplaceProcessor counts multiple replacements"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern=r'\d', replacement='#')
+        reasoning = "1 2 3 4 5"
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should replace 5 digits
+        assert result == "# # # # #"
+
+        metadata = processor.get_metadata()
+        assert metadata['num_replacements'] == 5
+
+    def test_replace_processor_no_match(self, sample_context):
+        """Test ReplaceProcessor when pattern doesn't match"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern=r'\d', replacement='X')
+        reasoning = "No numbers here"
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should be unchanged
+        assert result == "No numbers here"
+
+        metadata = processor.get_metadata()
+        assert metadata['num_replacements'] == 0
+
+    def test_replace_processor_complex_pattern(self, sample_context):
+        """Test ReplaceProcessor with complex regex pattern"""
+        from processors import ReplaceProcessor
+
+        # Replace mathematical operators
+        processor = ReplaceProcessor(pattern=r'[+\-*/=]', replacement='OP')
+        reasoning = "2 + 3 - 1 * 4 / 2 = 8"
+
+        result = processor.process(reasoning, sample_context)
+
+        assert result == "2 OP 3 OP 1 OP 4 OP 2 OP 8"
+
+    def test_replace_processor_newline_to_space(self, sample_context):
+        """Test ReplaceProcessor replacing newlines with spaces"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern=r'\n', replacement=' ')
+        reasoning = "Line 1\nLine 2\nLine 3"
+
+        result = processor.process(reasoning, sample_context)
+
+        assert result == "Line 1 Line 2 Line 3"
+
+    def test_replace_processor_multiline_reasoning(self, sample_context):
+        """Test ReplaceProcessor on multiline reasoning text"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern=r'\s+', replacement=' ')
+        reasoning = """Step 1: Calculate something
+
+
+Step 2: Do more work
+
+Final answer: 42"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Multiple spaces/newlines should be replaced with single space
+        assert "Step 1: Calculate something Step 2: Do more work Final answer: 42" == result
+
+    def test_replace_processor_get_metadata(self, sample_context):
+        """Test ReplaceProcessor.get_metadata()"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern=r'\d', replacement='X')
+        reasoning = "Numbers: 1 2 3"
+
+        _ = processor.process(reasoning, sample_context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'replace'
+        assert metadata['pattern'] == r'\d'
+        assert metadata['replacement'] == 'X'
+        assert metadata['num_replacements'] == 3
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+
+    def test_replace_processor_empty_reasoning(self, sample_context):
+        """Test ReplaceProcessor with empty reasoning"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern=r'\s', replacement=' ')
+        reasoning = ""
+
+        result = processor.process(reasoning, sample_context)
+
+        assert result == ""
+
+        metadata = processor.get_metadata()
+        assert metadata['num_replacements'] == 0
+
+    def test_replace_processor_default_replacement(self, sample_context):
+        """Test ReplaceProcessor with default empty replacement"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern=r'\s')
+        reasoning = "a b c"
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should remove all whitespace (default replacement is '')
+        assert result == "abc"

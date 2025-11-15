@@ -205,3 +205,99 @@ datasets/                            # Dataset sources
    - Final: Aggregated JSON (`results.json`)
 
 4. **Visualization**: Use `view_experiment.py` to browse results with tree structure and conditional probability analysis
+
+### Development Requirements
+
+**IMPORTANT**: When adding new features or modifying existing functionality, you **MUST**:
+
+1. **Add unit tests** in the `tests/` directory
+2. **Update documentation** in the prefix docstring of `run_experiment.py` if the changes affect:
+   - Available processors or their parameters
+   - Processing modes or options
+   - Usage examples
+   - Pipeline configuration syntax
+
+#### Testing Requirements
+
+1. **Test Coverage Guidelines**:
+   - Every new function or method should have at least one test
+   - Critical path logic should have comprehensive test coverage
+   - Edge cases and error handling should be tested
+   - Integration tests for pipeline components should be included
+
+2. **Test Organization**:
+   - Test files should follow the naming convention: `test_*.py`
+   - Test functions should follow the naming convention: `test_*`
+   - Group related tests in the same test file
+   - Use descriptive test names that clearly indicate what is being tested
+
+3. **Running Tests**:
+   ```bash
+   # Run all tests
+   source .venv/bin/activate && python -m pytest tests/
+
+   # Run specific test file
+   source .venv/bin/activate && python -m pytest tests/test_core.py
+
+   # Run with verbose output
+   source .venv/bin/activate && python -m pytest -v tests/
+
+   # Run with coverage report
+   source .venv/bin/activate && python -m pytest --cov=. tests/
+   ```
+
+4. **Test-Driven Development (TDD)**:
+   - Follow the Red-Green-Refactor cycle when developing new features
+   - Write tests first to define expected behavior
+   - Implement the minimum code to make tests pass
+   - Refactor code while ensuring tests continue to pass
+
+5. **Existing Test Files**:
+   - `test_core.py` - Tests for core utilities
+   - `test_pipeline.py` - Tests for pipeline framework
+   - `test_processors.py` - Tests for processing functions
+   - `test_masking.py` - Tests for masking operations
+   - `test_preprocessing.py` - Tests for preprocessing operations
+   - `test_mask_advance.py` - Tests for advanced masking features
+   - Integration tests for specific processors and workflows
+
+#### Documentation Update Requirements
+
+When adding or modifying processors, **you MUST update the prefix docstring in `run_experiment.py`**:
+
+1. **For New Processors**:
+   - Add the processor to the "Available Processors" section
+   - Document all available modes with clear descriptions
+   - List all parameters (required and optional) with defaults
+   - Add at least one usage example showing the new processor
+
+2. **For New Modes or Parameters**:
+   - Add the mode to the appropriate processor's mode list
+   - Explain what the mode does and when to use it
+   - Document any new parameters with their types and defaults
+   - Update examples if the new mode is commonly used
+
+3. **Documentation Format**:
+   The docstring follows this structure:
+   ```
+   Available Processors
+   --------------------
+   processor_name(mode, param1='default', ...)
+       Brief description.
+
+       Modes:
+       - 'mode1': Description
+       - 'mode2': Description
+
+       Optional parameters:
+       - param1: Description (default: value)
+
+   Examples
+   --------
+   python run_experiment.py --flow "processor('mode',param=value)"
+   ```
+
+4. **Keep Documentation Synchronized**:
+   - Documentation should match the actual implementation
+   - Remove deprecated features from the documentation
+   - Update examples when the API changes

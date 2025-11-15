@@ -8,6 +8,8 @@ to reasoning text:
 - ShuffleProcessor: Shuffle lines, words, or tokens
 - InsertProcessor: Insert text at random positions
 - QuestionProcessor: Modify or remove question text
+- RemoveProcessor: Remove or consolidate whitespace characters
+- ReplaceProcessor: Replace text using regular expressions
 """
 
 from abc import ABC, abstractmethod
@@ -406,6 +408,125 @@ class QuestionProcessor(Processor):
             'processor': 'question',
             'mode': self.mode,
             'original_question': self.original_question,
+        }
+        metadata.update(self.kwargs)
+        return metadata
+
+
+class RemoveProcessor(Processor):
+    """
+    Processor for removing or consolidating whitespace characters
+
+    Supported modes:
+    - 'blank': Consolidate all continuous blank characters (spaces, tabs, newlines)
+               into a single space
+    """
+
+    def __init__(self, mode: str, **kwargs):
+        """
+        Initialize RemoveProcessor
+
+        Args:
+            mode: Processing mode (currently only 'blank' is supported)
+            **kwargs: Additional parameters (reserved for future use)
+        """
+        self.mode = mode
+        self.kwargs = kwargs
+        self.last_input_stats = None
+        self.last_output_stats = None
+
+    def process(self, reasoning: str, context: Dict) -> str:
+        """
+        Apply whitespace removal/consolidation to reasoning text
+
+        Args:
+            reasoning: The reasoning text to process
+            context: Context dictionary (not used in this processor)
+
+        Returns:
+            Processed reasoning text with whitespace consolidated
+        """
+        from core import remove_continuous_blanks
+
+        self.last_input_stats = self._compute_stats(reasoning)
+
+        if self.mode != 'blank':
+            raise ValueError(f"Invalid remove mode: {self.mode}. Currently only 'blank' is supported.")
+
+        result = remove_continuous_blanks(reasoning)
+
+        self.last_output_stats = self._compute_stats(result)
+        return result
+
+    def get_metadata(self) -> Dict:
+        """Get metadata about the removal operation"""
+        metadata = {
+            'processor': 'remove',
+            'mode': self.mode,
+            'input_stats': self.last_input_stats,
+            'output_stats': self.last_output_stats
+        }
+        metadata.update(self.kwargs)
+        return metadata
+
+
+class ReplaceProcessor(Processor):
+    """
+    Processor for replacing text using regular expressions
+
+    This processor allows flexible text replacement using regex patterns.
+    Common use cases:
+    - Replace all whitespace with single space: pattern=r'\\s', replacement=' '
+    - Replace all digits: pattern=r'\\d', replacement='X'
+    - Replace specific words or patterns
+    """
+
+    def __init__(self, pattern: str, replacement: str = '', **kwargs):
+        """
+        Initialize ReplaceProcessor
+
+        Args:
+            pattern: Regular expression pattern to match
+            replacement: String to replace matches with (default: empty string)
+            **kwargs: Additional parameters (reserved for future use)
+        """
+        self.pattern = pattern
+        self.replacement = replacement
+        self.kwargs = kwargs
+        self.last_input_stats = None
+        self.last_output_stats = None
+        self.num_replacements = 0
+
+    def process(self, reasoning: str, context: Dict) -> str:
+        """
+        Apply regex replacement to reasoning text
+
+        Args:
+            reasoning: The reasoning text to process
+            context: Context dictionary (not used in this processor)
+
+        Returns:
+            Processed reasoning text with replacements applied
+        """
+        import re
+
+        self.last_input_stats = self._compute_stats(reasoning)
+
+        # Perform replacement and count occurrences
+        result, self.num_replacements = re.subn(self.pattern, self.replacement, reasoning)
+
+        self.last_output_stats = self._compute_stats(result)
+        return result
+
+    def get_metadata(self) -> Dict:
+        """Get metadata about the replacement operation"""
+        metadata = {
+            'processor': 'replace',
+            'pattern': self.pattern,
+            'replacement': self.replacement,
+            'num_replacements': self.num_replacements,
+            'input_stats': self.last_input_stats,
+            'output_stats': self.last_output_stats
         }
         metadata.update(self.kwargs)
         return metadata

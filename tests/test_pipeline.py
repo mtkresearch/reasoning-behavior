@@ -473,3 +473,59 @@ Line 5: value 50"""
         assert len(metadata_list) == 1
         assert metadata_list[0]['processor'] == 'question'
         assert metadata_list[0]['original_question'] == original_question
+
+    def test_parse_flow_replace(self):
+        """Test parsing replace processor"""
+        from pipeline import parse_flow
+
+        flow_str = "replace('\\s',replacement=' ')"
+        processors = parse_flow(flow_str)
+
+        assert len(processors) == 1
+        assert processors[0].__class__.__name__ == 'ReplaceProcessor'
+        assert processors[0].pattern == '\\s'
+        assert processors[0].replacement == ' '
+
+    def test_pipeline_with_replace(self, sample_context):
+        """Test pipeline execution with replace processor"""
+        from pipeline import Pipeline, parse_flow
+
+        flow_str = "replace('\\s+',replacement=' ')"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = "hello\n\n\nworld   test"
+        result, metadata_list = pipeline.execute(reasoning, sample_context)
+
+        # All continuous whitespace should be replaced with single space
+        assert result == "hello world test"
+
+        # Check metadata
+        assert len(metadata_list) == 1
+        assert metadata_list[0]['processor'] == 'replace'
+        assert metadata_list[0]['pattern'] == '\\s+'
+        assert metadata_list[0]['replacement'] == ' '
+
+    def test_e2e_mask_and_replace(self, sample_context):
+        """Test pipeline: mask alphabet then replace whitespace"""
+        from pipeline import Pipeline, parse_flow
+
+        flow_str = "mask('alphabet',mask_char=' '),replace('\\s+',replacement=' ')"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = "Calculate 2 + 2 = 4"
+        result, metadata_list = pipeline.execute(reasoning, sample_context)
+
+        # Letters should be masked with space, then continuous spaces consolidated
+        # Expected: numbers and symbols preserved, all else becomes single space
+        assert '2' in result
+        assert '4' in result
+        assert '+' in result
+        assert '=' in result
+        assert 'Calculate' not in result
+
+        # Check metadata
+        assert len(metadata_list) == 2
+        assert metadata_list[0]['processor'] == 'mask'
+        assert metadata_list[1]['processor'] == 'replace'

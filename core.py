@@ -112,6 +112,29 @@ def clean_multiple_newlines(text: str) -> str:
     return cleaned
 
 
+def remove_continuous_blanks(text: str) -> str:
+    """
+    Replace multiple consecutive blank characters (spaces, tabs, newlines) with a single space
+
+    This function consolidates all continuous whitespace (including newlines, spaces, tabs)
+    into a single space character.
+
+    Args:
+        text: Input text with potential multiple consecutive blank characters
+
+    Returns:
+        Text with all continuous blanks replaced by a single space
+
+    Example:
+        >>> remove_continuous_blanks("hello\\n\\n\\n  \\nworld   \\t\\n\\n   test")
+        'hello world test'
+    """
+    # Replace all consecutive whitespace characters (spaces, tabs, newlines) with a single space
+    result = re.sub(r'\s+', ' ', text)
+    # Strip leading/trailing whitespace
+    return result.strip()
+
+
 def extract_nonempty_lines(text: str) -> List[str]:
     """
     Extract non-empty lines from text
