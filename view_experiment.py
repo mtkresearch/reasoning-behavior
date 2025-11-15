@@ -300,11 +300,6 @@ MAIN_TEMPLATE = """
             white-space: nowrap;
         }
 
-        .flow-step.dim {
-            opacity: 0.4;
-            background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%);
-        }
-
         .flow-arrow {
             display: inline-block;
             color: #cbd5e0;
@@ -813,41 +808,18 @@ MAIN_TEMPLATE = """
                 }
             }
 
-            // Build tree visualization
-            let treeViz = '';
-            let indent = '';
-
-            if (depth > 0) {
-                // Add indentation
-                for (let i = 0; i < depth - 1; i++) {
-                    indent += '    ';
-                }
-
-                // Add tree line
-                const treeLine = isLast ? '└── ' : '├── ';
-                treeViz = `<span class="flow-tree-line">${indent}${treeLine}</span>`;
-            }
-
-            // Build flow display (only show current level)
+            // Build flow display (all processors shown in blue)
             let flowHtml = '';
             if (path.length > 0) {
                 const processors = parseFlowString(exp.flow || '');
 
-                // Show dimmed parent path
-                if (path.length > 1) {
-                    const parentProcessors = processors.slice(0, path.length - 1);
-                    parentProcessors.forEach((proc, idx) => {
-                        if (idx > 0) flowHtml += '<span class="flow-arrow">→</span>';
-                        flowHtml += formatFlowStep(proc, true);
-                    });
-                    flowHtml += '<span class="flow-arrow">→</span>';
-                }
+                // Show all processors with blue background
+                processors.forEach((proc, idx) => {
+                    if (idx > 0) flowHtml += '<span class="flow-arrow">→</span>';
+                    flowHtml += formatFlowStep(proc, false);
+                });
 
-                // Show highlighted current step
-                const currentProcessor = processors[path.length - 1];
-                if (currentProcessor) {
-                    flowHtml += formatFlowStep(currentProcessor, false);
-                } else if (isBaseline) {
+                if (isBaseline && flowHtml === '') {
                     flowHtml = '<span class="flow-step">[baseline]</span>';
                 }
             } else if (isBaseline) {
@@ -881,7 +853,7 @@ MAIN_TEMPLATE = """
                 <td style="text-align: center; color: #94a3b8; font-weight: 500;">${currentIndex}</td>
                 <td class="flow-cell">
                     <div class="flow-content">
-                        ${treeViz}${flowHtml}
+                        ${flowHtml}
                         ${isBaseline ? '<span class="baseline-badge">BASELINE</span>' : ''}
                     </div>
                 </td>
@@ -921,34 +893,8 @@ MAIN_TEMPLATE = """
         }
 
         function deleteRow(rowId) {
-            // Add the current row to deleted set
+            // Only delete the current row (no cascading deletion)
             deletedRows.add(rowId);
-
-            // Get the path of the deleted row
-            const deletedPath = rowPathMap.get(rowId);
-
-            if (deletedPath) {
-                // Find all rows that are children of this path
-                // A row is a child if its path starts with the deleted path
-                rowPathMap.forEach((path, id) => {
-                    if (id !== rowId) {
-                        // Check if this path is a descendant
-                        // A descendant's path starts with all elements of the deleted path
-                        if (path.length > deletedPath.length) {
-                            let isDescendant = true;
-                            for (let i = 0; i < deletedPath.length; i++) {
-                                if (path[i] !== deletedPath[i]) {
-                                    isDescendant = false;
-                                    break;
-                                }
-                            }
-                            if (isDescendant) {
-                                deletedRows.add(id);
-                            }
-                        }
-                    }
-                });
-            }
 
             updateRestoreButton();
             renderTable();
