@@ -546,6 +546,41 @@ def remove_before_answer(reasoning: str, answer: str) -> str:
     return '\n'.join(lines)
 
 
+def remove_exact_answer(reasoning: str, answer: str) -> str:
+    """
+    Remove the exact answer string from reasoning text
+
+    This function finds and removes all occurrences of the exact answer string
+    from the reasoning text, using word boundaries to avoid partial matches.
+
+    Args:
+        reasoning: Original reasoning content
+        answer: The ground truth answer to remove
+
+    Returns:
+        Reasoning content with the exact answer removed
+
+    Examples:
+        >>> remove_exact_answer("The answer is 42.", "42")
+        'The answer is .'
+        >>> remove_exact_answer("Result: 123, which equals 123.", "123")
+        'Result: , which equals .'
+    """
+    # Clean answer string (remove potential whitespace)
+    answer_clean = answer.strip()
+
+    if not answer_clean:
+        return reasoning
+
+    # Escape special regex characters in answer for matching
+    answer_escaped = re.escape(answer_clean)
+
+    # Replace all occurrences of the answer with empty string (using word boundaries)
+    result = re.sub(r'\b' + answer_escaped + r'\b', '', reasoning)
+
+    return result
+
+
 def shuffle_lines(reasoning: str, seed: int = None) -> str:
     """
     Shuffle reasoning content line-by-line

@@ -37,9 +37,10 @@ Available Processors
    - num_prev_lines: For 'n-lines' mode (default: 1)
 
 2. truncate(mode, ...)
-   Remove lines from reasoning.
+   Remove content from reasoning.
 
    Modes:
+   - 'answer': Remove exact answer string from reasoning (all occurrences, word boundaries)
    - 'answer_and_after': Remove answer line and all lines after it
    - 'before_answer': Remove all lines before answer line (answer line kept)
    - 'last_n_lines': Remove last N lines (specify n=N)
@@ -156,6 +157,12 @@ python mask_experiment.py --flow "replace('\\d',replacement='X')"
 
 # Example 19: Combine replace with other processors
 python mask_experiment.py --flow "mask('alphabet',mask_char=' '),replace('\\s+',replacement=' ')"
+
+# Example 20: Remove exact answer from reasoning (all occurrences)
+python mask_experiment.py --flow "truncate('answer')"
+
+# Example 21: Combine answer removal with shuffle
+python mask_experiment.py --flow "truncate('answer'),shuffle('line')"
 
 -----------------------------------------------------------------------------
 Other Parameters

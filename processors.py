@@ -159,6 +159,7 @@ class TruncateProcessor(Processor):
 
     Supported modes:
     - 'all': Remove all reasoning (return empty string)
+    - 'answer': Remove exact answer string from reasoning (all occurrences)
     - 'answer_and_after': Remove answer line and all lines after it
     - 'before_answer': Remove all lines before the answer line (answer line kept)
     - 'last_n_lines': Remove last N lines (kwargs: n=5)
@@ -181,13 +182,21 @@ class TruncateProcessor(Processor):
 
     def process(self, reasoning: str, context: Dict) -> str:
         """Apply truncation to reasoning text"""
-        from core import remove_answer_and_after, remove_before_answer, truncate_reasoning_lines
+        from core import (
+            remove_answer_and_after,
+            remove_before_answer,
+            remove_exact_answer,
+            truncate_reasoning_lines
+        )
 
         self.last_input_stats = self._compute_stats(reasoning)
         input_line_count = self.last_input_stats['lines']
 
         if self.mode == 'all':
             result = ''
+        elif self.mode == 'answer':
+            answer = context.get('answer', '')
+            result = remove_exact_answer(reasoning, answer)
         elif self.mode == 'answer_and_after':
             answer = context.get('answer', '')
             result = remove_answer_and_after(reasoning, answer)

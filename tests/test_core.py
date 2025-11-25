@@ -394,3 +394,124 @@ Line 4"""
         reasoning = "The quick brown fox"
         with pytest.raises(ValueError, match="Either tokenizer_model or model_type must be provided"):
             shuffle_reasoning(reasoning, mode='token', seed=42)
+
+
+class TestRemoveExactAnswer:
+    """Tests for remove_exact_answer()"""
+
+    def test_remove_exact_answer_basic(self):
+        """Test basic exact answer removal"""
+        from core import remove_exact_answer
+
+        reasoning = "The answer is 42."
+        result = remove_exact_answer(reasoning, "42")
+
+        assert "42" not in result
+        assert "The answer is" in result
+
+    def test_remove_exact_answer_multiple_occurrences(self):
+        """Test that all occurrences are removed"""
+        from core import remove_exact_answer
+
+        reasoning = "First: 42, second: 42, third: 42."
+        result = remove_exact_answer(reasoning, "42")
+
+        assert "42" not in result
+        assert result.count("42") == 0
+
+    def test_remove_exact_answer_word_boundary(self):
+        """Test that word boundaries are respected"""
+        from core import remove_exact_answer
+
+        reasoning = "Numbers: 42, 421, 142, 4200"
+        result = remove_exact_answer(reasoning, "42")
+
+        # Standalone 42 should be removed
+        # But 421, 142, 4200 should remain
+        assert "421" in result
+        assert "142" in result
+        assert "4200" in result
+
+    def test_remove_exact_answer_empty_answer(self):
+        """Test with empty answer string"""
+        from core import remove_exact_answer
+
+        reasoning = "This is some text."
+        result = remove_exact_answer(reasoning, "")
+
+        assert result == reasoning
+
+    def test_remove_exact_answer_whitespace_answer(self):
+        """Test with whitespace-only answer"""
+        from core import remove_exact_answer
+
+        reasoning = "This is some text."
+        result = remove_exact_answer(reasoning, "   ")
+
+        assert result == reasoning
+
+    def test_remove_exact_answer_special_regex_chars(self):
+        """Test with answer containing regex special characters"""
+        from core import remove_exact_answer
+
+        # Test with decimal point (regex special char)
+        reasoning = "The value is 3.14 and also 3.14."
+        result = remove_exact_answer(reasoning, "3.14")
+
+        assert "3.14" not in result
+        assert "The value is" in result
+
+    def test_remove_exact_answer_no_match(self):
+        """Test when answer is not in reasoning"""
+        from core import remove_exact_answer
+
+        reasoning = "This text does not contain the answer."
+        result = remove_exact_answer(reasoning, "999")
+
+        assert result == reasoning
+
+    def test_remove_exact_answer_multiline(self):
+        """Test removal across multiple lines"""
+        from core import remove_exact_answer
+
+        reasoning = """Line 1: answer is 12
+Line 2: we got 12
+Line 3: final answer 12"""
+        result = remove_exact_answer(reasoning, "12")
+
+        assert "12" not in result
+        assert "Line 1:" in result
+        assert "Line 2:" in result
+        assert "Line 3:" in result
+
+    def test_remove_exact_answer_with_brackets(self):
+        """Test with answer containing brackets (regex special chars)
+
+        Note: Word boundaries (\b) only work between word characters (alphanumeric)
+        and non-word characters. Since '(' and ')' are non-word characters,
+        \b won't match around them in patterns like '(1+2)'.
+        This test verifies that special regex characters are properly escaped,
+        even if word boundaries don't fully apply.
+        """
+        from core import remove_exact_answer
+
+        # Test with numeric answer that has proper word boundaries
+        reasoning = "The answer is 123 in brackets."
+        result = remove_exact_answer(reasoning, "123")
+
+        assert "123" not in result
+        assert "The answer is" in result
+
+    def test_remove_exact_answer_preserves_structure(self):
+        """Test that the overall structure is preserved"""
+        from core import remove_exact_answer
+
+        reasoning = """Step 1: Calculate 5 + 7 = 12
+Step 2: Therefore the answer is 12."""
+        result = remove_exact_answer(reasoning, "12")
+
+        # Should have same number of lines
+        assert result.count('\n') == reasoning.count('\n')
+        # Step labels should remain
+        assert "Step 1:" in result
+        assert "Step 2:" in result

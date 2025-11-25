@@ -231,6 +231,118 @@ Line 4"""
         assert 'output_stats' in metadata
         assert 'removed_lines' in metadata
 
+    def test_truncate_processor_answer_mode_basic(self, sample_context):
+        """Test TruncateProcessor with mode='answer' removes exact answer"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='answer')
+        reasoning = """Step 1: Calculate something
+Step 2: The answer is 12.
+Step 3: Therefore 12 is correct."""
+        context = {"answer": "12"}
+
+        result = processor.process(reasoning, context)
+
+        # Answer "12" should be removed
+        assert "12" not in result
+        # Other content should be preserved
+        assert "Step 1: Calculate something" in result
+        assert "Step 2: The answer is" in result
+        assert "Step 3: Therefore" in result
+
+    def test_truncate_processor_answer_mode_multiple_occurrences(self, sample_context):
+        """Test TruncateProcessor with mode='answer' removes all occurrences"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='answer')
+        reasoning = """First: 12
+Second: 12 again
+Third: the value is 12!"""
+        context = {"answer": "12"}
+
+        result = processor.process(reasoning, context)
+
+        # All occurrences of "12" should be removed
+        assert "12" not in result
+        assert "First:" in result
+        assert "Second:" in result
+        assert "again" in result
+        assert "Third: the value is" in result
+
+    def test_truncate_processor_answer_mode_word_boundary(self, sample_context):
+        """Test TruncateProcessor with mode='answer' respects word boundaries"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='answer')
+        reasoning = """Calculate 42 and 421 and 142.
+The number is 42."""
+        context = {"answer": "42"}
+
+        result = processor.process(reasoning, context)
+
+        # Only standalone "42" should be removed (word boundary)
+        assert "421" in result  # 421 should remain
+        assert "142" in result  # 142 should remain
+        # But standalone 42 should be removed
+        assert "Calculate  and 421" in result or "Calculate  " in result
+
+    def test_truncate_processor_answer_mode_empty_answer(self, sample_context):
+        """Test TruncateProcessor with mode='answer' handles empty answer"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='answer')
+        reasoning = "This is some reasoning text."
+        context = {"answer": ""}
+
+        result = processor.process(reasoning, context)
+
+        # Reasoning should be unchanged
+        assert result == reasoning
+
+    def test_truncate_processor_answer_mode_no_match(self, sample_context):
+        """Test TruncateProcessor with mode='answer' when answer not in text"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='answer')
+        reasoning = "This text does not contain the answer."
+        context = {"answer": "999"}
+
+        result = processor.process(reasoning, context)
+
+        # Reasoning should be unchanged
+        assert result == reasoning
+
+    def test_truncate_processor_answer_mode_special_chars(self, sample_context):
+        """Test TruncateProcessor with mode='answer' handles special regex chars"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='answer')
+        reasoning = "The answer is 3.14 which is pi."
+        context = {"answer": "3.14"}
+
+        result = processor.process(reasoning, context)
+
+        # Answer with special regex char (.) should be removed safely
+        assert "3.14" not in result
+        assert "The answer is" in result
+        assert "which is pi" in result
+
+    def test_truncate_processor_answer_mode_get_metadata(self, sample_context):
+        """Test TruncateProcessor mode='answer' metadata"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='answer')
+        reasoning = "The answer is 12. Final: 12."
+        context = {"answer": "12"}
+
+        _ = processor.process(reasoning, context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'truncate'
+        assert metadata['mode'] == 'answer'
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+
 
 class TestShuffleProcessor:
     """Tests for ShuffleProcessor"""
