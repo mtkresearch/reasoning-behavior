@@ -35,7 +35,7 @@ reasoning-behavior/
 ├── core.py                    # Shared utilities for all experiments
 ├── pipeline.py                # Pipeline framework for processor composition
 ├── run_experiment.py          # Pipeline-based experiment runner
-└── view_experiment.py         # Web visualization server
+└── run_view_experiment.py         # Web visualization server
 ```
 
 ## Core Architecture
@@ -100,7 +100,7 @@ from core import (
 
 **Pipeline Experiment Framework**:
 - `run_experiment.py` - Configurable pipeline for processing reasoning (mask, truncate, shuffle, insert) with automatic result caching and grading
-- `view_experiment.py` - Web visualization server for browsing experiment results with tree structure and conditional probability analysis
+- `run_view_experiment.py` - Web visualization server for browsing experiment results with tree structure and conditional probability analysis
 - `pipeline.py` - Core pipeline infrastructure with processor composition
 - Output structure: `exp/<processor1>/<processor2>/.../results.json`
 
@@ -133,7 +133,7 @@ python run_experiment.py --flow "mask('number'),shuffle('line')" \
 python run_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('alphabet')"
 
 # View experiment results in web interface
-python view_experiment.py [--port 5000] [--host 127.0.0.1] [--exp-dir exp/]
+python run_view_experiment.py [--port 5000] [--host 127.0.0.1] [--exp-dir exp/]
 ```
 
 ## Key Design Patterns
@@ -204,7 +204,7 @@ datasets/                            # Dataset sources
    - Stage 2: Grading results (`results_stage2.jsonl`)
    - Final: Aggregated JSON (`results.json`)
 
-4. **Visualization**: Use `view_experiment.py` to browse results with tree structure and conditional probability analysis
+4. **Visualization**: Use `run_view_experiment.py` to browse results with tree structure and conditional probability analysis
 
 ### Development Requirements
 

@@ -15,7 +15,7 @@ Usage:
         --mode openrouter \
         --limit 5
 
-The output will be compatible with view_experiment.py for visualization.
+The output will be compatible with run_view_experiment.py for visualization.
 """
 
 import json
