@@ -662,6 +662,59 @@ def build_gpt_oss_prompt_with_reasoning(
     return prompt
 
 
+def build_gpt_oss_prompt_with_reasoning_prefilled_answer(
+    question: str,
+    reasoning: str,
+    prefill_text: str = "Thus, the answer is",
+    reasoning_effort: str = "high",
+    empty_question: bool = False
+) -> str:
+    """
+    Build GPT-OSS prompt with prefilled reasoning and answer prefix for text completion
+
+    This function is similar to build_gpt_oss_prompt_with_reasoning, but adds
+    prefill text at the beginning of the answer section to guide the model's
+    response format.
+
+    Based on chat_template.jinja, the format should be:
+    <|start|>system<|message|>{system_message}<|end|>
+    <|start|>user<|message|>{question}<|end|>
+    <|start|>assistant<|channel|>analysis<|message|>{reasoning}<|end|>
+    <|start|>assistant<|channel|>final<|message|>{prefill_text}
+
+    Args:
+        question: The question to ask
+        reasoning: The reasoning content to prefill
+        prefill_text: Text to prefill at the start of answer (default: "Thus, the answer is")
+        reasoning_effort: Reasoning effort level (default: "high")
+        empty_question: If True, replace question with empty string (default: False)
+
+    Returns:
+        Complete prompt string ready for completion API with prefilled answer text
+    """
+    # Build system message (based on build_system_message macro in template)
+    model_identity = "You are ChatGPT, a large language model trained by OpenAI."
+    current_date = datetime.now().strftime("%Y-%m-%d")
+
+    system_message = f"{model_identity}\n"
+    system_message += "Knowledge cutoff: 2024-06\n"
+    system_message += f"Current date: {current_date}\n\n"
+    system_message += f"Reasoning: {reasoning_effort}\n\n"
+    system_message += "# Valid channels: analysis, commentary, final. Channel must be included for every message."
+
+    # Replace question with empty string if requested
+    question_text = "" if empty_question else question
+
+    # Build complete prompt with prefilled answer text
+    prompt = f"<|start|>system<|message|>{system_message}<|end|>"
+    prompt += f"<|start|>user<|message|>{question_text}<|end|>"
+    prompt += f"<|start|>assistant<|channel|>analysis<|message|>{reasoning}<|end|>"
+    prompt += f"<|start|>assistant<|channel|>final<|message|>{prefill_text}"
+
+    debug_print(f'\n[DEBUG] Built prompt with prefilled answer:\n{prompt}\n')
+    return prompt
+
+
 # =============================================================================
 # Prompt Templates
 # =============================================================================

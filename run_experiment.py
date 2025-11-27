@@ -97,6 +97,28 @@ Available Processors
    - Input:  "Calculate 2 + 2 = 4" with pattern='\\d', replacement='X'
    - Output: "Calculate X + X = X"
 
+7. answer(mode, prefill_text='Thus, the answer is')
+   Add prefill text to guide model answer generation.
+
+   This processor does not modify the reasoning text itself. Instead, it adds
+   prefill text at the beginning of the answer section in the prompt to guide
+   the model's response format.
+
+   Modes:
+   - 'retrieval': Add prefill text to guide answer generation
+
+   Parameters:
+   - prefill_text: Text to prefill at the start of answer (default: 'Thus, the answer is')
+
+   Examples:
+   - answer('retrieval') - Uses default "Thus, the answer is" as prefix
+   - answer('retrieval', prefill_text='Therefore, the final answer is')
+
+   Use cases:
+   - Guide the model to start answers in a specific format
+   - Test if answer format affects model performance
+   - Ensure consistent answer structure across responses
+
 -----------------------------------------------------------------------------
 Examples
 -----------------------------------------------------------------------------
@@ -164,6 +186,18 @@ python mask_experiment.py --flow "truncate('answer')"
 # Example 21: Combine answer removal with shuffle
 python mask_experiment.py --flow "truncate('answer'),shuffle('line')"
 
+# Example 22: Add answer prefill to guide model response format
+python mask_experiment.py --flow "answer('retrieval')"
+
+# Example 23: Answer prefill with custom text
+python mask_experiment.py --flow "answer('retrieval',prefill_text='Therefore, the final answer is')"
+
+# Example 24: Combine answer prefill with masking
+python mask_experiment.py --flow "mask('number'),answer('retrieval')"
+
+# Example 25: Full pipeline with answer prefill
+python mask_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('number'),shuffle('line'),answer('retrieval')"
+
 -----------------------------------------------------------------------------
 Other Parameters
 -----------------------------------------------------------------------------
@@ -195,6 +229,7 @@ from core import (
     parse_answer_from_completion,
     parse_yes_no_response,
     build_gpt_oss_prompt_with_reasoning,
+    build_gpt_oss_prompt_with_reasoning_prefilled_answer,
     GRADING_PROMPT,
     mask_numbers_in_reasoning,
     mask_answer_only_in_reasoning,
@@ -493,14 +528,15 @@ def prepare_task(
     flow_str = flow
 
     # Process reasoning using Pipeline
+    context = {
+        'question': question,
+        'answer': ground_truth,
+        'ground_truth': ground_truth
+    }
+
     if flow_str:
         processors = parse_flow(flow_str)
         pipeline = Pipeline(processors)
-        context = {
-            'question': question,
-            'answer': ground_truth,
-            'ground_truth': ground_truth
-        }
 
         processed_reasoning, processing_metadata = pipeline.execute(original_reasoning, context)
         # Use question from context (may be modified by processors like truncate_question)
@@ -512,7 +548,15 @@ def prepare_task(
         final_question = question
 
     # Build prompt with processed reasoning
-    prompt = build_gpt_oss_prompt_with_reasoning(final_question, processed_reasoning)
+    # Check if answer_prefill is in context (set by AnswerProcessor)
+    if 'answer_prefill' in context:
+        prompt = build_gpt_oss_prompt_with_reasoning_prefilled_answer(
+            final_question,
+            processed_reasoning,
+            prefill_text=context['answer_prefill']
+        )
+    else:
+        prompt = build_gpt_oss_prompt_with_reasoning(final_question, processed_reasoning)
 
     # Create CompletionRequest
     request = CompletionRequest(
@@ -524,18 +568,24 @@ def prepare_task(
     )
 
     # Create Task with metadata
+    metadata = {
+        'unique_id': unique_id,
+        'question': question,
+        'ground_truth': ground_truth,
+        'original_reasoning': original_reasoning,
+        'processed_reasoning': processed_reasoning,
+        'flow': flow_str,
+        'processing_metadata': processing_metadata,
+    }
+
+    # Add answer_prefill to metadata if present
+    if 'answer_prefill' in context:
+        metadata['answer_prefill'] = context['answer_prefill']
+
     task = Task(
         index=index,
         request=request,
-        metadata={
-            'unique_id': unique_id,
-            'question': question,
-            'ground_truth': ground_truth,
-            'original_reasoning': original_reasoning,
-            'processed_reasoning': processed_reasoning,
-            'flow': flow_str,
-            'processing_metadata': processing_metadata,
-        }
+        metadata=metadata
     )
 
     return task

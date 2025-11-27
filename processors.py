@@ -10,6 +10,7 @@ to reasoning text:
 - QuestionProcessor: Modify or remove question text
 - RemoveProcessor: Remove or consolidate whitespace characters
 - ReplaceProcessor: Replace text using regular expressions
+- AnswerProcessor: Add prefill text to guide model answer generation
 """
 
 from abc import ABC, abstractmethod
@@ -534,6 +535,71 @@ class ReplaceProcessor(Processor):
             'pattern': self.pattern,
             'replacement': self.replacement,
             'num_replacements': self.num_replacements,
+            'input_stats': self.last_input_stats,
+            'output_stats': self.last_output_stats
+        }
+        metadata.update(self.kwargs)
+        return metadata
+
+
+class AnswerProcessor(Processor):
+    """
+    Processor for adding prefill text to guide model answer generation
+
+    This processor does not modify the reasoning text itself.
+    Instead, it adds a prefill text to the context that will be used
+    when building prompts to guide the model's answer generation.
+
+    Supported modes:
+    - 'retrieval': Add prefill text to guide answer generation
+    """
+
+    def __init__(self, mode: str, prefill_text: str = "Thus, the answer is", **kwargs):
+        """
+        Initialize AnswerProcessor
+
+        Args:
+            mode: Processing mode (currently only 'retrieval' is supported)
+            prefill_text: Text to prefill in the answer section (default: "Thus, the answer is")
+            **kwargs: Additional parameters (reserved for future use)
+        """
+        self.mode = mode
+        self.prefill_text = prefill_text
+        self.kwargs = kwargs
+        self.last_input_stats = None
+        self.last_output_stats = None
+
+    def process(self, reasoning: str, context: Dict) -> str:
+        """
+        Add prefill text to context for answer generation
+
+        This processor does not modify the reasoning text.
+        It adds 'answer_prefill' to the context dictionary.
+
+        Args:
+            reasoning: The reasoning text (unchanged)
+            context: Context dictionary to store prefill text
+
+        Returns:
+            Original reasoning text (unchanged)
+        """
+        self.last_input_stats = self._compute_stats(reasoning)
+
+        if self.mode != 'retrieval':
+            raise ValueError(f"Invalid mode: {self.mode}. Currently only 'retrieval' is supported.")
+
+        # Add prefill text to context
+        context['answer_prefill'] = self.prefill_text
+
+        self.last_output_stats = self._compute_stats(reasoning)
+        return reasoning
+
+    def get_metadata(self) -> Dict:
+        """Get metadata about the answer processor operation"""
+        metadata = {
+            'processor': 'answer',
+            'mode': self.mode,
+            'prefill_text': self.prefill_text,
             'input_stats': self.last_input_stats,
             'output_stats': self.last_output_stats
         }
