@@ -1097,3 +1097,237 @@ Final answer: 42"""
 
         # Should remove all whitespace (default replacement is '')
         assert result == "abc"
+
+
+class TestReasonIsProcessor:
+    """Tests for ReasonIsProcessor - replaces reasoning with answer only"""
+
+    def test_reason_is_answer_mode_basic(self, sample_context):
+        """Test ReasonIsProcessor replaces reasoning with pure answer"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(mode='answer')
+        reasoning = """Let's solve this step by step.
+First, we calculate 2 + 2 = 4.
+Then, we multiply by 3: 4 × 3 = 12.
+Therefore, the answer is 12."""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should replace entire reasoning with just the answer
+        assert result == "12"
+
+    def test_reason_is_answer_with_boxed_answer(self, sample_context):
+        """Test ReasonIsProcessor with boxed answer format"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(mode='answer')
+        reasoning = """Step 1: Calculate 5 + 3 = 8
+Step 2: Multiply by 2 = 16
+Final answer: \\boxed{16}"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should use ground_truth from context
+        assert result == "12"
+
+    def test_reason_is_answer_extracts_from_context(self, sample_context):
+        """Test ReasonIsProcessor uses answer from context"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(mode='answer')
+        reasoning = "Some complex reasoning that we don't care about"
+
+        context = {
+            "question": "What is 5 + 5?",
+            "answer": "10",
+            "ground_truth": "10"
+        }
+
+        result = processor.process(reasoning, context)
+
+        # Should use answer from context, not parse from reasoning
+        assert result == "10"
+
+    def test_reason_is_answer_with_different_answer_formats(self, sample_context):
+        """Test ReasonIsProcessor with various answer types"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(mode='answer')
+
+        # Test with numeric answer
+        context1 = sample_context.copy()
+        context1['answer'] = "42"
+        result1 = processor.process("reasoning...", context1)
+        assert result1 == "42"
+
+        # Test with fractional answer
+        context2 = sample_context.copy()
+        context2['answer'] = "3/4"
+        result2 = processor.process("reasoning...", context2)
+        assert result2 == "3/4"
+
+        # Test with text answer
+        context3 = sample_context.copy()
+        context3['answer'] = "impossible"
+        result3 = processor.process("reasoning...", context3)
+        assert result3 == "impossible"
+
+    def test_reason_is_answer_get_metadata(self, sample_context):
+        """Test ReasonIsProcessor.get_metadata()"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(mode='answer')
+        reasoning = "Long reasoning text that will be replaced"
+
+        result = processor.process(reasoning, sample_context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'reason_is'
+        assert metadata['mode'] == 'answer'
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+        assert metadata['input_stats']['chars'] > 0
+        assert metadata['output_stats']['chars'] == len("12")
+
+    def test_reason_is_invalid_mode(self, sample_context):
+        """Test ReasonIsProcessor with invalid mode raises error"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(mode='invalid_mode')
+        reasoning = "Some reasoning"
+
+        with pytest.raises(ValueError, match="Invalid mode for reason_is"):
+            processor.process(reasoning, sample_context)
+
+    def test_reason_is_missing_answer_in_context(self, sample_context):
+        """Test ReasonIsProcessor raises error when answer missing from context"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(mode='answer')
+        reasoning = "Some reasoning"
+
+        # Context without answer
+        context = {"question": "What is 2+2?"}
+
+        with pytest.raises(KeyError, match="'answer' not found in context"):
+            processor.process(reasoning, context)
+
+    def test_reason_is_in_pipeline(self, sample_context):
+        """Test ReasonIsProcessor works in pipeline"""
+        from pipeline import parse_flow, Pipeline
+
+        flow_str = "reason_is('answer')"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = "Complex reasoning with multiple steps and calculations"
+        context = sample_context.copy()
+        result, metadata_list = pipeline.execute(reasoning, context)
+
+        # Should replace reasoning with answer
+        assert result == "12"
+        assert len(metadata_list) == 1
+        assert metadata_list[0]['processor'] == 'reason_is'
+        assert metadata_list[0]['mode'] == 'answer'
+
+    def test_reason_is_combined_with_mask(self, sample_context):
+        """Test ReasonIsProcessor combined with mask processor"""
+        from pipeline import parse_flow, Pipeline
+
+        # First mask numbers, then replace with answer
+        flow_str = "mask('number'),reason_is('answer')"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = "Calculate: 2 + 2 = 4"
+        context = sample_context.copy()
+        result, metadata_list = pipeline.execute(reasoning, context)
+
+        # After mask and reason_is, should just be the answer
+        assert result == "12"
+        assert len(metadata_list) == 2
+        assert metadata_list[0]['processor'] == 'mask'
+        assert metadata_list[1]['processor'] == 'reason_is'
+
+    def test_reason_is_empty_reasoning(self, sample_context):
+        """Test ReasonIsProcessor with empty reasoning"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(mode='answer')
+        reasoning = ""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should still return the answer even with empty reasoning
+        assert result == "12"
+
+    def test_reason_is_answer_with_illustrate_mode(self, sample_context):
+        """Test ReasonIsProcessor with answer_with_illustrate mode"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(mode='answer_with_illustrate')
+        reasoning = "Long reasoning that will be replaced"
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should return "Thus, the answer is {answer}"
+        assert result == "Thus, the answer is 12"
+
+    def test_reason_is_answer_with_illustrate_different_answers(self, sample_context):
+        """Test ReasonIsProcessor answer_with_illustrate with various answers"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(mode='answer_with_illustrate')
+
+        # Test with numeric answer
+        context1 = sample_context.copy()
+        context1['answer'] = "42"
+        result1 = processor.process("reasoning...", context1)
+        assert result1 == "Thus, the answer is 42"
+
+        # Test with fractional answer
+        context2 = sample_context.copy()
+        context2['answer'] = "3/4"
+        result2 = processor.process("reasoning...", context2)
+        assert result2 == "Thus, the answer is 3/4"
+
+        # Test with text answer
+        context3 = sample_context.copy()
+        context3['answer'] = "impossible"
+        result3 = processor.process("reasoning...", context3)
+        assert result3 == "Thus, the answer is impossible"
+
+    def test_reason_is_answer_with_illustrate_in_pipeline(self, sample_context):
+        """Test ReasonIsProcessor answer_with_illustrate in pipeline"""
+        from pipeline import parse_flow, Pipeline
+
+        flow_str = "reason_is('answer_with_illustrate')"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = "Complex reasoning with multiple steps"
+        context = sample_context.copy()
+        result, metadata_list = pipeline.execute(reasoning, context)
+
+        # Should replace reasoning with "Thus, the answer is {answer}"
+        assert result == "Thus, the answer is 12"
+        assert len(metadata_list) == 1
+        assert metadata_list[0]['processor'] == 'reason_is'
+        assert metadata_list[0]['mode'] == 'answer_with_illustrate'
+
+    def test_reason_is_answer_with_illustrate_get_metadata(self, sample_context):
+        """Test ReasonIsProcessor answer_with_illustrate metadata"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(mode='answer_with_illustrate')
+        reasoning = "Some reasoning text"
+
+        result = processor.process(reasoning, sample_context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'reason_is'
+        assert metadata['mode'] == 'answer_with_illustrate'
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+        assert metadata['output_stats']['chars'] == len("Thus, the answer is 12")

@@ -119,6 +119,28 @@ Available Processors
    - Test if answer format affects model performance
    - Ensure consistent answer structure across responses
 
+8. reason_is(mode)
+   Replace reasoning content with ground truth answer only.
+
+   This processor replaces the entire reasoning text with just the answer
+   from the context, creating a minimal reasoning chain that only contains
+   the correct answer. Useful for testing if models can retrieve the answer
+   when given only the answer itself (no reasoning steps).
+
+   Modes:
+   - 'answer': Replace reasoning with pure answer from context
+   - 'answer_with_illustrate': Replace reasoning with "Thus, the answer is {answer}"
+
+   Examples:
+   - reason_is('answer') - Replace entire reasoning with answer (e.g., "42")
+   - reason_is('answer_with_illustrate') - Replace with "Thus, the answer is 42"
+
+   Use cases:
+   - Test if model can retrieve answer when reasoning is just the answer
+   - Baseline comparison: answer-only vs. full reasoning
+   - Measure impact of reasoning steps on model performance
+   - Compare pure answer vs. illustrated answer formats
+
 -----------------------------------------------------------------------------
 Examples
 -----------------------------------------------------------------------------
@@ -197,6 +219,18 @@ python mask_experiment.py --flow "mask('number'),answer('retrieval')"
 
 # Example 25: Full pipeline with answer prefill
 python mask_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('number'),shuffle('line'),answer('retrieval')"
+
+# Example 26: Replace reasoning with answer only (pure answer)
+python mask_experiment.py --flow "reason_is('answer')"
+
+# Example 27: Replace reasoning with illustrated answer format
+python mask_experiment.py --flow "reason_is('answer_with_illustrate')"
+
+# Example 28: Combine reason_is with other processors (though reason_is replaces all, so order matters)
+python mask_experiment.py --flow "mask('number'),reason_is('answer')"
+
+# Example 29: Use reason_is as baseline for comparison
+python mask_experiment.py --flow "reason_is('answer')"
 
 -----------------------------------------------------------------------------
 Other Parameters

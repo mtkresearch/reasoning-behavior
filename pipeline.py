@@ -8,7 +8,7 @@ This module implements:
 
 import re
 from typing import List, Tuple, Dict
-from processors import Processor, MaskProcessor, TruncateProcessor, ShuffleProcessor, InsertProcessor, QuestionProcessor, RemoveProcessor, ReplaceProcessor, AnswerProcessor
+from processors import Processor, MaskProcessor, TruncateProcessor, ShuffleProcessor, InsertProcessor, QuestionProcessor, RemoveProcessor, ReplaceProcessor, AnswerProcessor, ReasonIsProcessor
 
 
 class Pipeline:
@@ -176,6 +176,8 @@ def _parse_step(step: str) -> Processor:
         return ReplaceProcessor(pattern=mode, **kwargs)
     elif processor_type == 'answer':
         return AnswerProcessor(mode=mode, **kwargs)
+    elif processor_type == 'reason_is':
+        return ReasonIsProcessor(mode=mode, **kwargs)
     else:
         raise ValueError(f"Unknown processor type: {processor_type}")
 

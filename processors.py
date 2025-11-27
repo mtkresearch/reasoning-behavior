@@ -605,3 +605,78 @@ class AnswerProcessor(Processor):
         }
         metadata.update(self.kwargs)
         return metadata
+
+
+class ReasonIsProcessor(Processor):
+    """
+    Processor for replacing reasoning content with ground truth answer only
+
+    This processor replaces the entire reasoning text with just the answer
+    from the context, creating a minimal reasoning chain that only contains
+    the correct answer.
+
+    Supported modes:
+    - 'answer': Replace reasoning with pure answer from context
+    - 'answer_with_illustrate': Replace reasoning with "Thus, the answer is {answer}"
+    """
+
+    def __init__(self, mode: str, **kwargs):
+        """
+        Initialize ReasonIsProcessor
+
+        Args:
+            mode: Processing mode (currently only 'answer' is supported)
+            **kwargs: Additional parameters (reserved for future use)
+        """
+        self.mode = mode
+        self.kwargs = kwargs
+        self.last_input_stats = None
+        self.last_output_stats = None
+
+    def process(self, reasoning: str, context: Dict) -> str:
+        """
+        Replace reasoning text with answer from context
+
+        Args:
+            reasoning: The reasoning text (will be replaced)
+            context: Context dictionary containing 'answer' or 'ground_truth'
+
+        Returns:
+            Answer string (pure or with illustrate format)
+
+        Raises:
+            ValueError: If mode is not valid
+            KeyError: If 'answer' is not found in context
+        """
+        self.last_input_stats = self._compute_stats(reasoning)
+
+        if self.mode not in ['answer', 'answer_with_illustrate']:
+            raise ValueError(f"Invalid mode for reason_is: {self.mode}. Supported modes: 'answer', 'answer_with_illustrate'")
+
+        # Get answer from context
+        if 'answer' not in context:
+            raise KeyError("'answer' not found in context")
+
+        answer = context['answer']
+
+        # Format based on mode
+        if self.mode == 'answer':
+            result = answer
+        elif self.mode == 'answer_with_illustrate':
+            result = f"Thus, the answer is {answer}"
+        else:
+            result = answer  # Fallback (should never reach here)
+
+        self.last_output_stats = self._compute_stats(result)
+        return result
+
+    def get_metadata(self) -> Dict:
+        """Get metadata about the reason_is processor operation"""
+        metadata = {
+            'processor': 'reason_is',
+            'mode': self.mode,
+            'input_stats': self.last_input_stats,
+            'output_stats': self.last_output_stats
+        }
+        metadata.update(self.kwargs)
+        return metadata
