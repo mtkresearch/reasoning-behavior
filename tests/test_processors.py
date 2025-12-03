@@ -1098,6 +1098,157 @@ Final answer: 42"""
         # Should remove all whitespace (default replacement is '')
         assert result == "abc"
 
+    def test_replace_processor_answer_placeholder_basic(self, sample_context):
+        """Test ReplaceProcessor with {ANSWER} placeholder replaces ground truth"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern='{ANSWER}', replacement='999')
+        reasoning = "The answer is 12. We verify that 12 is correct."
+        context = {"answer": "12", "question": "What is the answer?"}
+
+        result = processor.process(reasoning, context)
+
+        # Ground truth answer (12) should be replaced with 999
+        assert "12" not in result
+        assert "999" in result
+        assert result == "The answer is 999. We verify that 999 is correct."
+
+    def test_replace_processor_answer_placeholder_lowercase(self, sample_context):
+        """Test ReplaceProcessor with {answer} lowercase placeholder"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern='{answer}', replacement='XYZ')
+        reasoning = "The final answer is 12."
+        context = {"answer": "12"}
+
+        result = processor.process(reasoning, context)
+
+        # Should work with lowercase {answer} too
+        assert "12" not in result
+        assert "XYZ" in result
+        assert result == "The final answer is XYZ."
+
+    def test_replace_processor_answer_placeholder_word_boundary(self, sample_context):
+        """Test ReplaceProcessor {ANSWER} placeholder respects word boundaries"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern='{ANSWER}', replacement='XXX')
+        reasoning = "Calculate 42 and 421 and 142. The answer is 42."
+        context = {"answer": "42"}
+
+        result = processor.process(reasoning, context)
+
+        # Only standalone 42 should be replaced (word boundary)
+        assert "421" in result  # 421 should remain
+        assert "142" in result  # 142 should remain
+        # Check that standalone 42 was replaced (not part of 421 or 142)
+        assert result.count("42") == 2  # Only in 421 and 142
+        assert "XXX" in result
+        assert "Calculate XXX and 421 and 142. The answer is XXX." == result
+
+    def test_replace_processor_answer_placeholder_multiple_occurrences(self, sample_context):
+        """Test ReplaceProcessor {ANSWER} replaces all occurrences"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern='{ANSWER}', replacement='777')
+        reasoning = "First: 12, Second: 12, Third: 12!"
+        context = {"answer": "12"}
+
+        result = processor.process(reasoning, context)
+
+        # All occurrences of answer should be replaced
+        assert "12" not in result
+        assert result.count("777") == 3
+        assert result == "First: 777, Second: 777, Third: 777!"
+
+    def test_replace_processor_answer_placeholder_metadata(self, sample_context):
+        """Test ReplaceProcessor {ANSWER} placeholder includes actual_pattern in metadata"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern='{ANSWER}', replacement='999')
+        reasoning = "The answer is 12."
+        context = {"answer": "12"}
+
+        _ = processor.process(reasoning, context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'replace'
+        assert metadata['pattern'] == '{ANSWER}'
+        assert metadata['replacement'] == '999'
+        assert metadata['actual_pattern'] is not None
+        # Should show the expanded pattern (word boundary + escaped answer)
+        assert '12' in metadata['actual_pattern']
+        assert metadata['num_replacements'] == 1
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+
+    def test_replace_processor_answer_placeholder_missing_context(self, sample_context):
+        """Test ReplaceProcessor {ANSWER} raises error when answer missing from context"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern='{ANSWER}', replacement='999')
+        reasoning = "Some reasoning"
+
+        # Context without answer
+        context = {"question": "What is 2+2?"}
+
+        with pytest.raises(ValueError, match="'\\{ANSWER\\}' placeholder requires"):
+            processor.process(reasoning, context)
+
+    def test_replace_processor_answer_placeholder_in_pipeline(self, sample_context):
+        """Test ReplaceProcessor {ANSWER} works in pipeline"""
+        from pipeline import parse_flow, Pipeline
+
+        flow_str = "replace('{ANSWER}',replacement='ABC')"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = "The answer is 12. Therefore 12 is correct."
+        context = {"answer": "12", "question": "Test?"}
+        result, metadata_list = pipeline.execute(reasoning, context)
+
+        # Should replace answer with ABC
+        assert "12" not in result
+        assert "ABC" in result
+        assert result == "The answer is ABC. Therefore ABC is correct."
+        assert len(metadata_list) == 1
+        assert metadata_list[0]['processor'] == 'replace'
+        assert metadata_list[0]['pattern'] == '{ANSWER}'
+
+    def test_replace_processor_answer_placeholder_with_shuffle(self, sample_context):
+        """Test ReplaceProcessor {ANSWER} combined with shuffle"""
+        from pipeline import parse_flow, Pipeline
+
+        flow_str = "replace('{ANSWER}',replacement='999'),shuffle('word',seed=42)"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = "The answer is 12."
+        context = {"answer": "12"}
+        result, metadata_list = pipeline.execute(reasoning, context)
+
+        # Answer should be replaced, then shuffled
+        assert "12" not in result
+        assert "999" in result
+        assert len(metadata_list) == 2
+        assert metadata_list[0]['processor'] == 'replace'
+        assert metadata_list[1]['processor'] == 'shuffle'
+
+    def test_replace_processor_answer_placeholder_special_chars(self, sample_context):
+        """Test ReplaceProcessor {ANSWER} handles answers with special regex chars"""
+        from processors import ReplaceProcessor
+
+        processor = ReplaceProcessor(pattern='{ANSWER}', replacement='X')
+        reasoning = "The answer is 3.14 which is pi."
+        context = {"answer": "3.14"}
+
+        result = processor.process(reasoning, context)
+
+        # Answer with special regex char (.) should be replaced safely
+        assert "3.14" not in result
+        assert "X" in result
+        assert result == "The answer is X which is pi."
+
 
 class TestReasonIsProcessor:
     """Tests for ReasonIsProcessor - replaces reasoning with answer only"""

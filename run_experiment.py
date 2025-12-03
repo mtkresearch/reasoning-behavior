@@ -84,18 +84,26 @@ Available Processors
 
    Parameters:
    - pattern: Regular expression pattern to match (e.g., '\\s', '\\d', '\\w+')
+             OR special placeholder like '{ANSWER}' to match ground truth answer
    - replacement: String to replace matches with (default: empty string)
+
+   Special Placeholders:
+   - '{ANSWER}' or '{answer}': Automatically replaced with the ground truth answer
+                                This allows you to replace the correct answer with a different value
 
    Common use cases:
    - Replace all whitespace with single space: pattern='\\s', replacement=' '
    - Replace all digits with 'X': pattern='\\d', replacement='X'
    - Remove specific pattern: pattern='\\d+', replacement=''
+   - Replace ground truth answer with fixed value: pattern='{ANSWER}', replacement='123'
 
    Examples:
    - Input:  "hello\nworld" with pattern='\\s', replacement=' '
    - Output: "hello world"
    - Input:  "Calculate 2 + 2 = 4" with pattern='\\d', replacement='X'
    - Output: "Calculate X + X = X"
+   - Input:  "The answer is 42" (ground truth: 42) with pattern='{ANSWER}', replacement='999'
+   - Output: "The answer is 999"
 
 7. answer(mode, prefill_text='Thus, the answer is')
    Add prefill text to guide model answer generation.
@@ -202,34 +210,40 @@ python mask_experiment.py --flow "replace('\\d',replacement='X')"
 # Example 19: Combine replace with other processors
 python mask_experiment.py --flow "mask('alphabet',mask_char=' '),replace('\\s+',replacement=' ')"
 
-# Example 20: Remove exact answer from reasoning (all occurrences)
+# Example 20: Replace ground truth answer with a fixed value (e.g., 42 -> 123)
+python mask_experiment.py --flow "replace('{ANSWER}',replacement='123')"
+
+# Example 21: Replace ground truth answer and shuffle
+python mask_experiment.py --flow "replace('{ANSWER}',replacement='999'),shuffle('line')"
+
+# Example 22: Remove exact answer from reasoning (all occurrences)
 python mask_experiment.py --flow "truncate('answer')"
 
-# Example 21: Combine answer removal with shuffle
+# Example 23: Combine answer removal with shuffle
 python mask_experiment.py --flow "truncate('answer'),shuffle('line')"
 
-# Example 22: Add answer prefill to guide model response format
+# Example 24: Add answer prefill to guide model response format
 python mask_experiment.py --flow "answer('retrieval')"
 
-# Example 23: Answer prefill with custom text
+# Example 25: Answer prefill with custom text
 python mask_experiment.py --flow "answer('retrieval',prefill_text='Therefore, the final answer is')"
 
-# Example 24: Combine answer prefill with masking
+# Example 26: Combine answer prefill with masking
 python mask_experiment.py --flow "mask('number'),answer('retrieval')"
 
-# Example 25: Full pipeline with answer prefill
+# Example 27: Full pipeline with answer prefill
 python mask_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('number'),shuffle('line'),answer('retrieval')"
 
-# Example 26: Replace reasoning with answer only (pure answer)
+# Example 28: Replace reasoning with answer only (pure answer)
 python mask_experiment.py --flow "reason_is('answer')"
 
-# Example 27: Replace reasoning with illustrated answer format
+# Example 29: Replace reasoning with illustrated answer format
 python mask_experiment.py --flow "reason_is('answer_with_illustrate')"
 
-# Example 28: Combine reason_is with other processors (though reason_is replaces all, so order matters)
+# Example 30: Combine reason_is with other processors (though reason_is replaces all, so order matters)
 python mask_experiment.py --flow "mask('number'),reason_is('answer')"
 
-# Example 29: Use reason_is as baseline for comparison
+# Example 31: Use reason_is as baseline for comparison
 python mask_experiment.py --flow "reason_is('answer')"
 
 -----------------------------------------------------------------------------

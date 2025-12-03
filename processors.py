@@ -489,6 +489,10 @@ class ReplaceProcessor(Processor):
     - Replace all whitespace with single space: pattern=r'\\s', replacement=' '
     - Replace all digits: pattern=r'\\d', replacement='X'
     - Replace specific words or patterns
+    - Replace ground truth answer with fixed value: pattern='{ANSWER}', replacement='123'
+
+    Special placeholders:
+    - '{ANSWER}' or '{answer}': Replaced with the ground truth answer from context
     """
 
     def __init__(self, pattern: str, replacement: str = '', **kwargs):
@@ -496,7 +500,7 @@ class ReplaceProcessor(Processor):
         Initialize ReplaceProcessor
 
         Args:
-            pattern: Regular expression pattern to match
+            pattern: Regular expression pattern to match, or special placeholder like '{ANSWER}'
             replacement: String to replace matches with (default: empty string)
             **kwargs: Additional parameters (reserved for future use)
         """
@@ -506,6 +510,7 @@ class ReplaceProcessor(Processor):
         self.last_input_stats = None
         self.last_output_stats = None
         self.num_replacements = 0
+        self.actual_pattern = None  # Store the actual pattern used after placeholder expansion
 
     def process(self, reasoning: str, context: Dict) -> str:
         """
@@ -513,7 +518,7 @@ class ReplaceProcessor(Processor):
 
         Args:
             reasoning: The reasoning text to process
-            context: Context dictionary (not used in this processor)
+            context: Context dictionary containing 'answer' or 'ground_truth' for placeholder expansion
 
         Returns:
             Processed reasoning text with replacements applied
@@ -522,8 +527,20 @@ class ReplaceProcessor(Processor):
 
         self.last_input_stats = self._compute_stats(reasoning)
 
+        # Expand special placeholders
+        actual_pattern = self.pattern
+        if self.pattern.upper() == '{ANSWER}':
+            # Get ground truth answer from context
+            answer = context.get('answer') or context.get('ground_truth', '')
+            if not answer:
+                raise ValueError("'{ANSWER}' placeholder requires 'answer' or 'ground_truth' in context")
+            # Use word boundary to match the answer as a complete word/number
+            actual_pattern = r'\b' + re.escape(str(answer)) + r'\b'
+
+        self.actual_pattern = actual_pattern
+
         # Perform replacement and count occurrences
-        result, self.num_replacements = re.subn(self.pattern, self.replacement, reasoning)
+        result, self.num_replacements = re.subn(actual_pattern, self.replacement, reasoning)
 
         self.last_output_stats = self._compute_stats(result)
         return result
@@ -533,6 +550,7 @@ class ReplaceProcessor(Processor):
         metadata = {
             'processor': 'replace',
             'pattern': self.pattern,
+            'actual_pattern': self.actual_pattern,  # Include expanded pattern
             'replacement': self.replacement,
             'num_replacements': self.num_replacements,
             'input_stats': self.last_input_stats,
