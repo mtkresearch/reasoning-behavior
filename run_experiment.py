@@ -274,7 +274,9 @@ from core import (
     mask_numbers_advance,
     mask_all_nonblank_in_reasoning,
     remove_answer_and_after,
-    shuffle_lines
+    shuffle_lines,
+    append_to_jsonl,
+    load_from_jsonl
 )
 from pipeline import parse_flow, Pipeline
 
@@ -288,44 +290,8 @@ logger = setup_logger(__name__, log_file='logs/run_experiment.log')
 
 
 # =============================================================================
-# Safe File Operations - JSONL Strategy
+# Safe File Operations
 # =============================================================================
-
-def append_to_jsonl(filepath: Path, data: dict):
-    """
-    Append single result to JSONL file (append-only, never corrupts)
-
-    Args:
-        filepath: Path to JSONL file
-        data: Single result dictionary
-    """
-    with open(filepath, 'a', encoding='utf-8') as f:
-        f.write(json.dumps(data, ensure_ascii=False) + '\n')
-
-
-def load_from_jsonl(filepath: Path) -> List[dict]:
-    """
-    Load all results from JSONL file
-
-    Args:
-        filepath: Path to JSONL file
-
-    Returns:
-        List of result dictionaries
-    """
-    results = []
-    if filepath.exists():
-        with open(filepath, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    try:
-                        results.append(json.loads(line))
-                    except json.JSONDecodeError as e:
-                        logger.warning(f"Failed to parse JSONL line: {e}")
-                        continue
-    return results
-
 
 def atomic_save_json(filepath: Path, data: dict):
     """

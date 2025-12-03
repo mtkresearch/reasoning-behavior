@@ -18,13 +18,48 @@ import json
 import argparse
 from pathlib import Path
 from flask import Flask, render_template_string, jsonify, request
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional, Tuple
 import os
+from run_distribution import calculate_distribution_stats
 
 app = Flask(__name__)
 
 # Global variable to store experiment directory
 EXP_DIR = Path("exp")
+
+
+def load_distribution_stats(results_dir: Path) -> Optional[Dict[str, float]]:
+    """
+    Load distributions.json and calculate distribution statistics
+
+    Args:
+        results_dir: Directory containing results.json
+
+    Returns:
+        Dict with avg_entropy, avg_answer_prob, mean_rank, std_rank or None
+    """
+    distributions_file = results_dir / "distributions.json"
+    if not distributions_file.exists():
+        return None
+
+    try:
+        with open(distributions_file, 'r', encoding='utf-8') as f:
+            dist_data = json.load(f)
+
+        results = dist_data.get('results', [])
+        if not results:
+            return None
+
+        stats = calculate_distribution_stats(results)
+
+        # Check if any stats are valid
+        if all(v is None for v in stats.values()):
+            return None
+
+        return stats
+    except Exception as e:
+        print(f"Error loading {distributions_file}: {e}")
+        return None
 
 
 def scan_experiments(exp_dir: Path) -> List[Dict[str, Any]]:
@@ -62,7 +97,10 @@ def scan_experiments(exp_dir: Path) -> List[Dict[str, Any]]:
             # Construct relative path from exp/
             rel_path = results_file.relative_to(exp_dir)
 
-            experiments.append({
+            # Load distribution statistics if available
+            dist_stats = load_distribution_stats(results_file.parent)
+
+            experiment = {
                 'path': str(rel_path),
                 'full_path': str(results_file),
                 'name': exp_metadata.get('experiment_name', rel_path.parent.name),
@@ -77,7 +115,17 @@ def scan_experiments(exp_dir: Path) -> List[Dict[str, Any]]:
                 'successful': summary.get('successful') or summary.get('grading_successful', 0),
                 'failed': summary.get('failed', 0),
                 'results_map': results_map  # Add results map for conditional probability
-            })
+            }
+
+            # Add distribution statistics if available
+            if dist_stats is not None:
+                experiment['dist_avg_entropy'] = dist_stats.get('avg_entropy')
+                experiment['dist_avg_answer_prob'] = dist_stats.get('avg_answer_prob')
+                experiment['dist_mean_rank'] = dist_stats.get('mean_rank')
+                experiment['dist_std_rank'] = dist_stats.get('std_rank')
+                experiment['dist_top1_accuracy'] = dist_stats.get('top1_accuracy')
+
+            experiments.append(experiment)
         except Exception as e:
             print(f"Error loading {results_file}: {e}")
             continue
@@ -450,6 +498,7 @@ MAIN_TEMPLATE = """
                         <th style="width: 180px;">Accuracy</th>
                         <th style="width: 120px;">Correct/Success</th>
                         <th style="width: 140px;">P(shuf=T|par=T)</th>
+                        <th style="width: 280px;">Distribution STAT.</th>
                         <th style="width: 60px;"></th>
                     </tr>
                 </thead>
@@ -849,6 +898,19 @@ MAIN_TEMPLATE = """
                 condProbHtml = `${bothCorrect}/${parentCorrect}=${condProbPercent}%`;
             }
 
+            // Build Distribution STAT. content (E=entropy | P=prob | R=rank±std | A=top1_acc)
+            let distStatHtml = '';
+            if (exp.dist_avg_entropy !== undefined && exp.dist_avg_answer_prob !== undefined &&
+                exp.dist_mean_rank !== undefined && exp.dist_std_rank !== undefined &&
+                exp.dist_top1_accuracy !== undefined) {
+                const avgEntropy = exp.dist_avg_entropy.toFixed(2);
+                const avgAnswerProb = exp.dist_avg_answer_prob.toFixed(2);
+                const meanRank = exp.dist_mean_rank.toFixed(2);
+                const stdRank = exp.dist_std_rank.toFixed(2);
+                const top1Acc = exp.dist_top1_accuracy.toFixed(2);
+                distStatHtml = `E=${avgEntropy} | P=${avgAnswerProb} | R=${meanRank}±${stdRank} | A=${top1Acc}`;
+            }
+
             row.innerHTML = `
                 <td style="text-align: center; color: #94a3b8; font-weight: 500;">${currentIndex}</td>
                 <td class="flow-cell">
@@ -869,6 +931,9 @@ MAIN_TEMPLATE = """
                 </td>
                 <td class="stats-cell" style="width: 140px; color: #7f8c8d; font-size: 0.9em;">
                     ${condProbHtml}
+                </td>
+                <td class="stats-cell" style="width: 280px; color: #2c3e50; font-size: 0.80em; font-weight: 500; white-space: nowrap;">
+                    ${distStatHtml}
                 </td>
                 <td style="text-align: center;">
                     <button class="delete-btn" data-row-id="${rowId}">×</button>

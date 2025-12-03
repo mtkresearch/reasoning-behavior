@@ -922,3 +922,51 @@ def shuffle_reasoning(reasoning: str, mode: str = 'line', seed: int = None, **kw
         return shuffle_reasoning_tokens(reasoning, tokenizer_model=tokenizer_model, model_type=model_type, seed=seed)
     else:
         raise ValueError(f"Invalid shuffle mode: {mode}. Must be 'line', 'word', or 'token'")
+
+
+# =============================================================================
+# JSONL File Operations
+# =============================================================================
+
+def append_to_jsonl(filepath, data: dict):
+    """
+    Append single result to JSONL file (append-only, never corrupts)
+
+    Args:
+        filepath: Path to JSONL file (str or Path)
+        data: Single result dictionary
+    """
+    from pathlib import Path
+    filepath = Path(filepath)
+    with open(filepath, 'a', encoding='utf-8') as f:
+        f.write(json.dumps(data, ensure_ascii=False) + '\n')
+
+
+def load_from_jsonl(filepath) -> List[dict]:
+    """
+    Load all results from JSONL file
+
+    Args:
+        filepath: Path to JSONL file (str or Path)
+
+    Returns:
+        List of result dictionaries. Empty list if file doesn't exist.
+
+    Note:
+        Lines that fail to parse are logged and skipped.
+    """
+    from pathlib import Path
+    filepath = Path(filepath)
+    results = []
+    if filepath.exists():
+        with open(filepath, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        results.append(json.loads(line))
+                    except json.JSONDecodeError as e:
+                        # Note: logger is not available in core.py, so we use print
+                        print(f"Warning: Failed to parse JSONL line: {e}")
+                        continue
+    return results
