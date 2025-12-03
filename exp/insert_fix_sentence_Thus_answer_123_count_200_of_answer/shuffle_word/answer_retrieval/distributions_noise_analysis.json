@@ -1,0 +1,2115 @@
+{
+  "analysis_metadata": {
+    "source_file": "exp/insert_fix_sentence_Thus_answer_123_count_200_of_answer/shuffle_word/answer_retrieval/distributions.json",
+    "noise_answer": "123",
+    "normalized_noise_answer": "123",
+    "source_metadata": {
+      "source_result": "exp/insert_fix_sentence_Thus_answer_123_count_200_of_answer/shuffle_word/answer_retrieval/distributions.json",
+      "n_samples": 50,
+      "answer_free_gen": false,
+      "model": "gpt-oss",
+      "temperature": 0.5,
+      "timestamp": "2025-12-03T15:52:19.042557",
+      "source_experiment_metadata": {}
+    },
+    "source_summary": {
+      "total_questions": 297,
+      "avg_top1_accuracy": 0.6464646464646465,
+      "avg_entropy": 1.291639669468779,
+      "n_samples": 50,
+      "answer_free_gen": false,
+      "temperature": 0.5
+    }
+  },
+  "noise_statistics": {
+    "noise_answer": "123",
+    "normalized_noise_answer": "123",
+    "total_questions": 297,
+    "avg_noise_prob": 0.04101360204929226,
+    "mean_noise_rank": 2.925925925925926,
+    "std_noise_rank": 1.4429328186343808,
+    "questions_with_noise": 52,
+    "noise_appearance_rate": 0.1750841750841751
+  },
+  "per_question_analysis": [
+    {
+      "unique_id": "aime2025-I-0-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-1-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-10-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-11-0",
+      "question_id": 0,
+      "noise_prob": 0.06,
+      "noise_rank": 3,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-12-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-13-0",
+      "question_id": 0,
+      "noise_prob": 0.1,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-14-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-2-0",
+      "question_id": 0,
+      "noise_prob": 0.06976744186046512,
+      "noise_rank": 4,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-3-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-4-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-5-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-6-0",
+      "question_id": 0,
+      "noise_prob": 0.024390243902439025,
+      "noise_rank": 3,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-7-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-8-0",
+      "question_id": 0,
+      "noise_prob": 0.1956521739130435,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-9-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-0-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-1-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-10-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-11-0",
+      "question_id": 0,
+      "noise_prob": 0.92,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-13-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-2-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-3-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-4-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 7,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-5-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-6-0",
+      "question_id": 0,
+      "noise_prob": 0.061224489795918366,
+      "noise_rank": 4,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-7-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-8-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-9-0",
+      "question_id": 0,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-0-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-1-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-10-1",
+      "question_id": 1,
+      "noise_prob": 0.06,
+      "noise_rank": 3,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-11-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-12-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-13-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-14-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-2-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-3-1",
+      "question_id": 1,
+      "noise_prob": 0.1,
+      "noise_rank": 2,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-4-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-5-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-6-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-7-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-8-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-9-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-0-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-1-1",
+      "question_id": 1,
+      "noise_prob": 0.08,
+      "noise_rank": 2,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-10-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-11-1",
+      "question_id": 1,
+      "noise_prob": 0.020833333333333332,
+      "noise_rank": 7,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-12-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-13-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-14-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-2-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-3-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-4-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-5-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-6-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-7-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-8-1",
+      "question_id": 1,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-9-1",
+      "question_id": 1,
+      "noise_prob": 0.12244897959183673,
+      "noise_rank": 2,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-0-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-1-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-10-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-11-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-12-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-13-2",
+      "question_id": 2,
+      "noise_prob": 0.02,
+      "noise_rank": 3,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-14-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-2-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-3-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-4-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-5-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-6-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-7-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-8-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-9-2",
+      "question_id": 2,
+      "noise_prob": 0.02040816326530612,
+      "noise_rank": 2,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-0-2",
+      "question_id": 2,
+      "noise_prob": 0.04,
+      "noise_rank": 2,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-1-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-10-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-11-2",
+      "question_id": 2,
+      "noise_prob": 0.34,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-12-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-13-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-14-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-2-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-3-2",
+      "question_id": 2,
+      "noise_prob": 0.18,
+      "noise_rank": 2,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-4-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 7,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-5-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-6-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-7-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-8-2",
+      "question_id": 2,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-9-2",
+      "question_id": 2,
+      "noise_prob": 0.04081632653061224,
+      "noise_rank": 2,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-0-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-1-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-10-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-11-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-12-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-13-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-14-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-2-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-3-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-4-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-5-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-6-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-7-3",
+      "question_id": 3,
+      "noise_prob": 0.06,
+      "noise_rank": 3,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-8-3",
+      "question_id": 3,
+      "noise_prob": 0.02,
+      "noise_rank": 5,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-9-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-0-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-1-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-10-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-11-3",
+      "question_id": 3,
+      "noise_prob": 0.02040816326530612,
+      "noise_rank": 4,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-12-3",
+      "question_id": 3,
+      "noise_prob": 0.17391304347826086,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-13-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-14-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-2-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-3-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-4-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 7,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-5-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-6-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-7-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-8-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-9-3",
+      "question_id": 3,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-0-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-1-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-10-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-11-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-12-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-13-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-14-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-2-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-3-4",
+      "question_id": 4,
+      "noise_prob": 0.98,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-4-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-5-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-6-4",
+      "question_id": 4,
+      "noise_prob": 0.16,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-7-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-8-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-9-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-0-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-1-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-10-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-11-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-12-4",
+      "question_id": 4,
+      "noise_prob": 0.020833333333333332,
+      "noise_rank": 3,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-13-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-14-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-2-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-3-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-4-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 7,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-5-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-6-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-7-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-8-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-9-4",
+      "question_id": 4,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-0-5",
+      "question_id": 5,
+      "noise_prob": 0.02,
+      "noise_rank": 3,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-1-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-10-5",
+      "question_id": 5,
+      "noise_prob": 0.1836734693877551,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-11-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-12-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-13-5",
+      "question_id": 5,
+      "noise_prob": 0.08333333333333333,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-14-5",
+      "question_id": 5,
+      "noise_prob": 0.02,
+      "noise_rank": 2,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-2-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-3-5",
+      "question_id": 5,
+      "noise_prob": 0.02,
+      "noise_rank": 2,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-4-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-5-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-6-5",
+      "question_id": 5,
+      "noise_prob": 0.5918367346938775,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-7-5",
+      "question_id": 5,
+      "noise_prob": 1.0,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-8-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-9-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-0-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-1-5",
+      "question_id": 5,
+      "noise_prob": 0.24489795918367346,
+      "noise_rank": 2,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-10-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-11-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-12-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-13-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-14-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-2-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-3-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-4-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-5-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-6-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-7-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-8-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-9-5",
+      "question_id": 5,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-0-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-1-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-10-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-11-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-12-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-13-6",
+      "question_id": 6,
+      "noise_prob": 0.34,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-14-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-2-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-3-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-4-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 7,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-5-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-6-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-7-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-8-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-9-6",
+      "question_id": 6,
+      "noise_prob": 0.02040816326530612,
+      "noise_rank": 3,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-0-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-1-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-10-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-11-6",
+      "question_id": 6,
+      "noise_prob": 0.30612244897959184,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-12-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-13-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-14-6",
+      "question_id": 6,
+      "noise_prob": 0.02,
+      "noise_rank": 4,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-2-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-3-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-4-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-5-6",
+      "question_id": 6,
+      "noise_prob": 0.02,
+      "noise_rank": 4,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-6-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-7-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-8-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-9-6",
+      "question_id": 6,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-0-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-1-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-10-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-11-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-12-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-13-7",
+      "question_id": 7,
+      "noise_prob": 0.04081632653061224,
+      "noise_rank": 2,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-14-7",
+      "question_id": 7,
+      "noise_prob": 0.02,
+      "noise_rank": 3,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-2-7",
+      "question_id": 7,
+      "noise_prob": 0.02040816326530612,
+      "noise_rank": 6,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-3-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-4-7",
+      "question_id": 7,
+      "noise_prob": 1.0,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-5-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-6-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-7-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-8-7",
+      "question_id": 7,
+      "noise_prob": 0.1,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-9-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-0-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-1-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-10-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-11-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-12-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-13-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-14-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-2-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-3-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-4-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 7,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-5-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-6-7",
+      "question_id": 7,
+      "noise_prob": 0.7446808510638298,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-7-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-8-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-9-7",
+      "question_id": 7,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-0-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-1-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-10-8",
+      "question_id": 8,
+      "noise_prob": 0.8541666666666666,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-11-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-12-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-13-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-14-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-2-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-3-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-4-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-5-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-6-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 6,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-7-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-8-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 7,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-9-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-0-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-1-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-10-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-11-8",
+      "question_id": 8,
+      "noise_prob": 0.08,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-12-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-13-8",
+      "question_id": 8,
+      "noise_prob": 0.06,
+      "noise_rank": 2,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-II-2-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-3-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-4-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 7,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-5-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-6-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-7-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-8-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-9-8",
+      "question_id": 8,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-0-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-1-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-10-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-11-9",
+      "question_id": 9,
+      "noise_prob": 0.02,
+      "noise_rank": 5,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-12-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-13-9",
+      "question_id": 9,
+      "noise_prob": 0.02,
+      "noise_rank": 3,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-14-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-2-9",
+      "question_id": 9,
+      "noise_prob": 1.0,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-3-9",
+      "question_id": 9,
+      "noise_prob": 0.46,
+      "noise_rank": 2,
+      "noise_in_distribution": true
+    },
+    {
+      "unique_id": "aime2025-I-4-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-5-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-6-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-7-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-8-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-I-9-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 4,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-0-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-1-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-10-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-11-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-12-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-13-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-14-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 5,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-2-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-3-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-4-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-5-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-6-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 3,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-7-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-8-9",
+      "question_id": 9,
+      "noise_prob": 0.0,
+      "noise_rank": 2,
+      "noise_in_distribution": false
+    },
+    {
+      "unique_id": "aime2025-II-9-9",
+      "question_id": 9,
+      "noise_prob": 1.0,
+      "noise_rank": 1,
+      "noise_in_distribution": true
+    }
+  ]
+}
