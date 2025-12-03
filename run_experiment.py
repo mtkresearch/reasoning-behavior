@@ -65,7 +65,18 @@ Available Processors
 
    Parameters:
    - sentence: Text to insert (default: 'Maybe the answer is 123.')
-   - count: Number of times to insert the text (default: 1)
+   - count: Number of times to insert the text
+           Can be an integer (e.g., count=5) or a percentage string (e.g., count='100% # of answer')
+
+           Integer format:
+           - Fixed number of insertions (e.g., count=5 inserts 5 times)
+
+           Percentage format: '<percentage>% # of answer'
+           - Dynamic count based on answer occurrences in reasoning
+           - '100% # of answer': Insert once for each answer occurrence
+           - '200% # of answer': Insert twice for each answer occurrence
+           - '50% # of answer': Insert 0.5 times for each answer occurrence (rounded)
+
    - seed: Random seed for reproducibility
 
 5. remove(mode)
@@ -185,6 +196,15 @@ python mask_experiment.py --flow "insert('fix',sentence='Thus answer: 123.',coun
 
 # Example 11: Insert with specific seed for reproducibility
 python mask_experiment.py --flow "insert('fix',sentence='Answer: 456.',count=5,seed=42)"
+
+# Example 11a: Insert noise based on answer occurrence count (100%)
+python mask_experiment.py --flow "insert('fix',sentence='Thus answer: 123.',count='100% # of answer')"
+
+# Example 11b: Insert noise 200% of answer occurrences (twice per answer)
+python mask_experiment.py --flow "insert('fix',sentence='Maybe answer: 999.',count='200% # of answer')"
+
+# Example 11c: Insert noise 50% of answer occurrences (half, rounded)
+python mask_experiment.py --flow "insert('fix',sentence='Check: 000.',count='50% # of answer')"
 
 # Example 12: Mask all non-blank characters (preserve only whitespace structure)
 python mask_experiment.py --flow "mask('all-nonblank')"

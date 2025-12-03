@@ -44,7 +44,7 @@ from core import (
 logger = setup_logger(__name__, log_file='logs/run_distribution.log')
 
 # Default settings
-DEFAULT_MAX_WORKERS = 100
+DEFAULT_MAX_WORKERS = 500
 DEFAULT_N_SAMPLES = 50
 DEFAULT_TEMPERATURE = 0.5
 

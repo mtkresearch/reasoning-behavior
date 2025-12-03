@@ -721,6 +721,202 @@ Line 3"""
         # Should have insertions
         assert result.count('Noise') == 2
 
+    def test_insert_processor_percentage_count_100_percent(self, sample_context):
+        """Test InsertProcessor with count='100% # of answer'"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='fix',
+            sentence='Noise',
+            position='random',
+            count='100% # of answer',
+            seed=42
+        )
+        reasoning = "The answer is 12. We verify 12 is correct. Final: 12."
+        context = {"answer": "12"}
+
+        result = processor.process(reasoning, context)
+
+        # Answer appears 3 times, so should insert 3 times (100% of 3 = 3)
+        assert result.count('Noise') == 3
+
+        # Verify metadata
+        metadata = processor.get_metadata()
+        assert metadata['count'] == '100% # of answer'
+        assert metadata['actual_count'] == 3
+
+    def test_insert_processor_percentage_count_200_percent(self, sample_context):
+        """Test InsertProcessor with count='200% # of answer'"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='fix',
+            sentence='Test',
+            position='random',
+            count='200% # of answer',
+            seed=42
+        )
+        reasoning = "Answer: 42. Check: 42."
+        context = {"answer": "42"}
+
+        result = processor.process(reasoning, context)
+
+        # Answer appears 2 times, so should insert 4 times (200% of 2 = 4)
+        assert result.count('Test') == 4
+
+        # Verify metadata
+        metadata = processor.get_metadata()
+        assert metadata['count'] == '200% # of answer'
+        assert metadata['actual_count'] == 4
+
+    def test_insert_processor_percentage_count_50_percent(self, sample_context):
+        """Test InsertProcessor with count='50% # of answer' (rounding)"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='fix',
+            sentence='Noise',
+            position='random',
+            count='50% # of answer',
+            seed=42
+        )
+        reasoning = "Answer: 5. Verify: 5. Final: 5."
+        context = {"answer": "5"}
+
+        result = processor.process(reasoning, context)
+
+        # Answer appears 3 times, so should insert 2 times (50% of 3 = 1.5, rounds to 2)
+        assert result.count('Noise') == 2
+
+        # Verify metadata
+        metadata = processor.get_metadata()
+        assert metadata['count'] == '50% # of answer'
+        assert metadata['actual_count'] == 2
+
+    def test_insert_processor_percentage_count_zero_occurrences(self, sample_context):
+        """Test InsertProcessor with percentage count when answer doesn't appear"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='fix',
+            sentence='Noise',
+            position='random',
+            count='100% # of answer',
+            seed=42
+        )
+        reasoning = "Some text without the answer."
+        context = {"answer": "999"}
+
+        result = processor.process(reasoning, context)
+
+        # Answer appears 0 times, so should insert 0 times
+        assert 'Noise' not in result
+
+        # Verify metadata
+        metadata = processor.get_metadata()
+        assert metadata['count'] == '100% # of answer'
+        assert metadata['actual_count'] == 0
+
+    def test_insert_processor_percentage_count_word_boundary(self, sample_context):
+        """Test InsertProcessor percentage count respects word boundaries"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='fix',
+            sentence='Noise',
+            position='random',
+            count='100% # of answer',
+            seed=42
+        )
+        reasoning = "Calculate 42 and 421 and 142. Answer: 42."
+        context = {"answer": "42"}
+
+        result = processor.process(reasoning, context)
+
+        # Only standalone 42 should be counted (appears 2 times), not 421 or 142
+        assert result.count('Noise') == 2
+
+    def test_insert_processor_percentage_count_missing_context(self, sample_context):
+        """Test InsertProcessor percentage count raises error when answer missing"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='fix',
+            sentence='Noise',
+            position='random',
+            count='100% # of answer'
+        )
+        reasoning = "Some reasoning"
+
+        # Context without answer
+        context = {"question": "What is 2+2?"}
+
+        with pytest.raises(ValueError, match="requires 'answer' or 'ground_truth' in context"):
+            processor.process(reasoning, context)
+
+    def test_insert_processor_percentage_count_invalid_format(self, sample_context):
+        """Test InsertProcessor with invalid percentage format"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='fix',
+            sentence='Noise',
+            count='invalid format'
+        )
+        reasoning = "Test"
+
+        with pytest.raises(ValueError, match="Invalid count format"):
+            processor.process(reasoning, sample_context)
+
+    def test_insert_processor_percentage_count_in_pipeline(self, sample_context):
+        """Test InsertProcessor percentage count works in pipeline"""
+        from pipeline import parse_flow, Pipeline
+
+        flow_str = "insert('fix',sentence='Noise',count='100% # of answer',seed=42)"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = "The answer is 12. Therefore 12."
+        context = {"answer": "12"}
+        result, metadata_list = pipeline.execute(reasoning, context)
+
+        # Answer appears 2 times, should insert 2 times
+        assert result.count('Noise') == 2
+        assert len(metadata_list) == 1
+        assert metadata_list[0]['processor'] == 'insert'
+        assert metadata_list[0]['count'] == '100% # of answer'
+        assert metadata_list[0]['actual_count'] == 2
+
+    def test_insert_processor_percentage_count_case_insensitive(self, sample_context):
+        """Test InsertProcessor percentage format is case insensitive"""
+        from processors import InsertProcessor
+
+        # Test uppercase
+        processor1 = InsertProcessor(
+            mode='fix',
+            sentence='NOISE1',
+            count='100% # OF ANSWER',
+            seed=42
+        )
+
+        # Test mixed case
+        processor2 = InsertProcessor(
+            mode='fix',
+            sentence='NOISE2',
+            count='100% # Of AnSwEr',
+            seed=42
+        )
+
+        reasoning = "Result: 5. Check: 5."
+        context = {"answer": "5"}
+
+        result1 = processor1.process(reasoning, context)
+        result2 = processor2.process(reasoning, context)
+
+        # Both should insert 2 times (answer appears 2 times)
+        assert result1.count('NOISE1') == 2
+        assert result2.count('NOISE2') == 2
+
 
 class TestQuestionProcessor:
     """Tests for QuestionProcessor"""

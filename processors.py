@@ -296,10 +296,18 @@ class InsertProcessor(Processor):
 
     Position strategy:
     - 'random': Insert at random positions (only supported strategy)
+
+    Count parameter:
+    - Integer: Fixed number of insertions (e.g., count=5)
+    - Percentage string: Dynamic count based on answer occurrences (e.g., count='100% # of answer')
+      Format: '<percentage>% # of answer'
+      - '100% # of answer': Insert once for each answer occurrence
+      - '200% # of answer': Insert twice for each answer occurrence
+      - '50% # of answer': Insert 0.5 times for each answer occurrence (rounded)
     """
 
     def __init__(self, mode: str, sentence: str = "Maybe the answer is 123.",
-                 position: str = 'random', count: int = 1, seed: int = 42, **kwargs):
+                 position: str = 'random', count = 1, seed: int = 42, **kwargs):
         """
         Initialize InsertProcessor
 
@@ -307,19 +315,21 @@ class InsertProcessor(Processor):
             mode: Insertion mode (currently only 'fix' is supported)
             sentence: Text to insert
             position: Position strategy (must be 'random')
-            count: Number of times to insert the text
+            count: Number of times to insert the text (int or percentage string)
             seed: Random seed for reproducibility
             **kwargs: Additional parameters
         """
         self.mode = mode
         self.sentence = sentence
         self.position = position
-        self.count = count
+        self.count = count  # Can be int or str
         self.seed = seed
         self.kwargs = kwargs
         self.last_input_stats = None
         self.last_output_stats = None
         self.insertion_positions = []
+        self.original_count = count  # Store original count parameter
+        self.actual_count = None  # Will be set during process()
 
     def process(self, reasoning: str, context: Dict) -> str:
         """Apply insertion to reasoning text"""
@@ -333,6 +343,10 @@ class InsertProcessor(Processor):
         if self.position != 'random':
             raise ValueError(f"Invalid position strategy: {self.position}. Only 'random' is supported.")
 
+        # Calculate actual count based on count parameter
+        actual_count = self._calculate_count(reasoning, context)
+        self.actual_count = actual_count
+
         # Split into non-empty lines
         lines = reasoning.strip().split('\n')
         lines = [line for line in lines if line.strip()]
@@ -344,7 +358,7 @@ class InsertProcessor(Processor):
             random.seed(self.seed)
 
         # Insert multiple times at random positions
-        for _ in range(self.count):
+        for _ in range(actual_count):
             # Random position (0 to len(lines), inclusive)
             insert_pos = random.randint(0, len(lines))
             lines.insert(insert_pos, self.sentence)
@@ -355,6 +369,49 @@ class InsertProcessor(Processor):
 
         return result
 
+    def _calculate_count(self, reasoning: str, context: Dict) -> int:
+        """
+        Calculate actual insertion count based on count parameter
+
+        Args:
+            reasoning: The reasoning text to analyze
+            context: Context dictionary containing answer
+
+        Returns:
+            Actual number of insertions to perform
+        """
+        import re
+
+        # If count is an integer, return it directly
+        if isinstance(self.count, int):
+            return self.count
+
+        # If count is a string, check if it's a percentage format
+        if isinstance(self.count, str):
+            # Match pattern: "X% # of answer" (case insensitive)
+            match = re.match(r'^(\d+(?:\.\d+)?)%\s*#\s*of\s+answer$', self.count.strip(), re.IGNORECASE)
+            if match:
+                percentage = float(match.group(1))
+
+                # Get answer from context
+                answer = context.get('answer') or context.get('ground_truth', '')
+                if not answer:
+                    raise ValueError(f"Percentage count format '{self.count}' requires 'answer' or 'ground_truth' in context")
+
+                # Count answer occurrences in reasoning (using word boundary)
+                pattern = r'\b' + re.escape(str(answer)) + r'\b'
+                answer_count = len(re.findall(pattern, reasoning))
+
+                # Calculate actual count: answer_count * (percentage / 100)
+                actual_count = answer_count * (percentage / 100.0)
+
+                # Round to nearest integer
+                return round(actual_count)
+            else:
+                raise ValueError(f"Invalid count format: '{self.count}'. Expected integer or 'X% # of answer' format")
+
+        raise ValueError(f"Invalid count type: {type(self.count)}. Expected int or str")
+
     def get_metadata(self) -> Dict:
         """Get metadata about the insertion operation"""
         metadata = {
@@ -362,7 +419,8 @@ class InsertProcessor(Processor):
             'mode': self.mode,
             'sentence': self.sentence,
             'position': self.position,
-            'count': self.count,
+            'count': self.original_count,  # Original count parameter (may be int or str)
+            'actual_count': self.actual_count,  # Computed count (always int)
             'seed': self.seed,
             'insertion_positions': self.insertion_positions,
             'input_stats': self.last_input_stats,

@@ -1611,13 +1611,13 @@ def main():
     parser.add_argument(
         '--port',
         type=int,
-        default=5000,
+        default=5005,
         help='Port to run the server on (default: 5000)'
     )
     parser.add_argument(
         '--host',
         type=str,
-        default='127.0.0.1',
+        default='localhost',
         help='Host to bind the server to (default: 127.0.0.1)'
     )
     parser.add_argument(
