@@ -800,6 +800,36 @@ def truncate_reasoning_lines(reasoning: str, del_last_line: float) -> str:
     return '\n'.join(truncated_lines)
 
 
+def truncate_after_line(reasoning: str, line_num: int) -> str:
+    """
+    Keep only the first N lines and remove all lines after line N
+
+    Args:
+        reasoning: Original reasoning content
+        line_num: Number of lines to keep (lines 1 to N)
+
+    Returns:
+        Truncated reasoning content (first N non-empty lines)
+
+    Examples:
+        >>> reasoning = "Line 1\\nLine 2\\nLine 3\\nLine 4\\nLine 5"
+        >>> truncate_after_line(reasoning, 2)
+        'Line 1\\nLine 2'
+        >>> truncate_after_line(reasoning, 10)  # More than available lines
+        'Line 1\\nLine 2\\nLine 3\\nLine 4\\nLine 5'
+    """
+    if line_num <= 0:
+        return ""
+
+    lines = reasoning.strip().split('\n')
+    # Remove empty lines
+    lines = [line for line in lines if line.strip()]
+
+    # Keep only first N lines
+    kept_lines = lines[:line_num]
+    return '\n'.join(kept_lines)
+
+
 # =============================================================================
 # Shuffle Functions
 # =============================================================================
@@ -940,6 +970,7 @@ def append_to_jsonl(filepath, data: dict):
     filepath = Path(filepath)
     with open(filepath, 'a', encoding='utf-8') as f:
         f.write(json.dumps(data, ensure_ascii=False) + '\n')
+        f.flush()  # Force immediate write to disk
 
 
 def load_from_jsonl(filepath) -> List[dict]:

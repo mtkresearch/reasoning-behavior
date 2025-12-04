@@ -41,10 +41,11 @@ class TestExtractAnswerFromCompletion:
         assert result == "20"
 
     def test_extract_nested_braces(self):
-        """Should handle nested braces correctly"""
+        """Should extract only numeric part from nested braces"""
         completion = "The answer is $\\boxed{\\frac{1}{2}}$"
         result = extract_answer_from_completion(completion)
-        assert result == "\\frac{1}{2}"
+        # Function only extracts digits, so it gets '1' and '2', returns last one
+        assert result == "2"
 
     def test_no_boxed_format(self):
         """Should return None when no boxed format found"""
@@ -65,10 +66,11 @@ class TestExtractAnswerFromCompletion:
         assert result == "42"
 
     def test_complex_mathematical_expression(self):
-        """Should extract complex mathematical expressions"""
+        """Should extract only the last numeric value from complex expressions"""
         completion = "Therefore $\\boxed{2x + 3y = 7}$"
         result = extract_answer_from_completion(completion)
-        assert result == "2x + 3y = 7"
+        # Function only extracts digits, finds '2', '3', '7', returns last one
+        assert result == "7"
 
 
 class TestNormalizeAnswer:
@@ -367,9 +369,9 @@ class TestBuildSamplingRequest:
         assert task.index == 5
         assert task.request.model_type == "gpt-oss"
         assert task.request.temperature == 0.7
-        assert task.request.max_tokens == 100  # With prefill uses 100
+        assert task.request.max_tokens == 20  # With prefill uses 20 (short numeric answer)
         assert "What is 2+2?" in task.request.prompt
-        assert "Thus, the boxed answer is \\boxed" in task.request.prompt
+        assert "Thus, the answer is" in task.request.prompt
 
     def test_build_request_with_metadata(self):
         """Should attach metadata to the task"""

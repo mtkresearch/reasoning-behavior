@@ -343,6 +343,117 @@ The number is 42."""
         assert 'input_stats' in metadata
         assert 'output_stats' in metadata
 
+    def test_truncate_processor_after_line_basic(self, sample_context):
+        """Test TruncateProcessor with mode='after_line' keeps first N lines"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', n=3)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        result = processor.process(reasoning, sample_context)
+
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 3
+        assert "Line 1" in result
+        assert "Line 2" in result
+        assert "Line 3" in result
+        assert "Line 4" not in result
+        assert "Line 5" not in result
+
+    def test_truncate_processor_after_line_default_n(self, sample_context):
+        """Test TruncateProcessor with mode='after_line' default n=10"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line')
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Default n=10, but only 5 lines, so all should remain
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 5
+
+    def test_truncate_processor_after_line_n_larger_than_lines(self, sample_context):
+        """Test TruncateProcessor after_line when n > number of lines"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', n=100)
+        reasoning = """Line 1
+Line 2
+Line 3"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should keep all lines since n > line count
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 3
+
+    def test_truncate_processor_after_line_n_zero(self, sample_context):
+        """Test TruncateProcessor after_line with n=0 returns empty"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', n=0)
+        reasoning = """Line 1
+Line 2
+Line 3"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should return empty string
+        assert result == ""
+
+    def test_truncate_processor_after_line_with_empty_lines(self, sample_context):
+        """Test TruncateProcessor after_line ignores empty lines"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', n=2)
+        reasoning = """Line 1
+
+Line 2
+
+Line 3
+
+Line 4"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should keep only first 2 non-empty lines
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 2
+        assert "Line 1" in result
+        assert "Line 2" in result
+        assert "Line 3" not in result
+
+    def test_truncate_processor_after_line_get_metadata(self, sample_context):
+        """Test TruncateProcessor mode='after_line' metadata"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', n=3)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        _ = processor.process(reasoning, sample_context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'truncate'
+        assert metadata['mode'] == 'after_line'
+        assert metadata['n'] == 3
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+        assert 'removed_lines' in metadata
+        assert metadata['removed_lines'] == 2  # 5 lines - 3 kept = 2 removed
+
 
 class TestShuffleProcessor:
     """Tests for ShuffleProcessor"""
@@ -1447,13 +1558,13 @@ Final answer: 42"""
 
 
 class TestReasonIsProcessor:
-    """Tests for ReasonIsProcessor - replaces reasoning with answer only"""
+    """Tests for ReasonIsProcessor - replaces reasoning with custom text pattern"""
 
     def test_reason_is_answer_mode_basic(self, sample_context):
         """Test ReasonIsProcessor replaces reasoning with pure answer"""
         from processors import ReasonIsProcessor
 
-        processor = ReasonIsProcessor(mode='answer')
+        processor = ReasonIsProcessor(text='{ANSWER}')
         reasoning = """Let's solve this step by step.
 First, we calculate 2 + 2 = 4.
 Then, we multiply by 3: 4 × 3 = 12.
@@ -1468,7 +1579,7 @@ Therefore, the answer is 12."""
         """Test ReasonIsProcessor with boxed answer format"""
         from processors import ReasonIsProcessor
 
-        processor = ReasonIsProcessor(mode='answer')
+        processor = ReasonIsProcessor(text='{ANSWER}')
         reasoning = """Step 1: Calculate 5 + 3 = 8
 Step 2: Multiply by 2 = 16
 Final answer: \\boxed{16}"""
@@ -1482,7 +1593,7 @@ Final answer: \\boxed{16}"""
         """Test ReasonIsProcessor uses answer from context"""
         from processors import ReasonIsProcessor
 
-        processor = ReasonIsProcessor(mode='answer')
+        processor = ReasonIsProcessor(text='{ANSWER}')
         reasoning = "Some complex reasoning that we don't care about"
 
         context = {
@@ -1500,7 +1611,7 @@ Final answer: \\boxed{16}"""
         """Test ReasonIsProcessor with various answer types"""
         from processors import ReasonIsProcessor
 
-        processor = ReasonIsProcessor(mode='answer')
+        processor = ReasonIsProcessor(text='{ANSWER}')
 
         # Test with numeric answer
         context1 = sample_context.copy()
@@ -1524,34 +1635,37 @@ Final answer: \\boxed{16}"""
         """Test ReasonIsProcessor.get_metadata()"""
         from processors import ReasonIsProcessor
 
-        processor = ReasonIsProcessor(mode='answer')
+        processor = ReasonIsProcessor(text='{ANSWER}')
         reasoning = "Long reasoning text that will be replaced"
 
         result = processor.process(reasoning, sample_context)
         metadata = processor.get_metadata()
 
         assert metadata['processor'] == 'reason_is'
-        assert metadata['mode'] == 'answer'
+        assert metadata['text'] == '{ANSWER}'
         assert 'input_stats' in metadata
         assert 'output_stats' in metadata
         assert metadata['input_stats']['chars'] > 0
         assert metadata['output_stats']['chars'] == len("12")
 
     def test_reason_is_invalid_mode(self, sample_context):
-        """Test ReasonIsProcessor with invalid mode raises error"""
+        """Test ReasonIsProcessor with custom text without placeholder"""
         from processors import ReasonIsProcessor
 
-        processor = ReasonIsProcessor(mode='invalid_mode')
+        # Text without {ANSWER} placeholder should just return the text as-is
+        processor = ReasonIsProcessor(text='The result is fixed')
         reasoning = "Some reasoning"
 
-        with pytest.raises(ValueError, match="Invalid mode for reason_is"):
-            processor.process(reasoning, sample_context)
+        result = processor.process(reasoning, sample_context)
+
+        # Should return the fixed text
+        assert result == "The result is fixed"
 
     def test_reason_is_missing_answer_in_context(self, sample_context):
         """Test ReasonIsProcessor raises error when answer missing from context"""
         from processors import ReasonIsProcessor
 
-        processor = ReasonIsProcessor(mode='answer')
+        processor = ReasonIsProcessor(text='{ANSWER}')
         reasoning = "Some reasoning"
 
         # Context without answer
@@ -1564,7 +1678,7 @@ Final answer: \\boxed{16}"""
         """Test ReasonIsProcessor works in pipeline"""
         from pipeline import parse_flow, Pipeline
 
-        flow_str = "reason_is('answer')"
+        flow_str = "reason_is('{ANSWER}')"
         processors = parse_flow(flow_str)
         pipeline = Pipeline(processors)
 
@@ -1576,14 +1690,14 @@ Final answer: \\boxed{16}"""
         assert result == "12"
         assert len(metadata_list) == 1
         assert metadata_list[0]['processor'] == 'reason_is'
-        assert metadata_list[0]['mode'] == 'answer'
+        assert metadata_list[0]['text'] == '{ANSWER}'
 
     def test_reason_is_combined_with_mask(self, sample_context):
         """Test ReasonIsProcessor combined with mask processor"""
         from pipeline import parse_flow, Pipeline
 
         # First mask numbers, then replace with answer
-        flow_str = "mask('number'),reason_is('answer')"
+        flow_str = "mask('number'),reason_is('{ANSWER}')"
         processors = parse_flow(flow_str)
         pipeline = Pipeline(processors)
 
@@ -1601,7 +1715,7 @@ Final answer: \\boxed{16}"""
         """Test ReasonIsProcessor with empty reasoning"""
         from processors import ReasonIsProcessor
 
-        processor = ReasonIsProcessor(mode='answer')
+        processor = ReasonIsProcessor(text='{ANSWER}')
         reasoning = ""
 
         result = processor.process(reasoning, sample_context)
@@ -1610,46 +1724,46 @@ Final answer: \\boxed{16}"""
         assert result == "12"
 
     def test_reason_is_answer_with_illustrate_mode(self, sample_context):
-        """Test ReasonIsProcessor with answer_with_illustrate mode"""
+        """Test ReasonIsProcessor with illustrated answer format"""
         from processors import ReasonIsProcessor
 
-        processor = ReasonIsProcessor(mode='answer_with_illustrate')
+        processor = ReasonIsProcessor(text='Thus, the answer is {ANSWER}.')
         reasoning = "Long reasoning that will be replaced"
 
         result = processor.process(reasoning, sample_context)
 
         # Should return "Thus, the answer is {answer}"
-        assert result == "Thus, the answer is 12"
+        assert result == "Thus, the answer is 12."
 
     def test_reason_is_answer_with_illustrate_different_answers(self, sample_context):
-        """Test ReasonIsProcessor answer_with_illustrate with various answers"""
+        """Test ReasonIsProcessor illustrated format with various answers"""
         from processors import ReasonIsProcessor
 
-        processor = ReasonIsProcessor(mode='answer_with_illustrate')
+        processor = ReasonIsProcessor(text='Thus, the answer is {ANSWER}.')
 
         # Test with numeric answer
         context1 = sample_context.copy()
         context1['answer'] = "42"
         result1 = processor.process("reasoning...", context1)
-        assert result1 == "Thus, the answer is 42"
+        assert result1 == "Thus, the answer is 42."
 
         # Test with fractional answer
         context2 = sample_context.copy()
         context2['answer'] = "3/4"
         result2 = processor.process("reasoning...", context2)
-        assert result2 == "Thus, the answer is 3/4"
+        assert result2 == "Thus, the answer is 3/4."
 
         # Test with text answer
         context3 = sample_context.copy()
         context3['answer'] = "impossible"
         result3 = processor.process("reasoning...", context3)
-        assert result3 == "Thus, the answer is impossible"
+        assert result3 == "Thus, the answer is impossible."
 
     def test_reason_is_answer_with_illustrate_in_pipeline(self, sample_context):
-        """Test ReasonIsProcessor answer_with_illustrate in pipeline"""
+        """Test ReasonIsProcessor illustrated format in pipeline"""
         from pipeline import parse_flow, Pipeline
 
-        flow_str = "reason_is('answer_with_illustrate')"
+        flow_str = "reason_is('Thus, the answer is {ANSWER}.')"
         processors = parse_flow(flow_str)
         pipeline = Pipeline(processors)
 
@@ -1658,23 +1772,48 @@ Final answer: \\boxed{16}"""
         result, metadata_list = pipeline.execute(reasoning, context)
 
         # Should replace reasoning with "Thus, the answer is {answer}"
-        assert result == "Thus, the answer is 12"
+        assert result == "Thus, the answer is 12."
         assert len(metadata_list) == 1
         assert metadata_list[0]['processor'] == 'reason_is'
-        assert metadata_list[0]['mode'] == 'answer_with_illustrate'
+        assert metadata_list[0]['text'] == 'Thus, the answer is {ANSWER}.'
 
     def test_reason_is_answer_with_illustrate_get_metadata(self, sample_context):
-        """Test ReasonIsProcessor answer_with_illustrate metadata"""
+        """Test ReasonIsProcessor illustrated format metadata"""
         from processors import ReasonIsProcessor
 
-        processor = ReasonIsProcessor(mode='answer_with_illustrate')
+        processor = ReasonIsProcessor(text='Thus, the answer is {ANSWER}.')
         reasoning = "Some reasoning text"
 
         result = processor.process(reasoning, sample_context)
         metadata = processor.get_metadata()
 
         assert metadata['processor'] == 'reason_is'
-        assert metadata['mode'] == 'answer_with_illustrate'
+        assert metadata['text'] == 'Thus, the answer is {ANSWER}.'
         assert 'input_stats' in metadata
         assert 'output_stats' in metadata
-        assert metadata['output_stats']['chars'] == len("Thus, the answer is 12")
+        assert metadata['output_stats']['chars'] == len("Thus, the answer is 12.")
+
+    def test_reason_is_with_special_characters_in_answer(self, sample_context):
+        """Test ReasonIsProcessor handles answers with special regex characters"""
+        from processors import ReasonIsProcessor
+
+        # Test with LaTeX backslash (common in math problems)
+        processor = ReasonIsProcessor(text='Thus, the answer is {ANSWER}.')
+        context = {'answer': r'\frac{1}{2}', 'question': 'What is the fraction?'}
+        result = processor.process("Some reasoning", context)
+        assert result == r'Thus, the answer is \frac{1}{2}.'
+
+        # Test with dollar sign
+        context2 = {'answer': '$100', 'question': 'What is the price?'}
+        result2 = processor.process("Some reasoning", context2)
+        assert result2 == 'Thus, the answer is $100.'
+
+        # Test with parentheses (regex special chars)
+        context3 = {'answer': '(a+b)', 'question': 'What is the expression?'}
+        result3 = processor.process("Some reasoning", context3)
+        assert result3 == 'Thus, the answer is (a+b).'
+
+        # Test with multiple backslashes
+        context4 = {'answer': r'\text{solution}', 'question': 'What is it?'}
+        result4 = processor.process("Some reasoning", context4)
+        assert result4 == r'Thus, the answer is \text{solution}.'

@@ -45,6 +45,7 @@ Available Processors
    - 'before_answer': Remove all lines before answer line (answer line kept)
    - 'last_n_lines': Remove last N lines (specify n=N)
    - 'last_ratio': Remove last X% of lines (specify ratio=X, e.g., 0.3 for 30%)
+   - 'after_line': Keep only first N lines, remove all lines after line N (specify n=N)
 
 3. shuffle(mode, seed=None, ...)
    Shuffle reasoning content.
@@ -138,27 +139,30 @@ Available Processors
    - Test if answer format affects model performance
    - Ensure consistent answer structure across responses
 
-8. reason_is(mode)
-   Replace reasoning content with ground truth answer only.
+8. reason_is(text)
+   Replace reasoning content with a custom text pattern.
 
-   This processor replaces the entire reasoning text with just the answer
-   from the context, creating a minimal reasoning chain that only contains
-   the correct answer. Useful for testing if models can retrieve the answer
-   when given only the answer itself (no reasoning steps).
+   This processor replaces the entire reasoning text with a custom pattern
+   that can include the ground truth answer via the {ANSWER} placeholder.
+   Useful for testing if models can retrieve the answer when given minimal
+   or reformatted reasoning chains.
 
-   Modes:
-   - 'answer': Replace reasoning with pure answer from context
-   - 'answer_with_illustrate': Replace reasoning with "Thus, the answer is {answer}"
+   Pattern Placeholders:
+   - '{ANSWER}' or '{answer}': Replaced with the ground truth answer from context
+
+   Parameters:
+   - text: Text pattern to replace reasoning with (supports {ANSWER} placeholder)
 
    Examples:
-   - reason_is('answer') - Replace entire reasoning with answer (e.g., "42")
-   - reason_is('answer_with_illustrate') - Replace with "Thus, the answer is 42"
+   - reason_is('{ANSWER}') - Replace reasoning with pure answer (e.g., "42")
+   - reason_is('Thus, the answer is {ANSWER}.') - Replace with illustrated format
+   - reason_is('The final result is {ANSWER}') - Custom format with answer
 
    Use cases:
    - Test if model can retrieve answer when reasoning is just the answer
    - Baseline comparison: answer-only vs. full reasoning
    - Measure impact of reasoning steps on model performance
-   - Compare pure answer vs. illustrated answer formats
+   - Test different answer presentation formats
 
 -----------------------------------------------------------------------------
 Examples
@@ -242,6 +246,9 @@ python mask_experiment.py --flow "truncate('answer')"
 # Example 23: Combine answer removal with shuffle
 python mask_experiment.py --flow "truncate('answer'),shuffle('line')"
 
+# Example 23a: Keep only first 10 lines, remove all lines after line 10
+python mask_experiment.py --flow "truncate('after_line',n=10)"
+
 # Example 24: Add answer prefill to guide model response format
 python mask_experiment.py --flow "answer('retrieval')"
 
@@ -255,16 +262,16 @@ python mask_experiment.py --flow "mask('number'),answer('retrieval')"
 python mask_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('number'),shuffle('line'),answer('retrieval')"
 
 # Example 28: Replace reasoning with answer only (pure answer)
-python mask_experiment.py --flow "reason_is('answer')"
+python mask_experiment.py --flow "reason_is('{ANSWER}')"
 
 # Example 29: Replace reasoning with illustrated answer format
-python mask_experiment.py --flow "reason_is('answer_with_illustrate')"
+python mask_experiment.py --flow "reason_is('Thus, the answer is {ANSWER}.')"
 
 # Example 30: Combine reason_is with other processors (though reason_is replaces all, so order matters)
-python mask_experiment.py --flow "mask('number'),reason_is('answer')"
+python mask_experiment.py --flow "mask('number'),reason_is('{ANSWER}')"
 
-# Example 31: Use reason_is as baseline for comparison
-python mask_experiment.py --flow "reason_is('answer')"
+# Example 31: Use reason_is as baseline for comparison with custom format
+python mask_experiment.py --flow "reason_is('The final result is {ANSWER}')"
 
 -----------------------------------------------------------------------------
 Other Parameters
@@ -855,7 +862,7 @@ def run_experiment(
     print(f"Total questions: {len(data)}")
 
     # Initialize LLM client
-    client = LLMClient(mode=mode)
+    client = LLMClient(mode=mode, timeout=60)
 
     # Prepare tasks
     print("Preparing processing tasks...")

@@ -44,7 +44,7 @@ from core import (
 logger = setup_logger(__name__, log_file='logs/run_distribution.log')
 
 # Default settings
-DEFAULT_MAX_WORKERS = 500
+DEFAULT_MAX_WORKERS = 300
 DEFAULT_N_SAMPLES = 50
 DEFAULT_TEMPERATURE = 0.5
 
@@ -725,73 +725,86 @@ def build_sampling_tasks(results_to_process, args, model_type):
     return all_tasks, question_metadata
 
 
-def execute_and_group_tasks(all_tasks, client, args):
+def execute_and_group_tasks(all_tasks, client, args, question_metadata, sampling_jsonl):
     """
-    Execute all tasks in parallel and group results by question
+    Execute all tasks in parallel with immediate JSONL writing
+
+    When all N samples for a question are completed, immediately calculates
+    distribution and writes to JSONL (thread-safe).
+
+    Args:
+        all_tasks: List of all tasks to execute
+        client: LLM client instance
+        args: Command line arguments (n, answer_free_gen, max_workers)
+        question_metadata: Dict mapping unique_id to question metadata
+        sampling_jsonl: Path to JSONL file for immediate saving
 
     Returns:
-        samples_by_question dict mapping unique_id to list of samples
+        None (results are written to JSONL immediately)
     """
-    print(f"\n=== Executing all tasks in parallel ===")
-    completed_tasks = []
+    import threading
+    from collections import defaultdict
+
+    print(f"\n=== Executing all tasks with immediate JSONL writing ===")
+
+    # Thread-safe tracking
+    lock = threading.Lock()
+    samples_by_question = defaultdict(list)
+    completed_count = defaultdict(int)
+    saved_questions = set()  # Track which questions have been saved
 
     with tqdm(total=len(all_tasks), desc="Sampling") as pbar:
         for completed_task in client.complete_concurrent(all_tasks, max_workers=args.max_workers):
-            completed_tasks.append(completed_task)
+            unique_id = completed_task.metadata['unique_id']
+
+            # Process task response
+            sample = process_completed_task(completed_task, args.answer_free_gen)
+
+            # Thread-safe update and check for completion
+            with lock:
+                samples_by_question[unique_id].append(sample)
+                completed_count[unique_id] += 1
+
+                # Check if all samples for this question are completed
+                if completed_count[unique_id] == args.n and unique_id not in saved_questions:
+                    # Mark as saved to prevent duplicate writes
+                    saved_questions.add(unique_id)
+
+                    # Get metadata
+                    meta = question_metadata[unique_id]
+                    samples = samples_by_question[unique_id]
+
+                    # Sort samples by sample_id
+                    samples.sort(key=lambda x: x['sample_id'])
+
+                    # Calculate distribution
+                    distribution = calculate_distribution(samples, meta['ground_truth'])
+
+                    # Calculate summary stats
+                    total_valid_samples = sum(1 for s in samples if s.get('success') and s.get('extracted_answer'))
+                    total_invalid_samples = len(samples) - total_valid_samples
+
+                    # Build result
+                    sampling_result = {
+                        'unique_id': meta['unique_id'],
+                        'question_id': meta['question_id'],
+                        'question': meta['question'],
+                        'ground_truth': meta['ground_truth'],
+                        'processed_reasoning': meta['processed_reasoning'],
+                        'samples': samples,
+                        'distribution': distribution,
+                        'total_samples': len(samples),
+                        'total_valid_samples': total_valid_samples,
+                        'total_invalid_samples': total_invalid_samples,
+                    }
+
+                    # Append to JSONL immediately (thread-safe with lock)
+                    append_to_jsonl(sampling_jsonl, sampling_result)
+
+            # Update progress bar
             pbar.update(1)
 
-    # Group results by unique_id
-    print(f"\n=== Grouping results by question ===")
-    samples_by_question = {}
-
-    for completed_task in completed_tasks:
-        unique_id = completed_task.metadata['unique_id']
-
-        if unique_id not in samples_by_question:
-            samples_by_question[unique_id] = []
-
-        # Use shared function to process task response
-        sample = process_completed_task(completed_task, args.answer_free_gen)
-        samples_by_question[unique_id].append(sample)
-
-    return samples_by_question
-
-
-def build_and_save_results(samples_by_question, question_metadata, sampling_jsonl):
-    """
-    Build results for each question and save to JSONL
-    """
-    print(f"\n=== Building and saving results ===")
-    for unique_id in tqdm(sorted(samples_by_question.keys()), desc="Saving results"):
-        meta = question_metadata[unique_id]
-        samples = samples_by_question[unique_id]
-
-        # Sort samples by sample_id
-        samples.sort(key=lambda x: x['sample_id'])
-
-        # Calculate distribution
-        distribution = calculate_distribution(samples, meta['ground_truth'])
-
-        # Calculate summary stats
-        total_valid_samples = sum(1 for s in samples if s.get('success') and s.get('extracted_answer'))
-        total_invalid_samples = len(samples) - total_valid_samples
-
-        # Build result
-        sampling_result = {
-            'unique_id': meta['unique_id'],
-            'question_id': meta['question_id'],
-            'question': meta['question'],
-            'ground_truth': meta['ground_truth'],
-            'processed_reasoning': meta['processed_reasoning'],
-            'samples': samples,
-            'distribution': distribution,
-            'total_samples': len(samples),
-            'total_valid_samples': total_valid_samples,
-            'total_invalid_samples': total_invalid_samples,
-        }
-
-        # Append to JSONL
-        append_to_jsonl(sampling_jsonl, sampling_result)
+    print(f"\n=== All tasks completed, {len(saved_questions)} questions saved to JSONL ===")
 
 
 def generate_final_output(sampling_jsonl, output_json, args, experiment_metadata, model_type):
@@ -948,11 +961,8 @@ def main():
     # Build tasks
     all_tasks, question_metadata = build_sampling_tasks(results_to_process, args, model_type)
 
-    # Execute tasks
-    samples_by_question = execute_and_group_tasks(all_tasks, client, args)
-
-    # Save results
-    build_and_save_results(samples_by_question, question_metadata, sampling_jsonl)
+    # Execute tasks with immediate JSONL writing
+    execute_and_group_tasks(all_tasks, client, args, question_metadata, sampling_jsonl)
 
     # Generate final output
     generate_final_output(sampling_jsonl, output_json, args, experiment_metadata, model_type)

@@ -177,7 +177,8 @@ def _parse_step(step: str) -> Processor:
     elif processor_type == 'answer':
         return AnswerProcessor(mode=mode, **kwargs)
     elif processor_type == 'reason_is':
-        return ReasonIsProcessor(mode=mode, **kwargs)
+        # For reason_is, the first argument is 'text', not 'mode'
+        return ReasonIsProcessor(text=mode, **kwargs)
     else:
         raise ValueError(f"Unknown processor type: {processor_type}")
 

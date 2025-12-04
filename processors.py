@@ -165,6 +165,7 @@ class TruncateProcessor(Processor):
     - 'before_answer': Remove all lines before the answer line (answer line kept)
     - 'last_n_lines': Remove last N lines (kwargs: n=5)
     - 'last_ratio': Remove last X% of lines (kwargs: ratio=0.3)
+    - 'after_line': Keep only first N lines, remove all lines after line N (kwargs: n=10)
     """
 
     def __init__(self, mode: str, **kwargs):
@@ -187,7 +188,8 @@ class TruncateProcessor(Processor):
             remove_answer_and_after,
             remove_before_answer,
             remove_exact_answer,
-            truncate_reasoning_lines
+            truncate_reasoning_lines,
+            truncate_after_line
         )
 
         self.last_input_stats = self._compute_stats(reasoning)
@@ -210,6 +212,9 @@ class TruncateProcessor(Processor):
         elif self.mode == 'last_ratio':
             ratio = self.kwargs.get('ratio', 0.1)
             result = truncate_reasoning_lines(reasoning, ratio)
+        elif self.mode == 'after_line':
+            n = self.kwargs.get('n', 10)
+            result = truncate_after_line(reasoning, n)
         else:
             raise ValueError(f"Invalid truncate mode: {self.mode}")
 
@@ -685,63 +690,64 @@ class AnswerProcessor(Processor):
 
 class ReasonIsProcessor(Processor):
     """
-    Processor for replacing reasoning content with ground truth answer only
+    Processor for replacing reasoning content with a custom text pattern
 
-    This processor replaces the entire reasoning text with just the answer
-    from the context, creating a minimal reasoning chain that only contains
-    the correct answer.
+    This processor replaces the entire reasoning text with a custom pattern
+    that can include the ground truth answer via the {ANSWER} placeholder.
 
-    Supported modes:
-    - 'answer': Replace reasoning with pure answer from context
-    - 'answer_with_illustrate': Replace reasoning with "Thus, the answer is {answer}"
+    Pattern placeholders:
+    - '{ANSWER}' or '{answer}': Replaced with the ground truth answer from context
+
+    Examples:
+    - reason_is('{ANSWER}') - Replace reasoning with pure answer
+    - reason_is('Thus, the answer is {ANSWER}.') - Replace with illustrated format
+    - reason_is('The final result is {ANSWER}') - Custom format
     """
 
-    def __init__(self, mode: str, **kwargs):
+    def __init__(self, text: str, **kwargs):
         """
         Initialize ReasonIsProcessor
 
         Args:
-            mode: Processing mode (currently only 'answer' is supported)
+            text: Text pattern to replace reasoning with (supports {ANSWER} placeholder)
             **kwargs: Additional parameters (reserved for future use)
         """
-        self.mode = mode
+        self.text = text
         self.kwargs = kwargs
         self.last_input_stats = None
         self.last_output_stats = None
 
     def process(self, reasoning: str, context: Dict) -> str:
         """
-        Replace reasoning text with answer from context
+        Replace reasoning text with the specified text pattern
 
         Args:
             reasoning: The reasoning text (will be replaced)
             context: Context dictionary containing 'answer' or 'ground_truth'
 
         Returns:
-            Answer string (pure or with illustrate format)
+            Text with {ANSWER} placeholder replaced by actual answer
 
         Raises:
-            ValueError: If mode is not valid
             KeyError: If 'answer' is not found in context
         """
         self.last_input_stats = self._compute_stats(reasoning)
-
-        if self.mode not in ['answer', 'answer_with_illustrate']:
-            raise ValueError(f"Invalid mode for reason_is: {self.mode}. Supported modes: 'answer', 'answer_with_illustrate'")
 
         # Get answer from context
         if 'answer' not in context:
             raise KeyError("'answer' not found in context")
 
-        answer = context['answer']
+        answer = str(context['answer'])
 
-        # Format based on mode
-        if self.mode == 'answer':
-            result = answer
-        elif self.mode == 'answer_with_illustrate':
-            result = f"Thus, the answer is {answer}"
-        else:
-            result = answer  # Fallback (should never reach here)
+        # Replace {ANSWER} placeholder (case insensitive)
+        # Use a lambda function to avoid interpreting the answer as a regex replacement pattern
+        import re
+        result = re.sub(
+            r'\{ANSWER\}',
+            lambda m: answer,
+            self.text,
+            flags=re.IGNORECASE
+        )
 
         self.last_output_stats = self._compute_stats(result)
         return result
@@ -750,7 +756,7 @@ class ReasonIsProcessor(Processor):
         """Get metadata about the reason_is processor operation"""
         metadata = {
             'processor': 'reason_is',
-            'mode': self.mode,
+            'text': self.text,
             'input_stats': self.last_input_stats,
             'output_stats': self.last_output_stats
         }
