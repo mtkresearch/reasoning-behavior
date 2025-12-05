@@ -86,5 +86,10 @@
   "reason_is('The answer is {ANSWER} or {ANSWER + 1}'),answer('retrieval')": "fee20e2e",
   "mask('non-number',mask_char=' '),replace('\\s+',replacement=' ')": "11a38295",
   "mask('non-number',mask_char=' '),replace('\\s+',replacement=' '),answer('retrieval')": "098a45f0",
-  "mask('all-nonblank')": "d49d056d"
+  "mask('all-nonblank')": "d49d056d",
+  "mask('alphabet',mask_char=' '),replace('[=><]+',replacement=' '),truncate('answer'),replace('\\s+',replacement=' '),answer('retrieval')": "17fbba1e",
+  "mask('alphabet',mask_char=' '),truncate('answer'),replace('\\s+',replacement=' '),answer('retrieval')": "90cc35f6",
+  "mask('alphabet',mask_char=' '),truncate('answer'),replace('\\s+',replacement=' ')": "3a93a6f1",
+  "mask('alphabet',mask_char=' '),replace(' +',replacement=' '),shuffle('line'),answer('retrieval')": "3278ca64",
+  "mask('alphabet',mask_char=' '),replace(' +',replacement=' '),shuffle('line'),truncate('answer'),answer('retrieval')": "d9d5ce1d"
 }
