@@ -31,6 +31,8 @@ Available Processors
    - 'alphabet-and-answer': Mask alphabet AND answer number
    - 'all-nonblank': Mask all non-whitespace characters (letters, numbers, symbols)
                      Preserves spaces, tabs, newlines, and other whitespace
+   - 'non-number': Mask all non-digit characters, preserving only digits (0-9)
+                   Preserves whitespace characters (spaces, tabs, newlines)
 
    Optional parameters:
    - mask_char: Character to use for masking (default: '█')
@@ -144,25 +146,32 @@ Available Processors
 
    This processor replaces the entire reasoning text with a custom pattern
    that can include the ground truth answer via the {ANSWER} placeholder.
+   The {ANSWER} placeholder supports mathematical expressions.
    Useful for testing if models can retrieve the answer when given minimal
    or reformatted reasoning chains.
 
    Pattern Placeholders:
    - '{ANSWER}' or '{answer}': Replaced with the ground truth answer from context
+   - '{ANSWER * expr}': Mathematical expressions with ANSWER (e.g., {ANSWER * 0.9})
+   - Type preservation: If ANSWER is integer, result is integer; if float, result is float
 
    Parameters:
-   - text: Text pattern to replace reasoning with (supports {ANSWER} placeholder)
+   - text: Text pattern to replace reasoning with (supports {ANSWER} placeholder and math expressions)
 
    Examples:
    - reason_is('{ANSWER}') - Replace reasoning with pure answer (e.g., "42")
    - reason_is('Thus, the answer is {ANSWER}.') - Replace with illustrated format
    - reason_is('The final result is {ANSWER}') - Custom format with answer
+   - reason_is('The answer is {ANSWER} or {ANSWER * 0.9}') - Math expressions with type preservation
+   - reason_is('{ANSWER + 10}') - Addition operation
+   - reason_is('{ANSWER / 2}') - Division operation
 
    Use cases:
    - Test if model can retrieve answer when reasoning is just the answer
    - Baseline comparison: answer-only vs. full reasoning
    - Measure impact of reasoning steps on model performance
    - Test different answer presentation formats
+   - Test model performance with alternative answers derived from ground truth
 
 -----------------------------------------------------------------------------
 Examples
@@ -215,6 +224,12 @@ python mask_experiment.py --flow "mask('all-nonblank')"
 
 # Example 13: Combine all-nonblank masking with shuffle
 python mask_experiment.py --flow "mask('all-nonblank'),shuffle('line')"
+
+# Example 13a: Mask all non-digit characters (preserve only numbers)
+python mask_experiment.py --flow "mask('non-number')"
+
+# Example 13b: Mask all non-digit characters with custom mask character
+python mask_experiment.py --flow "mask('non-number',mask_char=' ')"
 
 # Example 14: Remove all continuous blank characters (consolidate to single space)
 python mask_experiment.py --flow "remove('blank')"
@@ -272,6 +287,15 @@ python mask_experiment.py --flow "mask('number'),reason_is('{ANSWER}')"
 
 # Example 31: Use reason_is as baseline for comparison with custom format
 python mask_experiment.py --flow "reason_is('The final result is {ANSWER}')"
+
+# Example 32: Replace reasoning with math expression using ANSWER
+python mask_experiment.py --flow "reason_is('The answer is {ANSWER} or {ANSWER * 0.9}')"
+
+# Example 33: Use math expression with addition
+python mask_experiment.py --flow "reason_is('The result is {ANSWER + 10}')"
+
+# Example 34: Multiple math expressions in one pattern
+python mask_experiment.py --flow "reason_is('Options: {ANSWER}, {ANSWER * 0.9}, {ANSWER * 1.1}')"
 
 -----------------------------------------------------------------------------
 Other Parameters
@@ -421,9 +445,12 @@ def rebuild_json_from_jsonl(
 
 def generate_output_path_from_flow(results_path: str, flow: str) -> str:
     """
-    Generate output path automatically based on flow string
+    Generate output path automatically based on flow string using hash-based flat structure
 
-    Creates path: exp/<processor1>/<processor2>/.../<processor_n>/results.json
+    Creates path: exp/<8-char-hash>/results.json
+
+    The hash is generated from the flow string and stored in exp/flow_to_hash.json
+    for easy lookup.
 
     Args:
         results_path: Original results.json path
@@ -434,36 +461,49 @@ def generate_output_path_from_flow(results_path: str, flow: str) -> str:
 
     Examples:
         flow = "mask('number'),shuffle('line')"
-        -> exp/mask_number/shuffle_line/results.json
+        -> exp/a1b2c3d4/results.json
 
         flow = "insert('fix',sentence='Answer: 123.',count=5)"
-        -> exp/insert_fix_sentence_Answer_123_count_5/results.json
+        -> exp/e5f6g7h8/results.json
+
+        flow = "" (empty/no processing)
+        -> exp/d41d8cd9/results.json
     """
-    import re
+    import hashlib
     from pathlib import Path
 
-    if not flow:
-        return "exp/no_processing/results.json"
+    # Generate 8-character hash from flow string
+    hash_obj = hashlib.md5(flow.encode('utf-8'))
+    flow_hash = hash_obj.hexdigest()[:8]
 
-    # Parse flow to extract processor steps
-    processors = parse_flow(flow)
+    # Construct path: exp/<hash>/results.json
+    output_path = Path("exp") / flow_hash / "results.json"
 
-    # Build path segments by sanitizing the flow string directly
-    segments = []
+    # Update flow_to_hash.json mapping
+    flow_to_hash_file = Path("exp") / "flow_to_hash.json"
+    flow_to_hash = {}
 
-    # Split flow by comma to get individual processor calls
-    flow_steps = re.split(r',(?![^()]*\))', flow)
+    # Load existing mapping if it exists
+    if flow_to_hash_file.exists():
+        try:
+            with open(flow_to_hash_file, 'r', encoding='utf-8') as f:
+                flow_to_hash = json.load(f)
+        except Exception as e:
+            logger.warning(f"Failed to load flow_to_hash.json: {e}")
 
-    for step in flow_steps:
-        step = step.strip()
-        # Sanitize: replace non-alphanumeric chars with underscore, collapse multiple underscores
-        sanitized = re.sub(r'[^\w]+', '_', step)
-        # Remove leading/trailing underscores
-        sanitized = sanitized.strip('_')
-        segments.append(sanitized)
+    # Add current flow if not already present
+    if flow not in flow_to_hash:
+        flow_to_hash[flow] = flow_hash
 
-    # Construct path: exp/<seg1>/<seg2>/.../<segN>/results.json
-    output_path = Path("exp") / Path(*segments) / "results.json"
+        # Ensure exp/ directory exists
+        flow_to_hash_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Save updated mapping
+        try:
+            with open(flow_to_hash_file, 'w', encoding='utf-8') as f:
+                json.dump(flow_to_hash, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.warning(f"Failed to save flow_to_hash.json: {e}")
 
     return str(output_path)
 
@@ -739,8 +779,14 @@ def _save_results_with_metadata(
     }
 
     # Build experiment metadata
+    # Generate human-readable experiment name from flow
+    experiment_name = flow_str if flow_str else "no_processing"
+    if len(experiment_name) > 100:
+        experiment_name = experiment_name[:97] + "..."
+
     experiment_metadata = {
-        'experiment_name': Path(output_path).parent.name,
+        'experiment_id': Path(output_path).parent.name,  # Hash value for file system
+        'experiment_name': experiment_name,  # Human-readable flow string
         'experiment_date': datetime.now().isoformat(),
         'dataset': dataset_name,
         'model_type': model_type,
@@ -1038,8 +1084,16 @@ def run_experiment(
     except (ValueError, IndexError, AttributeError) as e:
         logger.debug(f"Failed to extract dataset name from '{results_path}': {e}")
 
+    # Generate human-readable experiment name from flow
+    # Use flow string (truncated if too long) as primary identifier
+    # Hash is stored as experiment_id for file system organization
+    experiment_name = flow_str if flow_str else "no_processing"
+    if len(experiment_name) > 100:
+        experiment_name = experiment_name[:97] + "..."
+
     experiment_metadata = {
-        'experiment_name': output_json.parent.name,
+        'experiment_id': output_json.parent.name,  # Hash value for file system
+        'experiment_name': experiment_name,  # Human-readable flow string
         'experiment_date': datetime.now().isoformat(),
         'dataset': dataset_name,
         'model_type': model_type,

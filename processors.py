@@ -82,6 +82,8 @@ class MaskProcessor(Processor):
     - 'alphabet-and-answer': Mask alphabet and answer numbers
     - 'all-nonblank': Mask all non-whitespace characters (letters, numbers, symbols)
                       Preserves spaces, tabs, newlines, and other whitespace characters
+    - 'non-number': Mask all non-digit characters, preserving only digits (0-9)
+                    Preserves whitespace characters
     """
 
     def __init__(self, mode: str, mask_char: str = '█', **kwargs):
@@ -109,7 +111,8 @@ class MaskProcessor(Processor):
             mask_numbers_advance,
             mask_alphabet_in_reasoning,
             mask_alphabet_and_answer_in_reasoning,
-            mask_all_nonblank_in_reasoning
+            mask_all_nonblank_in_reasoning,
+            mask_non_numbers_in_reasoning
         )
 
         self.last_input_stats = self._compute_stats(reasoning)
@@ -135,6 +138,8 @@ class MaskProcessor(Processor):
             result = mask_alphabet_and_answer_in_reasoning(reasoning, answer, self.mask_char)
         elif self.mode == 'all-nonblank':
             result = mask_all_nonblank_in_reasoning(reasoning, self.mask_char)
+        elif self.mode == 'non-number':
+            result = mask_non_numbers_in_reasoning(reasoning, self.mask_char)
         else:
             raise ValueError(f"Invalid mask mode: {self.mode}")
 
@@ -694,14 +699,20 @@ class ReasonIsProcessor(Processor):
 
     This processor replaces the entire reasoning text with a custom pattern
     that can include the ground truth answer via the {ANSWER} placeholder.
+    The {ANSWER} placeholder supports mathematical expressions.
 
     Pattern placeholders:
     - '{ANSWER}' or '{answer}': Replaced with the ground truth answer from context
+    - '{ANSWER * expr}': Mathematical expressions with ANSWER (e.g., {ANSWER * 0.9})
+    - Type preservation: If ANSWER is integer, result is integer; if float, result is float
 
     Examples:
     - reason_is('{ANSWER}') - Replace reasoning with pure answer
     - reason_is('Thus, the answer is {ANSWER}.') - Replace with illustrated format
     - reason_is('The final result is {ANSWER}') - Custom format
+    - reason_is('The answer is {ANSWER} or {ANSWER * 0.9}') - Math expressions with type preservation
+    - reason_is('{ANSWER + 10}') - Addition operation
+    - reason_is('{ANSWER / 2}') - Division operation
     """
 
     def __init__(self, text: str, **kwargs):
@@ -727,6 +738,7 @@ class ReasonIsProcessor(Processor):
 
         Returns:
             Text with {ANSWER} placeholder replaced by actual answer
+            Supports mathematical expressions like {ANSWER * 0.9}
 
         Raises:
             KeyError: If 'answer' is not found in context
@@ -737,20 +749,88 @@ class ReasonIsProcessor(Processor):
         if 'answer' not in context:
             raise KeyError("'answer' not found in context")
 
-        answer = str(context['answer'])
+        answer = context['answer']
 
-        # Replace {ANSWER} placeholder (case insensitive)
-        # Use a lambda function to avoid interpreting the answer as a regex replacement pattern
+        # Replace {expression} placeholders that may contain ANSWER and math operations
         import re
         result = re.sub(
-            r'\{ANSWER\}',
-            lambda m: answer,
+            r'\{([^}]+)\}',
+            lambda m: self._evaluate_expression(m.group(1), answer),
             self.text,
             flags=re.IGNORECASE
         )
 
         self.last_output_stats = self._compute_stats(result)
         return result
+
+    def _evaluate_expression(self, expr: str, answer) -> str:
+        """
+        Evaluate an expression that may contain ANSWER placeholder and math operations
+
+        Args:
+            expr: Expression string (e.g., "ANSWER", "ANSWER * 0.9", "ANSWER + 10")
+            answer: The ground truth answer value
+
+        Returns:
+            Evaluated result as string, maintaining type (int/float) from original answer
+
+        Examples:
+            - expr="ANSWER", answer=42 -> "42"
+            - expr="ANSWER * 0.9", answer=100 -> "90" (int preserved)
+            - expr="ANSWER * 0.9", answer=100.0 -> "90.0" (float preserved)
+            - expr="ANSWER + 5", answer=37 -> "42"
+        """
+        import re
+
+        # Check if expression contains ANSWER (case insensitive)
+        if not re.search(r'\bANSWER\b', expr, re.IGNORECASE):
+            # No ANSWER placeholder, return as-is
+            return f"{{{expr}}}"
+
+        # Determine if original answer is integer or float
+        is_int_answer = isinstance(answer, int) or (
+            isinstance(answer, (float, str)) and
+            str(answer).replace('.', '', 1).replace('-', '', 1).isdigit() and
+            '.' not in str(answer)
+        )
+
+        # Convert answer to numeric type
+        try:
+            numeric_answer = int(answer) if is_int_answer else float(answer)
+        except (ValueError, TypeError):
+            # If conversion fails, treat as string
+            return str(answer)
+
+        # Replace ANSWER with the numeric value (case insensitive)
+        eval_expr = re.sub(r'\bANSWER\b', str(numeric_answer), expr, flags=re.IGNORECASE)
+
+        # Evaluate the expression safely
+        try:
+            # Create a restricted namespace for eval (only math operations allowed)
+            safe_dict = {
+                '__builtins__': {},
+                'abs': abs,
+                'round': round,
+                'min': min,
+                'max': max,
+                'int': int,
+                'float': float,
+            }
+            result = eval(eval_expr, safe_dict, {})
+
+            # Maintain type consistency with original answer
+            if is_int_answer:
+                # Convert to int, handling floating point results
+                result = int(round(result))
+            else:
+                # Keep as float
+                result = float(result)
+
+            return str(result)
+
+        except Exception as e:
+            # If evaluation fails, return the original expression in braces
+            raise ValueError(f"Failed to evaluate expression '{expr}': {e}")
 
     def get_metadata(self) -> Dict:
         """Get metadata about the reason_is processor operation"""

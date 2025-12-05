@@ -62,6 +62,30 @@ def load_distribution_stats(results_dir: Path) -> Optional[Dict[str, float]]:
         return None
 
 
+def load_flow_to_hash_mapping(exp_dir: Path) -> Dict[str, str]:
+    """
+    Load flow_to_hash.json mapping
+
+    Returns:
+        Dictionary mapping flow_string -> hash (and reverse mapping hash -> flow)
+    """
+    flow_to_hash_file = exp_dir / "flow_to_hash.json"
+    if not flow_to_hash_file.exists():
+        return {}
+
+    try:
+        with open(flow_to_hash_file, 'r', encoding='utf-8') as f:
+            flow_to_hash = json.load(f)
+
+        # Create reverse mapping (hash -> flow) for lookup
+        hash_to_flow = {v: k for k, v in flow_to_hash.items()}
+
+        return hash_to_flow
+    except Exception as e:
+        print(f"Error loading flow_to_hash.json: {e}")
+        return {}
+
+
 def scan_experiments(exp_dir: Path) -> List[Dict[str, Any]]:
     """
     Scan exp/ directory for all experiment results
@@ -70,6 +94,9 @@ def scan_experiments(exp_dir: Path) -> List[Dict[str, Any]]:
         List of experiment metadata dictionaries
     """
     experiments = []
+
+    # Load hash -> flow mapping
+    hash_to_flow = load_flow_to_hash_mapping(exp_dir)
 
     # Find all results.json files
     for results_file in exp_dir.rglob("results.json"):
@@ -100,9 +127,13 @@ def scan_experiments(exp_dir: Path) -> List[Dict[str, Any]]:
             # Load distribution statistics if available
             dist_stats = load_distribution_stats(results_file.parent)
 
+            # Extract experiment_id (hash) from metadata or fallback to directory name
+            experiment_id = exp_metadata.get('experiment_id', rel_path.parent.name)
+
             experiment = {
                 'path': str(rel_path),
                 'full_path': str(results_file),
+                'experiment_id': experiment_id,  # Hash value (8 chars)
                 'name': exp_metadata.get('experiment_name', rel_path.parent.name),
                 'date': exp_metadata.get('experiment_date', 'N/A'),
                 'dataset': exp_metadata.get('dataset', 'N/A'),
@@ -169,7 +200,7 @@ MAIN_TEMPLATE = """
         }
 
         .container {
-            max-width: 1800px;
+            max-width: 2200px;
             margin: 0 auto;
             padding-top: 20px;
             position: relative;
@@ -312,7 +343,7 @@ MAIN_TEMPLATE = """
         .flow-cell {
             font-family: 'Monaco', 'Courier New', monospace;
             font-size: 0.85em;
-            max-width: 600px;
+            max-width: 1000px;
             padding-left: 12px !important;
         }
 
@@ -493,7 +524,7 @@ MAIN_TEMPLATE = """
             <table id="results-table" style="display: none;">
                 <thead>
                     <tr>
-                        <th style="width: 50px;">#</th>
+                        <th style="width: 60px;">Hash</th>
                         <th>Flow</th>
                         <th style="width: 180px;">Accuracy</th>
                         <th style="width: 120px;">Correct/Success</th>
@@ -514,7 +545,6 @@ MAIN_TEMPLATE = """
         let maxAcc = 1;
         let treeStructure = null;
         let deletedRows = new Set();
-        let rowIndex = 0;
         let rowPathMap = new Map();  // Map from rowId to path
 
         // Alignment state
@@ -769,8 +799,7 @@ MAIN_TEMPLATE = """
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
 
-            // Reset row index and path map
-            rowIndex = 0;
+            // Reset path map
             rowPathMap.clear();
 
             // Use aligned data if in alignment mode
@@ -885,8 +914,8 @@ MAIN_TEMPLATE = """
                 row.classList.add('row-deleted');
             }
 
-            // Increment row index for visible rows
-            const currentIndex = ++rowIndex;
+            // Get hash (first 4 characters of experiment_id)
+            const hashPrefix = exp.experiment_id ? exp.experiment_id.substring(0, 4) : '----';
 
             // Build conditional probability content
             let condProbHtml = '';
@@ -912,7 +941,7 @@ MAIN_TEMPLATE = """
             }
 
             row.innerHTML = `
-                <td style="text-align: center; color: #94a3b8; font-weight: 500;">${currentIndex}</td>
+                <td style="text-align: center; color: #64748b; font-weight: 600; font-family: 'Monaco', 'Courier New', monospace; font-size: 0.85em;">${hashPrefix}</td>
                 <td class="flow-cell">
                     <div class="flow-content">
                         ${flowHtml}

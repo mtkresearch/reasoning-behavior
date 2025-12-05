@@ -386,6 +386,42 @@ def mask_all_nonblank_in_reasoning(reasoning: str, mask_char: str = '█') -> st
     return masked_reasoning
 
 
+def mask_non_numbers_in_reasoning(reasoning: str, mask_char: str = '█') -> str:
+    """
+    Mask all non-digit characters in reasoning text, preserving only digits (0-9).
+
+    This function masks all characters that are not digits, including:
+    - Alphabetic characters (A-Z, a-z)
+    - Symbols and punctuation (+, -, *, =, etc.)
+    - Whitespace characters (spaces, tabs, newlines) - preserved as-is
+
+    Only digits 0-9 are preserved in their original form.
+
+    Args:
+        reasoning: Original reasoning content
+        mask_char: Character to use for masking (default: '█')
+
+    Returns:
+        Reasoning content with all non-digit characters (except whitespace) replaced by mask_char
+
+    Examples:
+        >>> mask_non_numbers_in_reasoning("Calculate 2 + 2 = 4")
+        '█████████ 2 █ 2 █ 4'
+
+        >>> mask_non_numbers_in_reasoning("Answer is 42", mask_char=' ')
+        '       is 42'
+
+        >>> mask_non_numbers_in_reasoning("Step 1: 5 + 3 = 8")
+        '████ 1█ 5 █ 3 █ 8'
+    """
+    # Replace all non-digit characters except whitespace with mask_char
+    # Pattern: \D matches any non-digit, but we need to preserve whitespace
+    # So we use negative lookahead to exclude whitespace from matching
+    masked_reasoning = re.sub(r'[^\d\s]', mask_char, reasoning)
+
+    return masked_reasoning
+
+
 def mask_numbers_advance(reasoning: str, answer: str = None, mask_char: str = '█') -> str:
     """
     Mask numbers with advanced rules: keep numbers adjacent to letters/underscores

@@ -128,6 +128,67 @@ Line 4: The answer is 12."""
         assert 'Calculate' not in result
         assert '█' in result
 
+    def test_mask_processor_non_number_mode(self, sample_context):
+        """Test MaskProcessor with mode='non-number' - mask all non-digit characters"""
+        from processors import MaskProcessor
+
+        processor = MaskProcessor(mode='non-number')
+        reasoning = "Calculate 2 + 2 = 4"
+
+        result = processor.process(reasoning, sample_context)
+
+        # Numbers should be preserved, all non-digits masked
+        assert '2' in result
+        assert '4' in result
+        assert 'Calculate' not in result
+        assert 'C' not in result
+        assert '+' not in result
+        assert '=' not in result
+        assert '█' in result
+
+    def test_mask_processor_non_number_mode_with_custom_char(self, sample_context):
+        """Test MaskProcessor with mode='non-number' and custom mask character"""
+        from processors import MaskProcessor
+
+        processor = MaskProcessor(mode='non-number', mask_char=' ')
+        reasoning = "Answer is 42"
+
+        result = processor.process(reasoning, sample_context)
+
+        # Numbers preserved, non-digits replaced with space
+        assert '4' in result
+        assert '2' in result
+        assert 'Answer' not in result
+        assert 'is' not in result
+        # Should have spaces where letters/symbols were
+        assert ' ' in result
+
+    def test_mask_processor_non_number_mode_complex(self, sample_context):
+        """Test MaskProcessor with mode='non-number' on complex reasoning"""
+        from processors import MaskProcessor
+
+        processor = MaskProcessor(mode='non-number')
+        reasoning = """Step 1: Calculate 5 + 3 = 8
+Step 2: Multiply by 2 = 16
+The answer is 42."""
+
+        result = processor.process(reasoning, sample_context)
+
+        # All digits should be preserved
+        assert '1' in result
+        assert '5' in result
+        assert '3' in result
+        assert '8' in result
+        assert '2' in result
+        assert '16' in result
+        assert '42' in result
+
+        # All letters should be masked
+        assert 'Step' not in result
+        assert 'Calculate' not in result
+        assert 'Multiply' not in result
+        assert 'answer' not in result
+
 
 class TestTruncateProcessor:
     """Tests for TruncateProcessor"""
@@ -1817,3 +1878,209 @@ Final answer: \\boxed{16}"""
         context4 = {'answer': r'\text{solution}', 'question': 'What is it?'}
         result4 = processor.process("Some reasoning", context4)
         assert result4 == r'Thus, the answer is \text{solution}.'
+
+    def test_reason_is_with_math_expression_basic(self, sample_context):
+        """Test ReasonIsProcessor with basic math expression"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='The answer is {ANSWER * 0.9}')
+        context = {'answer': 100, 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        # 100 * 0.9 = 90 (int preserved)
+        assert result == 'The answer is 90'
+
+    def test_reason_is_with_math_expression_float_result(self, sample_context):
+        """Test ReasonIsProcessor with float answer maintains float type"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='The answer is {ANSWER * 0.9}')
+        context = {'answer': 100.0, 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        # 100.0 * 0.9 = 90.0 (float preserved)
+        assert result == 'The answer is 90.0'
+
+    def test_reason_is_with_math_expression_int_answer_string(self, sample_context):
+        """Test ReasonIsProcessor with string integer answer"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='The answer is {ANSWER * 0.9}')
+        context = {'answer': '100', 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        # '100' * 0.9 = 90 (int preserved because original is int string)
+        assert result == 'The answer is 90'
+
+    def test_reason_is_with_multiple_expressions(self, sample_context):
+        """Test ReasonIsProcessor with multiple math expressions"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='The answer is {ANSWER} or {ANSWER * 0.9}')
+        context = {'answer': 100, 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        # Should have both 100 and 90
+        assert result == 'The answer is 100 or 90'
+
+    def test_reason_is_with_multiple_expressions_float(self, sample_context):
+        """Test ReasonIsProcessor with multiple expressions and float answer"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='The answer is {ANSWER} or {ANSWER * 0.9}')
+        context = {'answer': 100.0, 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        # Should have both 100.0 and 90.0
+        assert result == 'The answer is 100.0 or 90.0'
+
+    def test_reason_is_with_addition(self, sample_context):
+        """Test ReasonIsProcessor with addition operation"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='The result is {ANSWER + 10}')
+        context = {'answer': 42, 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        assert result == 'The result is 52'
+
+    def test_reason_is_with_subtraction(self, sample_context):
+        """Test ReasonIsProcessor with subtraction operation"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='The result is {ANSWER - 5}')
+        context = {'answer': 42, 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        assert result == 'The result is 37'
+
+    def test_reason_is_with_division(self, sample_context):
+        """Test ReasonIsProcessor with division operation"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='Half of the answer is {ANSWER / 2}')
+        context = {'answer': 42, 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        # 42 / 2 = 21 (int preserved)
+        assert result == 'Half of the answer is 21'
+
+    def test_reason_is_with_multiplication(self, sample_context):
+        """Test ReasonIsProcessor with multiplication operation"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='Double is {ANSWER * 2}')
+        context = {'answer': 21, 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        assert result == 'Double is 42'
+
+    def test_reason_is_with_complex_expression(self, sample_context):
+        """Test ReasonIsProcessor with complex math expression"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='Result: {ANSWER * 2 + 10}')
+        context = {'answer': 20, 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        # 20 * 2 + 10 = 50
+        assert result == 'Result: 50'
+
+    def test_reason_is_with_rounding(self, sample_context):
+        """Test ReasonIsProcessor rounds float results for int answers"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='90% is {ANSWER * 0.9}')
+        context = {'answer': 33, 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        # 33 * 0.9 = 29.7, should round to 30 for int answer
+        assert result == '90% is 30'
+
+    def test_reason_is_with_negative_number(self, sample_context):
+        """Test ReasonIsProcessor with negative numbers"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='Negative is {ANSWER * -1}')
+        context = {'answer': 42, 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        assert result == 'Negative is -42'
+
+    def test_reason_is_without_answer_placeholder(self, sample_context):
+        """Test ReasonIsProcessor with expression not containing ANSWER"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='The value is {5 + 5}')
+        context = {'answer': 42, 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        # Expression without ANSWER should be returned as-is
+        assert result == 'The value is {5 + 5}'
+
+    def test_reason_is_case_insensitive_answer(self, sample_context):
+        """Test ReasonIsProcessor is case insensitive for ANSWER placeholder"""
+        from processors import ReasonIsProcessor
+
+        # Test lowercase 'answer'
+        processor1 = ReasonIsProcessor(text='Result: {answer * 2}')
+        context = {'answer': 21, 'question': 'What is the number?'}
+        result1 = processor1.process("Some reasoning", context)
+        assert result1 == 'Result: 42'
+
+        # Test mixed case 'AnSwEr'
+        processor2 = ReasonIsProcessor(text='Result: {AnSwEr * 2}')
+        result2 = processor2.process("Some reasoning", context)
+        assert result2 == 'Result: 42'
+
+    def test_reason_is_with_invalid_expression(self, sample_context):
+        """Test ReasonIsProcessor raises error for invalid expression"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='Result: {ANSWER * invalid}')
+        context = {'answer': 42, 'question': 'What is the number?'}
+
+        with pytest.raises(ValueError, match="Failed to evaluate expression"):
+            processor.process("Some reasoning", context)
+
+    def test_reason_is_with_safe_math_functions(self, sample_context):
+        """Test ReasonIsProcessor allows safe math functions"""
+        from processors import ReasonIsProcessor
+
+        # Test abs()
+        processor1 = ReasonIsProcessor(text='Absolute: {abs(ANSWER * -1)}')
+        context = {'answer': 42, 'question': 'What is the number?'}
+        result1 = processor1.process("Some reasoning", context)
+        assert result1 == 'Absolute: 42'
+
+        # Test round()
+        processor2 = ReasonIsProcessor(text='Rounded: {round(ANSWER * 0.9)}')
+        result2 = processor2.process("Some reasoning", context)
+        assert result2 == 'Rounded: 38'
+
+    def test_reason_is_math_expression_in_pipeline(self, sample_context):
+        """Test ReasonIsProcessor math expressions work in pipeline"""
+        from pipeline import parse_flow, Pipeline
+
+        flow_str = "reason_is('The answer is {ANSWER} or {ANSWER * 0.9}')"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = "Complex reasoning"
+        context = {'answer': 100, 'question': 'What is it?'}
+        result, metadata_list = pipeline.execute(reasoning, context)
+
+        assert result == 'The answer is 100 or 90'
+        assert len(metadata_list) == 1
+        assert metadata_list[0]['processor'] == 'reason_is'
+
+    def test_reason_is_with_non_numeric_answer(self, sample_context):
+        """Test ReasonIsProcessor with non-numeric answer returns answer as-is"""
+        from processors import ReasonIsProcessor
+
+        processor = ReasonIsProcessor(text='Result: {ANSWER * 2}')
+        context = {'answer': 'impossible', 'question': 'What is the number?'}
+        result = processor.process("Some reasoning", context)
+
+        # Non-numeric answer should be returned as string
+        assert result == 'Result: impossible'
