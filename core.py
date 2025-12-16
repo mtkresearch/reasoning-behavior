@@ -836,34 +836,102 @@ def truncate_reasoning_lines(reasoning: str, del_last_line: float) -> str:
     return '\n'.join(truncated_lines)
 
 
-def truncate_after_line(reasoning: str, line_num: int) -> str:
+def truncate_after_line(reasoning: str, line_num: int = None, ratio: float = None) -> str:
     """
-    Keep only the first N lines and remove all lines after line N
+    Keep only the first N lines or first X% of lines and remove the rest
 
     Args:
         reasoning: Original reasoning content
-        line_num: Number of lines to keep (lines 1 to N)
+        line_num: Number of lines to keep (lines 1 to N) - optional if ratio is provided
+        ratio: Ratio of lines to keep (0.0 to 1.0) - optional if line_num is provided
 
     Returns:
-        Truncated reasoning content (first N non-empty lines)
+        Truncated reasoning content (first N or X% non-empty lines)
 
     Examples:
         >>> reasoning = "Line 1\\nLine 2\\nLine 3\\nLine 4\\nLine 5"
-        >>> truncate_after_line(reasoning, 2)
+        >>> truncate_after_line(reasoning, line_num=2)
         'Line 1\\nLine 2'
-        >>> truncate_after_line(reasoning, 10)  # More than available lines
+        >>> truncate_after_line(reasoning, ratio=0.4)  # 40% of 5 lines = 2 lines
+        'Line 1\\nLine 2'
+        >>> truncate_after_line(reasoning, line_num=10)  # More than available lines
         'Line 1\\nLine 2\\nLine 3\\nLine 4\\nLine 5'
     """
-    if line_num <= 0:
-        return ""
+    if line_num is None and ratio is None:
+        raise ValueError("Either line_num or ratio must be provided")
 
     lines = reasoning.strip().split('\n')
     # Remove empty lines
     lines = [line for line in lines if line.strip()]
 
+    # Calculate number of lines to keep
+    if line_num is not None:
+        # Use explicit line number (priority over ratio)
+        if line_num <= 0:
+            return ""
+        num_to_keep = line_num
+    else:
+        # Use ratio to calculate
+        if ratio <= 0:
+            return ""
+        num_to_keep = int(len(lines) * ratio)
+        if num_to_keep == 0 and ratio > 0 and len(lines) > 0:
+            num_to_keep = 1  # Keep at least 1 line if ratio > 0
+
     # Keep only first N lines
-    kept_lines = lines[:line_num]
+    kept_lines = lines[:num_to_keep]
     return '\n'.join(kept_lines)
+
+
+def truncate_before_line(reasoning: str, line_num: int = None, ratio: float = None) -> str:
+    """
+    Remove the first N lines or first X% of lines and keep the rest
+
+    Args:
+        reasoning: Original reasoning content
+        line_num: Number of lines to remove from the beginning - optional if ratio is provided
+        ratio: Ratio of lines to remove from the beginning (0.0 to 1.0) - optional if line_num is provided
+
+    Returns:
+        Truncated reasoning content (remaining lines after removing first N or X%)
+
+    Examples:
+        >>> reasoning = "Line 1\\nLine 2\\nLine 3\\nLine 4\\nLine 5"
+        >>> truncate_before_line(reasoning, line_num=2)
+        'Line 3\\nLine 4\\nLine 5'
+        >>> truncate_before_line(reasoning, ratio=0.4)  # Remove 40% of 5 lines = 2 lines
+        'Line 3\\nLine 4\\nLine 5'
+        >>> truncate_before_line(reasoning, line_num=10)  # More than available lines
+        ''
+    """
+    if line_num is None and ratio is None:
+        raise ValueError("Either line_num or ratio must be provided")
+
+    lines = reasoning.strip().split('\n')
+    # Remove empty lines
+    lines = [line for line in lines if line.strip()]
+
+    # Calculate number of lines to remove
+    if line_num is not None:
+        # Use explicit line number (priority over ratio)
+        if line_num <= 0:
+            return reasoning  # Don't remove anything if line_num <= 0
+        num_to_remove = line_num
+    else:
+        # Use ratio to calculate
+        if ratio <= 0:
+            return '\n'.join(lines)  # Don't remove anything if ratio <= 0
+        num_to_remove = int(len(lines) * ratio)
+        # If ratio > 0 but rounds to 0, remove at least 1 line
+        if num_to_remove == 0 and ratio > 0 and len(lines) > 0:
+            num_to_remove = 1
+
+    # Remove first N lines and keep the rest
+    if num_to_remove >= len(lines):
+        return ""  # All lines removed
+
+    remaining_lines = lines[num_to_remove:]
+    return '\n'.join(remaining_lines)
 
 
 # =============================================================================

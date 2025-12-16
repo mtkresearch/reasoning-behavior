@@ -170,7 +170,12 @@ class TruncateProcessor(Processor):
     - 'before_answer': Remove all lines before the answer line (answer line kept)
     - 'last_n_lines': Remove last N lines (kwargs: n=5)
     - 'last_ratio': Remove last X% of lines (kwargs: ratio=0.3)
-    - 'after_line': Keep only first N lines, remove all lines after line N (kwargs: n=10)
+    - 'after_line': Keep only first N lines or first X% of lines (kwargs: n=10 or r=0.1)
+                     Use 'n' for fixed number of lines, 'r' for ratio (0.0 to 1.0)
+                     If both provided, 'n' takes priority
+    - 'before_line': Remove first N lines or first X% of lines (kwargs: n=10 or r=0.1)
+                     Use 'n' for fixed number of lines, 'r' for ratio (0.0 to 1.0)
+                     If both provided, 'n' takes priority
     """
 
     def __init__(self, mode: str, **kwargs):
@@ -194,7 +199,8 @@ class TruncateProcessor(Processor):
             remove_before_answer,
             remove_exact_answer,
             truncate_reasoning_lines,
-            truncate_after_line
+            truncate_after_line,
+            truncate_before_line
         )
 
         self.last_input_stats = self._compute_stats(reasoning)
@@ -218,8 +224,19 @@ class TruncateProcessor(Processor):
             ratio = self.kwargs.get('ratio', 0.1)
             result = truncate_reasoning_lines(reasoning, ratio)
         elif self.mode == 'after_line':
-            n = self.kwargs.get('n', 10)
-            result = truncate_after_line(reasoning, n)
+            n = self.kwargs.get('n')
+            r = self.kwargs.get('r')
+            # If neither n nor r is provided, default to n=10
+            if n is None and r is None:
+                n = 10
+            result = truncate_after_line(reasoning, line_num=n, ratio=r)
+        elif self.mode == 'before_line':
+            n = self.kwargs.get('n')
+            r = self.kwargs.get('r')
+            # If neither n nor r is provided, default to n=10
+            if n is None and r is None:
+                n = 10
+            result = truncate_before_line(reasoning, line_num=n, ratio=r)
         else:
             raise ValueError(f"Invalid truncate mode: {self.mode}")
 

@@ -515,6 +515,450 @@ Line 5"""
         assert 'removed_lines' in metadata
         assert metadata['removed_lines'] == 2  # 5 lines - 3 kept = 2 removed
 
+    def test_truncate_processor_after_line_with_ratio_basic(self, sample_context):
+        """Test TruncateProcessor after_line with r (ratio) parameter keeps first X% lines"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', r=0.4)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # 40% of 5 lines = 2 lines
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 2
+        assert "Line 1" in result
+        assert "Line 2" in result
+        assert "Line 3" not in result
+        assert "Line 4" not in result
+        assert "Line 5" not in result
+
+    def test_truncate_processor_after_line_with_ratio_10_percent(self, sample_context):
+        """Test TruncateProcessor after_line with r=0.1 (10%)"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', r=0.1)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5
+Line 6
+Line 7
+Line 8
+Line 9
+Line 10"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # 10% of 10 lines = 1 line
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 1
+        assert "Line 1" in result
+        assert "Line 2" not in result
+
+    def test_truncate_processor_after_line_with_ratio_50_percent(self, sample_context):
+        """Test TruncateProcessor after_line with r=0.5 (50%)"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', r=0.5)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5
+Line 6
+Line 7
+Line 8
+Line 9
+Line 10"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # 50% of 10 lines = 5 lines
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 5
+        assert "Line 1" in result
+        assert "Line 5" in result
+        assert "Line 6" not in result
+
+    def test_truncate_processor_after_line_with_ratio_100_percent(self, sample_context):
+        """Test TruncateProcessor after_line with r=1.0 (100%)"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', r=1.0)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # 100% of 5 lines = 5 lines (keep all)
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 5
+
+    def test_truncate_processor_after_line_with_ratio_zero(self, sample_context):
+        """Test TruncateProcessor after_line with r=0 returns empty"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', r=0)
+        reasoning = """Line 1
+Line 2
+Line 3"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should return empty string
+        assert result == ""
+
+    def test_truncate_processor_after_line_with_ratio_small_keeps_at_least_one(self, sample_context):
+        """Test TruncateProcessor after_line with very small ratio keeps at least 1 line"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', r=0.01)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # 1% of 5 lines = 0.05, but should keep at least 1 line
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 1
+        assert "Line 1" in result
+
+    def test_truncate_processor_after_line_n_takes_priority_over_r(self, sample_context):
+        """Test TruncateProcessor after_line when both n and r provided, n takes priority"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', n=3, r=0.5)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5
+Line 6
+Line 7
+Line 8
+Line 9
+Line 10"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should use n=3 (not r=0.5 which would give 5 lines)
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 3
+        assert "Line 1" in result
+        assert "Line 2" in result
+        assert "Line 3" in result
+        assert "Line 4" not in result
+
+    def test_truncate_processor_after_line_with_ratio_get_metadata(self, sample_context):
+        """Test TruncateProcessor mode='after_line' with r parameter metadata"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', r=0.4)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        _ = processor.process(reasoning, sample_context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'truncate'
+        assert metadata['mode'] == 'after_line'
+        assert metadata['r'] == 0.4
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+        assert 'removed_lines' in metadata
+        assert metadata['removed_lines'] == 3  # 5 lines - 2 kept = 3 removed
+
+    def test_truncate_processor_after_line_with_ratio_ignores_empty_lines(self, sample_context):
+        """Test TruncateProcessor after_line with r ignores empty lines"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='after_line', r=0.5)
+        reasoning = """Line 1
+
+Line 2
+
+Line 3
+
+Line 4"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should keep 50% of non-empty lines (2 out of 4)
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 2
+        assert "Line 1" in result
+        assert "Line 2" in result
+        assert "Line 3" not in result
+
+    def test_truncate_processor_before_line_with_ratio_basic(self, sample_context):
+        """Test TruncateProcessor before_line with r (ratio) parameter removes first X% lines"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='before_line', r=0.4)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Remove 40% of 5 lines = 2 lines, keep remaining 3 lines
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 3
+        assert "Line 1" not in result
+        assert "Line 2" not in result
+        assert "Line 3" in result
+        assert "Line 4" in result
+        assert "Line 5" in result
+
+    def test_truncate_processor_before_line_with_ratio_10_percent(self, sample_context):
+        """Test TruncateProcessor before_line with r=0.1 (10%)"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='before_line', r=0.1)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5
+Line 6
+Line 7
+Line 8
+Line 9
+Line 10"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Remove 10% of 10 lines = 1 line, keep remaining 9 lines
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 9
+        result_lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert "Line 1" not in result_lines
+        assert "Line 2" in result_lines
+        assert "Line 10" in result_lines
+
+    def test_truncate_processor_before_line_with_ratio_50_percent(self, sample_context):
+        """Test TruncateProcessor before_line with r=0.5 (50%)"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='before_line', r=0.5)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5
+Line 6
+Line 7
+Line 8
+Line 9
+Line 10"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Remove 50% of 10 lines = 5 lines, keep remaining 5 lines
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 5
+        result_lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert "Line 1" not in result_lines
+        assert "Line 5" not in result_lines
+        assert "Line 6" in result_lines
+        assert "Line 10" in result_lines
+
+    def test_truncate_processor_before_line_with_ratio_100_percent(self, sample_context):
+        """Test TruncateProcessor before_line with r=1.0 (100%)"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='before_line', r=1.0)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Remove 100% of 5 lines = all lines removed
+        assert result == ""
+
+    def test_truncate_processor_before_line_with_ratio_zero(self, sample_context):
+        """Test TruncateProcessor before_line with r=0 keeps all lines"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='before_line', r=0)
+        reasoning = """Line 1
+Line 2
+Line 3"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should keep all lines (no removal)
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 3
+        assert "Line 1" in result
+        assert "Line 2" in result
+        assert "Line 3" in result
+
+    def test_truncate_processor_before_line_with_ratio_small_removes_at_least_one(self, sample_context):
+        """Test TruncateProcessor before_line with very small ratio removes at least 1 line"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='before_line', r=0.01)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # 1% of 5 lines = 0.05, but should remove at least 1 line
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 4
+        assert "Line 1" not in result
+        assert "Line 2" in result
+        assert "Line 5" in result
+
+    def test_truncate_processor_before_line_basic(self, sample_context):
+        """Test TruncateProcessor before_line with n parameter removes first N lines"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='before_line', n=3)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Remove first 3 lines, keep remaining 2 lines
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 2
+        assert "Line 1" not in result
+        assert "Line 2" not in result
+        assert "Line 3" not in result
+        assert "Line 4" in result
+        assert "Line 5" in result
+
+    def test_truncate_processor_before_line_n_takes_priority_over_r(self, sample_context):
+        """Test TruncateProcessor before_line when both n and r provided, n takes priority"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='before_line', n=3, r=0.5)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5
+Line 6
+Line 7
+Line 8
+Line 9
+Line 10"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should use n=3 (not r=0.5 which would remove 5 lines)
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 7
+        result_lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert "Line 1" not in result_lines
+        assert "Line 2" not in result_lines
+        assert "Line 3" not in result_lines
+        assert "Line 4" in result_lines
+        assert "Line 10" in result_lines
+
+    def test_truncate_processor_before_line_with_ratio_get_metadata(self, sample_context):
+        """Test TruncateProcessor mode='before_line' with r parameter metadata"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='before_line', r=0.4)
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        _ = processor.process(reasoning, sample_context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'truncate'
+        assert metadata['mode'] == 'before_line'
+        assert metadata['r'] == 0.4
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+        assert 'removed_lines' in metadata
+        assert metadata['removed_lines'] == 2  # 2 lines removed (5 - 3 remaining)
+
+    def test_truncate_processor_before_line_with_ratio_ignores_empty_lines(self, sample_context):
+        """Test TruncateProcessor before_line with r ignores empty lines"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='before_line', r=0.5)
+        reasoning = """Line 1
+
+Line 2
+
+Line 3
+
+Line 4"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should remove 50% of non-empty lines (2 out of 4)
+        lines = [l for l in result.split('\n') if l.strip()]
+        assert len(lines) == 2
+        assert "Line 1" not in result
+        assert "Line 2" not in result
+        assert "Line 3" in result
+        assert "Line 4" in result
+
+    def test_truncate_processor_before_line_default_n(self, sample_context):
+        """Test TruncateProcessor before_line with default n=10"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='before_line')
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4
+Line 5"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Default n=10, but only 5 lines, so all should be removed
+        assert result == ""
+
+    def test_truncate_processor_before_line_n_larger_than_lines(self, sample_context):
+        """Test TruncateProcessor before_line when n > number of lines"""
+        from processors import TruncateProcessor
+
+        processor = TruncateProcessor(mode='before_line', n=100)
+        reasoning = """Line 1
+Line 2
+Line 3"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should remove all lines since n > line count
+        assert result == ""
+
 
 class TestShuffleProcessor:
     """Tests for ShuffleProcessor"""

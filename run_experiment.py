@@ -47,7 +47,12 @@ Available Processors
    - 'before_answer': Remove all lines before answer line (answer line kept)
    - 'last_n_lines': Remove last N lines (specify n=N)
    - 'last_ratio': Remove last X% of lines (specify ratio=X, e.g., 0.3 for 30%)
-   - 'after_line': Keep only first N lines, remove all lines after line N (specify n=N)
+   - 'after_line': Keep only first N lines or first X% of lines (specify n=N or r=X)
+                   Use n for fixed number (e.g., n=10), r for ratio (e.g., r=0.1 for 10%)
+                   If both provided, n takes priority
+   - 'before_line': Remove first N lines or first X% of lines (specify n=N or r=X)
+                    Use n for fixed number (e.g., n=10), r for ratio (e.g., r=0.1 for 10%)
+                    If both provided, n takes priority
 
 3. shuffle(mode, seed=None, ...)
    Shuffle reasoning content.
@@ -263,6 +268,15 @@ python mask_experiment.py --flow "truncate('answer'),shuffle('line')"
 
 # Example 23a: Keep only first 10 lines, remove all lines after line 10
 python mask_experiment.py --flow "truncate('after_line',n=10)"
+
+# Example 23b: Keep only first 10% of lines (ratio-based truncation)
+python mask_experiment.py --flow "truncate('after_line',r=0.1)"
+
+# Example 23c: Remove first 10% of lines (inverse of after_line)
+python mask_experiment.py --flow "truncate('before_line',r=0.1)"
+
+# Example 23d: Remove first 5 lines, keep the rest
+python mask_experiment.py --flow "truncate('before_line',n=5)"
 
 # Example 24: Add answer prefill to guide model response format
 python mask_experiment.py --flow "answer('retrieval')"
