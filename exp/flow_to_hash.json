@@ -91,5 +91,9 @@
   "mask('alphabet',mask_char=' '),truncate('answer'),replace('\\s+',replacement=' '),answer('retrieval')": "90cc35f6",
   "mask('alphabet',mask_char=' '),truncate('answer'),replace('\\s+',replacement=' ')": "3a93a6f1",
   "mask('alphabet',mask_char=' '),replace(' +',replacement=' '),shuffle('line'),answer('retrieval')": "3278ca64",
-  "mask('alphabet',mask_char=' '),replace(' +',replacement=' '),shuffle('line'),truncate('answer'),answer('retrieval')": "d9d5ce1d"
+  "mask('alphabet',mask_char=' '),replace(' +',replacement=' '),shuffle('line'),truncate('answer'),answer('retrieval')": "d9d5ce1d",
+  "question('remove'),truncate('before_line',r=0.2),answer('retrieval')": "b91e17f2",
+  "question('remove'),truncate('before_line',r=0.2),mask('alphabet'),answer('retrieval')": "b3726ecd",
+  "question('remove'),mask('alphabet'),answer('retrieval')": "87eba5ee",
+  "question('remove'),truncate('answer'),mask('alphabet'),answer('retrieval')": "b6909e35"
 }
