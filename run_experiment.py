@@ -193,6 +193,28 @@ Available Processors
    - Test different answer presentation formats
    - Test model performance with alternative answers derived from ground truth
 
+9. random(mode, seed=42)
+   Randomize digits in reasoning text.
+
+   This processor randomly replaces all digits (0-9) with other random digits.
+   Useful for testing if models rely on specific numeric values or just
+   the structural pattern of reasoning.
+
+   Modes:
+   - 'number': Randomize all digits (0-9) to random digits
+
+   Optional parameters:
+   - seed: Random seed for reproducibility (default: 42)
+
+   Examples:
+   - random('number') - Randomize all digits with default seed
+   - random('number', seed=123) - Randomize all digits with custom seed
+
+   Use cases:
+   - Test if model relies on specific numeric values vs. reasoning structure
+   - Evaluate robustness to numeric variations
+   - Test if reasoning patterns are more important than exact numbers
+
 -----------------------------------------------------------------------------
 Examples
 -----------------------------------------------------------------------------
@@ -343,6 +365,18 @@ python mask_experiment.py --flow "reason_is('The result is {ANSWER + 10}')"
 
 # Example 34: Multiple math expressions in one pattern
 python mask_experiment.py --flow "reason_is('Options: {ANSWER}, {ANSWER * 0.9}, {ANSWER * 1.1}')"
+
+# Example 35: Randomize all digits with default seed
+python mask_experiment.py --flow "random('number')"
+
+# Example 36: Randomize all digits with custom seed
+python mask_experiment.py --flow "random('number',seed=123)"
+
+# Example 37: Combine randomization with other processors
+python mask_experiment.py --flow "random('number'),shuffle('line')"
+
+# Example 38: Randomize digits and mask letters
+python mask_experiment.py --flow "random('number'),mask('alphabet')"
 
 -----------------------------------------------------------------------------
 Other Parameters

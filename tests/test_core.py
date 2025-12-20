@@ -515,3 +515,118 @@ Step 2: Therefore the answer is 12."""
         # Step labels should remain
         assert "Step 1:" in result
         assert "Step 2:" in result
+
+
+class TestRandomizeNumbersInReasoning:
+    """Tests for randomize_numbers_in_reasoning function"""
+
+    def test_randomize_numbers_basic(self):
+        """Test basic randomization of numbers"""
+        from core import randomize_numbers_in_reasoning
+
+        reasoning = "Calculate 2 + 2 = 4"
+        result = randomize_numbers_in_reasoning(reasoning, seed=42)
+
+        # Result should have same length (digits replaced one-to-one)
+        assert len(result) == len(reasoning)
+        # Result should be different from original
+        assert result != reasoning
+        # Text structure should be preserved
+        assert "Calculate" in result
+        assert "+" in result
+        assert "=" in result
+
+    def test_randomize_numbers_with_seed(self):
+        """Test that same seed produces same output"""
+        from core import randomize_numbers_in_reasoning
+
+        reasoning = "The answer is 42"
+
+        result1 = randomize_numbers_in_reasoning(reasoning, seed=123)
+        result2 = randomize_numbers_in_reasoning(reasoning, seed=123)
+
+        # Same seed should produce identical results
+        assert result1 == result2
+
+    def test_randomize_numbers_different_seeds(self):
+        """Test that different seeds produce different outputs"""
+        from core import randomize_numbers_in_reasoning
+
+        reasoning = "The answer is 42"
+
+        result1 = randomize_numbers_in_reasoning(reasoning, seed=42)
+        result2 = randomize_numbers_in_reasoning(reasoning, seed=123)
+
+        # Different seeds should produce different results (very high probability)
+        assert result1 != result2
+
+    def test_randomize_numbers_no_numbers(self):
+        """Test with text containing no numbers"""
+        from core import randomize_numbers_in_reasoning
+
+        reasoning = "This text has no numbers."
+        result = randomize_numbers_in_reasoning(reasoning, seed=42)
+
+        # Should return unchanged
+        assert result == reasoning
+
+    def test_randomize_numbers_empty_string(self):
+        """Test with empty string"""
+        from core import randomize_numbers_in_reasoning
+
+        result = randomize_numbers_in_reasoning("", seed=42)
+        assert result == ""
+
+    def test_randomize_numbers_preserves_whitespace(self):
+        """Test that whitespace is preserved"""
+        from core import randomize_numbers_in_reasoning
+
+        reasoning = "Step 1: Calculate 5 + 3 = 8\nStep 2: Result is 8"
+        result = randomize_numbers_in_reasoning(reasoning, seed=42)
+
+        # Newlines and spaces should be preserved
+        assert '\n' in result
+        assert result.count(' ') == reasoning.count(' ')
+        assert result.count('\n') == reasoning.count('\n')
+
+    def test_randomize_numbers_preserves_punctuation(self):
+        """Test that punctuation is preserved"""
+        from core import randomize_numbers_in_reasoning
+
+        reasoning = "Calculate: 2 + 2 = 4. Done!"
+        result = randomize_numbers_in_reasoning(reasoning, seed=42)
+
+        # Punctuation should be preserved
+        assert ':' in result
+        assert '+' in result
+        assert '=' in result
+        assert '.' in result
+        assert '!' in result
+
+    def test_randomize_numbers_multidigit(self):
+        """Test with multi-digit numbers"""
+        from core import randomize_numbers_in_reasoning
+
+        reasoning = "The answer is 123 and 456"
+        result = randomize_numbers_in_reasoning(reasoning, seed=42)
+
+        # Each digit should be randomized independently
+        assert len(result) == len(reasoning)
+        assert result != reasoning
+        # Text should be preserved
+        assert "The answer is" in result
+        assert "and" in result
+
+    def test_randomize_numbers_deterministic(self):
+        """Test that randomization is deterministic with seed"""
+        from core import randomize_numbers_in_reasoning
+
+        reasoning = "123456789"
+
+        # Multiple calls with same seed should produce same output
+        result1 = randomize_numbers_in_reasoning(reasoning, seed=999)
+        result2 = randomize_numbers_in_reasoning(reasoning, seed=999)
+        result3 = randomize_numbers_in_reasoning(reasoning, seed=999)
+
+        assert result1 == result2 == result3
+        assert result1 != reasoning  # Should be different from original

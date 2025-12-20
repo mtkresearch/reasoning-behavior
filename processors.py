@@ -11,6 +11,7 @@ to reasoning text:
 - RemoveProcessor: Remove or consolidate whitespace characters
 - ReplaceProcessor: Replace text using regular expressions
 - AnswerProcessor: Add prefill text to guide model answer generation
+- RandomProcessor: Randomize digits in reasoning text
 """
 
 from abc import ABC, abstractmethod
@@ -949,6 +950,72 @@ class ReasonIsProcessor(Processor):
         metadata = {
             'processor': 'reason_is',
             'text': self.text,
+            'input_stats': self.last_input_stats,
+            'output_stats': self.last_output_stats
+        }
+        metadata.update(self.kwargs)
+        return metadata
+
+
+class RandomProcessor(Processor):
+    """
+    Processor for randomizing digits in reasoning text
+
+    This processor randomly replaces all digits (0-9) with other random digits.
+    Useful for testing if models rely on specific numeric values or just
+    the structural pattern of reasoning.
+
+    Supported modes:
+    - 'number': Randomize all digits (0-9) to random digits
+    """
+
+    def __init__(self, mode: str, seed: int = 42, **kwargs):
+        """
+        Initialize RandomProcessor
+
+        Args:
+            mode: Randomization mode (currently only 'number' is supported)
+            seed: Random seed for reproducibility (optional, default: 42)
+            **kwargs: Additional parameters (reserved for future use)
+        """
+        self.mode = mode
+        self.seed = seed
+        self.kwargs = kwargs
+        self.last_input_stats = None
+        self.last_output_stats = None
+
+    def process(self, reasoning: str, context: Dict) -> str:
+        """
+        Apply randomization to reasoning text
+
+        Args:
+            reasoning: The reasoning text to process
+            context: Context dictionary (not used in this processor)
+
+        Returns:
+            Reasoning text with digits randomized
+
+        Raises:
+            ValueError: If mode is not 'number'
+        """
+        from core import randomize_numbers_in_reasoning
+
+        self.last_input_stats = self._compute_stats(reasoning)
+
+        if self.mode != 'number':
+            raise ValueError(f"Invalid random mode: {self.mode}. Currently only 'number' is supported.")
+
+        result = randomize_numbers_in_reasoning(reasoning, seed=self.seed)
+
+        self.last_output_stats = self._compute_stats(result)
+        return result
+
+    def get_metadata(self) -> Dict:
+        """Get metadata about the randomization operation"""
+        metadata = {
+            'processor': 'random',
+            'mode': self.mode,
+            'seed': self.seed,
             'input_stats': self.last_input_stats,
             'output_stats': self.last_output_stats
         }

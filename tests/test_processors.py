@@ -3192,3 +3192,148 @@ Final answer: \\boxed{16}"""
 
         # Non-numeric answer should be returned as string
         assert result == 'Result: impossible'
+
+
+class TestRandomProcessor:
+    """Tests for RandomProcessor"""
+
+    def test_random_processor_number_mode(self, sample_context):
+        """Test RandomProcessor with mode='number'"""
+        from processors import RandomProcessor
+
+        processor = RandomProcessor(mode='number', seed=42)
+        reasoning = "First, calculate 2 + 2 = 4. Then 4 × 3 = 12."
+
+        result = processor.process(reasoning, sample_context)
+
+        # Result should have different digits but same structure
+        assert len(result) == len(reasoning)
+        # Original digits should be replaced
+        # With seed=42, we should get deterministic output
+        assert result != reasoning
+
+    def test_random_processor_with_seed(self, sample_context):
+        """Test RandomProcessor produces consistent results with same seed"""
+        from processors import RandomProcessor
+
+        reasoning = "Calculate 2 + 2 = 4"
+
+        processor1 = RandomProcessor(mode='number', seed=123)
+        result1 = processor1.process(reasoning, sample_context)
+
+        processor2 = RandomProcessor(mode='number', seed=123)
+        result2 = processor2.process(reasoning, sample_context)
+
+        # Same seed should produce same output
+        assert result1 == result2
+
+    def test_random_processor_different_seeds(self, sample_context):
+        """Test RandomProcessor produces different results with different seeds"""
+        from processors import RandomProcessor
+
+        reasoning = "Calculate 2 + 2 = 4"
+
+        processor1 = RandomProcessor(mode='number', seed=42)
+        result1 = processor1.process(reasoning, sample_context)
+
+        processor2 = RandomProcessor(mode='number', seed=123)
+        result2 = processor2.process(reasoning, sample_context)
+
+        # Different seeds should produce different outputs (very high probability)
+        assert result1 != result2
+
+    def test_random_processor_preserves_structure(self, sample_context):
+        """Test RandomProcessor preserves text structure (whitespace, punctuation)"""
+        from processors import RandomProcessor
+
+        processor = RandomProcessor(mode='number', seed=42)
+        reasoning = "Step 1: Calculate 5 + 3 = 8.\nStep 2: Result is 8."
+
+        result = processor.process(reasoning, sample_context)
+
+        # Check that structure is preserved
+        assert '\n' in result  # Newline preserved
+        assert ':' in result   # Colon preserved
+        assert '.' in result   # Period preserved
+        assert 'Step' in result  # Text preserved
+        # But digits should be changed
+        assert result != reasoning
+
+    def test_random_processor_get_metadata(self, sample_context):
+        """Test RandomProcessor.get_metadata()"""
+        from processors import RandomProcessor
+
+        processor = RandomProcessor(mode='number', seed=42)
+        reasoning = "Calculate 2 + 2 = 4"
+
+        _ = processor.process(reasoning, sample_context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'random'
+        assert metadata['mode'] == 'number'
+        assert metadata['seed'] == 42
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+
+    def test_random_processor_invalid_mode(self, sample_context):
+        """Test RandomProcessor raises error for invalid mode"""
+        from processors import RandomProcessor
+
+        processor = RandomProcessor(mode='invalid')
+
+        with pytest.raises(ValueError, match="Invalid random mode"):
+            processor.process("Some reasoning", sample_context)
+
+    def test_random_processor_empty_string(self, sample_context):
+        """Test RandomProcessor with empty string"""
+        from processors import RandomProcessor
+
+        processor = RandomProcessor(mode='number', seed=42)
+        result = processor.process("", sample_context)
+
+        assert result == ""
+
+    def test_random_processor_no_digits(self, sample_context):
+        """Test RandomProcessor with text containing no digits"""
+        from processors import RandomProcessor
+
+        processor = RandomProcessor(mode='number', seed=42)
+        reasoning = "This text has no numbers."
+
+        result = processor.process(reasoning, sample_context)
+
+        # Should return unchanged (no digits to randomize)
+        assert result == reasoning
+
+    def test_random_processor_in_pipeline(self, sample_context):
+        """Test RandomProcessor works in pipeline"""
+        from pipeline import parse_flow, Pipeline
+
+        flow_str = "random('number',seed=42)"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = "Calculate 2 + 2 = 4"
+        result, metadata_list = pipeline.execute(reasoning, sample_context)
+
+        assert result != reasoning  # Should be randomized
+        assert len(metadata_list) == 1
+        assert metadata_list[0]['processor'] == 'random'
+
+    def test_random_processor_combined_with_mask(self, sample_context):
+        """Test RandomProcessor combined with MaskProcessor in pipeline"""
+        from pipeline import parse_flow, Pipeline
+
+        flow_str = "random('number',seed=42),mask('alphabet')"
+        processors = parse_flow(flow_str)
+        pipeline = Pipeline(processors)
+
+        reasoning = "Calculate 2 + 2 = 4"
+        result, metadata_list = pipeline.execute(reasoning, sample_context)
+
+        # First randomize numbers, then mask alphabet
+        assert len(metadata_list) == 2
+        assert metadata_list[0]['processor'] == 'random'
+        assert metadata_list[1]['processor'] == 'mask'
+        # Result should have randomized digits and masked letters
+        assert '█' in result  # Letters should be masked

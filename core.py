@@ -422,6 +422,43 @@ def mask_non_numbers_in_reasoning(reasoning: str, mask_char: str = '█') -> str
     return masked_reasoning
 
 
+def randomize_numbers_in_reasoning(reasoning: str, seed: int = None) -> str:
+    """
+    Randomize all digits (0-9) in reasoning text to random digits.
+
+    Each digit is independently replaced with a random digit from 0-9.
+    Useful for testing if models rely on specific numeric values or just
+    the structural pattern of reasoning.
+
+    Args:
+        reasoning: Original reasoning content
+        seed: Random seed for reproducibility (optional)
+
+    Returns:
+        Reasoning content with all digits randomly replaced
+
+    Examples:
+        >>> randomize_numbers_in_reasoning("The answer is 42", seed=42)
+        'The answer is 17'  # Example output with seed
+
+        >>> randomize_numbers_in_reasoning("Calculate 2 + 2 = 4")
+        'Calculate 7 + 3 = 9'  # Example output (varies without seed)
+
+        >>> randomize_numbers_in_reasoning("Step 1: 5 + 3 = 8", seed=123)
+        'Step 4: 2 + 7 = 1'  # Example output with seed
+    """
+    if seed is not None:
+        random.seed(seed)
+
+    # Replace each digit with a random digit (0-9)
+    def replace_digit(match):
+        return str(random.randint(0, 9))
+
+    randomized_reasoning = re.sub(r'\d', replace_digit, reasoning)
+
+    return randomized_reasoning
+
+
 def mask_numbers_advance(reasoning: str, answer: str = None, mask_char: str = '█') -> str:
     """
     Mask numbers with advanced rules: keep numbers adjacent to letters/underscores
