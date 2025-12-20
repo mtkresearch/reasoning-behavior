@@ -320,11 +320,17 @@ class InsertProcessor(Processor):
 
     Supported modes:
     - 'fix': Insert fixed text at random positions
+    - 'head': Insert text at the beginning (first line) of reasoning
+              Supports {ANSWER} placeholder which will be replaced with ground truth answer
+    - 'middle': Insert text at the middle of reasoning
+                Supports {ANSWER} placeholder which will be replaced with ground truth answer
+    - 'tail': Insert text at the end (last line) of reasoning
+              Supports {ANSWER} placeholder which will be replaced with ground truth answer
 
-    Position strategy:
+    Position strategy (for 'fix' mode):
     - 'random': Insert at random positions (only supported strategy)
 
-    Count parameter:
+    Count parameter (for 'fix' mode):
     - Integer: Fixed number of insertions (e.g., count=5)
     - Percentage string: Dynamic count based on answer occurrences (e.g., count='100% # of answer')
       Format: '<percentage>% # of answer'
@@ -361,40 +367,129 @@ class InsertProcessor(Processor):
     def process(self, reasoning: str, context: Dict) -> str:
         """Apply insertion to reasoning text"""
         import random
+        import re
 
         self.last_input_stats = self._compute_stats(reasoning)
 
-        if self.mode != 'fix':
-            raise ValueError(f"Invalid insert mode: {self.mode}. Currently only 'fix' is supported.")
+        if self.mode == 'head':
+            # Head mode: insert at the beginning (first line)
+            # Replace {ANSWER} placeholder with ground truth answer
+            sentence_to_insert = self.sentence
 
-        if self.position != 'random':
-            raise ValueError(f"Invalid position strategy: {self.position}. Only 'random' is supported.")
+            # Replace {ANSWER} or {answer} placeholder with actual answer
+            answer = context.get('answer') or context.get('ground_truth', '')
+            if answer:
+                # Case-insensitive replacement of {ANSWER} and {answer}
+                # Use lambda function to avoid re.sub treating answer as a replacement pattern
+                sentence_to_insert = re.sub(
+                    r'\{ANSWER\}',
+                    lambda m: str(answer),
+                    sentence_to_insert,
+                    flags=re.IGNORECASE
+                )
 
-        # Calculate actual count based on count parameter
-        actual_count = self._calculate_count(reasoning, context)
-        self.actual_count = actual_count
+            # Insert at the beginning
+            lines = reasoning.strip().split('\n')
+            lines.insert(0, sentence_to_insert)
 
-        # Split into non-empty lines
-        lines = reasoning.strip().split('\n')
-        lines = [line for line in lines if line.strip()]
+            result = '\n'.join(lines)
+            self.last_output_stats = self._compute_stats(result)
+            self.insertion_positions = [0]  # Always insert at position 0
+            self.actual_count = 1  # Always insert once
 
-        self.insertion_positions = []
+            return result
 
-        # Use seed if provided
-        if self.seed is not None:
-            random.seed(self.seed)
+        elif self.mode == 'middle':
+            # Middle mode: insert at the middle of reasoning
+            # Replace {ANSWER} placeholder with ground truth answer
+            sentence_to_insert = self.sentence
 
-        # Insert multiple times at random positions
-        for _ in range(actual_count):
-            # Random position (0 to len(lines), inclusive)
-            insert_pos = random.randint(0, len(lines))
-            lines.insert(insert_pos, self.sentence)
-            self.insertion_positions.append(insert_pos)
+            # Replace {ANSWER} or {answer} placeholder with actual answer
+            answer = context.get('answer') or context.get('ground_truth', '')
+            if answer:
+                # Case-insensitive replacement of {ANSWER} and {answer}
+                # Use lambda function to avoid re.sub treating answer as a replacement pattern
+                sentence_to_insert = re.sub(
+                    r'\{ANSWER\}',
+                    lambda m: str(answer),
+                    sentence_to_insert,
+                    flags=re.IGNORECASE
+                )
 
-        result = '\n'.join(lines)
-        self.last_output_stats = self._compute_stats(result)
+            # Insert at the middle
+            lines = reasoning.strip().split('\n')
+            # Calculate middle position (integer division)
+            middle_pos = len(lines) // 2
+            lines.insert(middle_pos, sentence_to_insert)
 
-        return result
+            result = '\n'.join(lines)
+            self.last_output_stats = self._compute_stats(result)
+            self.insertion_positions = [middle_pos]  # Position is middle index
+            self.actual_count = 1  # Always insert once
+
+            return result
+
+        elif self.mode == 'tail':
+            # Tail mode: insert at the end (last line)
+            # Replace {ANSWER} placeholder with ground truth answer
+            sentence_to_insert = self.sentence
+
+            # Replace {ANSWER} or {answer} placeholder with actual answer
+            answer = context.get('answer') or context.get('ground_truth', '')
+            if answer:
+                # Case-insensitive replacement of {ANSWER} and {answer}
+                # Use lambda function to avoid re.sub treating answer as a replacement pattern
+                sentence_to_insert = re.sub(
+                    r'\{ANSWER\}',
+                    lambda m: str(answer),
+                    sentence_to_insert,
+                    flags=re.IGNORECASE
+                )
+
+            # Insert at the end
+            lines = reasoning.strip().split('\n')
+            lines.append(sentence_to_insert)
+
+            result = '\n'.join(lines)
+            self.last_output_stats = self._compute_stats(result)
+            self.insertion_positions = [len(lines) - 1]  # Position is last index
+            self.actual_count = 1  # Always insert once
+
+            return result
+
+        elif self.mode == 'fix':
+            # Fix mode: insert at random positions
+            if self.position != 'random':
+                raise ValueError(f"Invalid position strategy: {self.position}. Only 'random' is supported.")
+
+            # Calculate actual count based on count parameter
+            actual_count = self._calculate_count(reasoning, context)
+            self.actual_count = actual_count
+
+            # Split into non-empty lines
+            lines = reasoning.strip().split('\n')
+            lines = [line for line in lines if line.strip()]
+
+            self.insertion_positions = []
+
+            # Use seed if provided
+            if self.seed is not None:
+                random.seed(self.seed)
+
+            # Insert multiple times at random positions
+            for _ in range(actual_count):
+                # Random position (0 to len(lines), inclusive)
+                insert_pos = random.randint(0, len(lines))
+                lines.insert(insert_pos, self.sentence)
+                self.insertion_positions.append(insert_pos)
+
+            result = '\n'.join(lines)
+            self.last_output_stats = self._compute_stats(result)
+
+            return result
+
+        else:
+            raise ValueError(f"Invalid insert mode: {self.mode}. Supported modes: 'fix', 'head', 'middle', 'tail'")
 
     def _calculate_count(self, reasoning: str, context: Dict) -> int:
         """

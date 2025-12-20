@@ -1533,6 +1533,670 @@ Line 3"""
         assert result1.count('NOISE1') == 2
         assert result2.count('NOISE2') == 2
 
+    def test_insert_processor_head_mode_basic(self, sample_context):
+        """Test InsertProcessor with mode='head' inserts at the beginning"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='head',
+            sentence='This is the first line.'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Inserted sentence should be the first line
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[0] == 'This is the first line.'
+        assert lines[1] == 'Line 1'
+        assert lines[2] == 'Line 2'
+        assert lines[3] == 'Line 3'
+
+        # Total line count should be original + 1
+        original_lines = len([l for l in reasoning.split('\n') if l.strip()])
+        result_lines = len([l for l in result.split('\n') if l.strip()])
+        assert result_lines == original_lines + 1
+
+    def test_insert_processor_head_mode_with_answer_placeholder(self, sample_context):
+        """Test InsertProcessor head mode with {ANSWER} placeholder"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='head',
+            sentence='The answer is {ANSWER}.'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3"""
+
+        context = {'answer': '42'}
+        result = processor.process(reasoning, context)
+
+        # {ANSWER} should be replaced with actual answer
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[0] == 'The answer is 42.'
+        assert lines[1] == 'Line 1'
+
+    def test_insert_processor_head_mode_answer_placeholder_case_insensitive(self, sample_context):
+        """Test InsertProcessor head mode {ANSWER} is case insensitive"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='head',
+            sentence='Result: {answer}, Check: {ANSWER}'
+        )
+        reasoning = "Original line"
+
+        context = {'answer': '99'}
+        result = processor.process(reasoning, context)
+
+        # Both {answer} and {ANSWER} should be replaced
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[0] == 'Result: 99, Check: 99'
+
+    def test_insert_processor_head_mode_without_placeholder(self, sample_context):
+        """Test InsertProcessor head mode without {ANSWER} placeholder"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='head',
+            sentence='Static text without placeholder.'
+        )
+        reasoning = """Line 1
+Line 2"""
+
+        context = {'answer': '42'}
+        result = processor.process(reasoning, context)
+
+        # Should insert static text without modification
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[0] == 'Static text without placeholder.'
+
+    def test_insert_processor_head_mode_ground_truth_fallback(self, sample_context):
+        """Test InsertProcessor head mode uses ground_truth if answer not available"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='head',
+            sentence='Answer: {ANSWER}'
+        )
+        reasoning = "Line 1"
+
+        # Use ground_truth instead of answer
+        context = {'ground_truth': '123'}
+        result = processor.process(reasoning, context)
+
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[0] == 'Answer: 123'
+
+    def test_insert_processor_head_mode_get_metadata(self, sample_context):
+        """Test InsertProcessor head mode metadata"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='head',
+            sentence='Header: {ANSWER}'
+        )
+        reasoning = """Line 1
+Line 2"""
+
+        context = {'answer': '42'}
+        _ = processor.process(reasoning, context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'insert'
+        assert metadata['mode'] == 'head'
+        assert metadata['sentence'] == 'Header: {ANSWER}'
+        assert metadata['actual_count'] == 1
+        assert metadata['insertion_positions'] == [0]
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+
+    def test_insert_processor_head_mode_empty_reasoning(self, sample_context):
+        """Test InsertProcessor head mode with empty reasoning"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='head',
+            sentence='First line: {ANSWER}'
+        )
+        reasoning = ""
+
+        context = {'answer': '99'}
+        result = processor.process(reasoning, context)
+
+        # Should just be the inserted sentence
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert len(lines) == 1
+        assert lines[0] == 'First line: 99'
+
+    def test_insert_processor_head_mode_multiple_answer_placeholders(self, sample_context):
+        """Test InsertProcessor head mode with multiple {ANSWER} placeholders"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='head',
+            sentence='Answer: {ANSWER}, Double: {ANSWER}'
+        )
+        reasoning = "Original"
+
+        context = {'answer': '10'}
+        result = processor.process(reasoning, context)
+
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[0] == 'Answer: 10, Double: 10'
+
+    def test_insert_processor_head_mode_answer_with_backslash(self, sample_context):
+        """Test InsertProcessor head mode with answer containing backslash"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='head',
+            sentence='The answer is {ANSWER}.'
+        )
+        reasoning = "Original line"
+
+        # Test with answer containing backslash (common in LaTeX)
+        context = {'answer': r'\frac{1}{2}'}
+        result = processor.process(reasoning, context)
+
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[0] == r'The answer is \frac{1}{2}.'
+
+    def test_insert_processor_head_mode_answer_with_special_regex_chars(self, sample_context):
+        """Test InsertProcessor head mode with answer containing special regex characters"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='head',
+            sentence='Answer: {ANSWER}'
+        )
+        reasoning = "Line 1"
+
+        # Test with various special regex characters
+        special_answers = [
+            r'\d+',  # Backslash and plus
+            '$100',  # Dollar sign
+            '(a+b)',  # Parentheses and plus
+            'x^2',  # Caret
+            'a|b',  # Pipe
+        ]
+
+        for special_answer in special_answers:
+            context = {'answer': special_answer}
+            result = processor.process(reasoning, context)
+            lines = [l.strip() for l in result.split('\n') if l.strip()]
+            assert lines[0] == f'Answer: {special_answer}', f"Failed for answer: {special_answer}"
+
+    def test_insert_processor_tail_mode_basic(self, sample_context):
+        """Test InsertProcessor with mode='tail' inserts at the end"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='tail',
+            sentence='This is the last line.'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Inserted sentence should be the last line
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[0] == 'Line 1'
+        assert lines[1] == 'Line 2'
+        assert lines[2] == 'Line 3'
+        assert lines[3] == 'This is the last line.'
+
+        # Total line count should be original + 1
+        original_lines = len([l for l in reasoning.split('\n') if l.strip()])
+        result_lines = len([l for l in result.split('\n') if l.strip()])
+        assert result_lines == original_lines + 1
+
+    def test_insert_processor_tail_mode_with_answer_placeholder(self, sample_context):
+        """Test InsertProcessor tail mode with {ANSWER} placeholder"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='tail',
+            sentence='The answer is {ANSWER}.'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3"""
+
+        context = {'answer': '42'}
+        result = processor.process(reasoning, context)
+
+        # {ANSWER} should be replaced with actual answer
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[0] == 'Line 1'
+        assert lines[-1] == 'The answer is 42.'
+
+    def test_insert_processor_tail_mode_answer_placeholder_case_insensitive(self, sample_context):
+        """Test InsertProcessor tail mode {ANSWER} is case insensitive"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='tail',
+            sentence='Result: {answer}, Check: {ANSWER}'
+        )
+        reasoning = "Original line"
+
+        context = {'answer': '99'}
+        result = processor.process(reasoning, context)
+
+        # Both {answer} and {ANSWER} should be replaced
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[-1] == 'Result: 99, Check: 99'
+
+    def test_insert_processor_tail_mode_without_placeholder(self, sample_context):
+        """Test InsertProcessor tail mode without {ANSWER} placeholder"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='tail',
+            sentence='Static text without placeholder.'
+        )
+        reasoning = """Line 1
+Line 2"""
+
+        context = {'answer': '42'}
+        result = processor.process(reasoning, context)
+
+        # Should insert static text without modification
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[-1] == 'Static text without placeholder.'
+
+    def test_insert_processor_tail_mode_ground_truth_fallback(self, sample_context):
+        """Test InsertProcessor tail mode uses ground_truth if answer not available"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='tail',
+            sentence='Answer: {ANSWER}'
+        )
+        reasoning = "Line 1"
+
+        # Use ground_truth instead of answer
+        context = {'ground_truth': '123'}
+        result = processor.process(reasoning, context)
+
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[-1] == 'Answer: 123'
+
+    def test_insert_processor_tail_mode_get_metadata(self, sample_context):
+        """Test InsertProcessor tail mode metadata"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='tail',
+            sentence='Footer: {ANSWER}'
+        )
+        reasoning = """Line 1
+Line 2"""
+
+        context = {'answer': '42'}
+        _ = processor.process(reasoning, context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'insert'
+        assert metadata['mode'] == 'tail'
+        assert metadata['sentence'] == 'Footer: {ANSWER}'
+        assert metadata['actual_count'] == 1
+        assert len(metadata['insertion_positions']) == 1
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+
+    def test_insert_processor_tail_mode_empty_reasoning(self, sample_context):
+        """Test InsertProcessor tail mode with empty reasoning"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='tail',
+            sentence='Last line: {ANSWER}'
+        )
+        reasoning = ""
+
+        context = {'answer': '99'}
+        result = processor.process(reasoning, context)
+
+        # Should just be the inserted sentence
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert len(lines) == 1
+        assert lines[0] == 'Last line: 99'
+
+    def test_insert_processor_tail_mode_multiple_answer_placeholders(self, sample_context):
+        """Test InsertProcessor tail mode with multiple {ANSWER} placeholders"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='tail',
+            sentence='Answer: {ANSWER}, Double: {ANSWER}'
+        )
+        reasoning = "Original"
+
+        context = {'answer': '10'}
+        result = processor.process(reasoning, context)
+
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[-1] == 'Answer: 10, Double: 10'
+
+    def test_insert_processor_tail_mode_answer_with_backslash(self, sample_context):
+        """Test InsertProcessor tail mode with answer containing backslash"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='tail',
+            sentence='The answer is {ANSWER}.'
+        )
+        reasoning = "Original line"
+
+        # Test with answer containing backslash (common in LaTeX)
+        context = {'answer': r'\frac{1}{2}'}
+        result = processor.process(reasoning, context)
+
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[-1] == r'The answer is \frac{1}{2}.'
+
+    def test_insert_processor_tail_mode_answer_with_special_regex_chars(self, sample_context):
+        """Test InsertProcessor tail mode with answer containing special regex characters"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='tail',
+            sentence='Answer: {ANSWER}'
+        )
+        reasoning = "Line 1"
+
+        # Test with various special regex characters
+        special_answers = [
+            r'\d+',  # Backslash and plus
+            '$100',  # Dollar sign
+            '(a+b)',  # Parentheses and plus
+            'x^2',  # Caret
+            'a|b',  # Pipe
+        ]
+
+        for special_answer in special_answers:
+            context = {'answer': special_answer}
+            result = processor.process(reasoning, context)
+            lines = [l.strip() for l in result.split('\n') if l.strip()]
+            assert lines[-1] == f'Answer: {special_answer}', f"Failed for answer: {special_answer}"
+
+    def test_insert_processor_middle_mode_basic(self, sample_context):
+        """Test InsertProcessor with mode='middle' inserts at the middle"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='middle',
+            sentence='This is the middle line.'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # Inserted sentence should be at the middle (position 2 for 4 lines: 4//2=2)
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[0] == 'Line 1'
+        assert lines[1] == 'Line 2'
+        assert lines[2] == 'This is the middle line.'
+        assert lines[3] == 'Line 3'
+        assert lines[4] == 'Line 4'
+
+        # Total line count should be original + 1
+        original_lines = len([l for l in reasoning.split('\n') if l.strip()])
+        result_lines = len([l for l in result.split('\n') if l.strip()])
+        assert result_lines == original_lines + 1
+
+    def test_insert_processor_middle_mode_odd_lines(self, sample_context):
+        """Test InsertProcessor middle mode with odd number of lines"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='middle',
+            sentence='Middle line.'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # For 3 lines, middle position is 3//2=1
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[0] == 'Line 1'
+        assert lines[1] == 'Middle line.'
+        assert lines[2] == 'Line 2'
+        assert lines[3] == 'Line 3'
+
+    def test_insert_processor_middle_mode_with_answer_placeholder(self, sample_context):
+        """Test InsertProcessor middle mode with {ANSWER} placeholder"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='middle',
+            sentence='The answer is {ANSWER}.'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4"""
+
+        context = {'answer': '42'}
+        result = processor.process(reasoning, context)
+
+        # {ANSWER} should be replaced with actual answer
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert 'The answer is 42.' in lines
+
+    def test_insert_processor_middle_mode_answer_placeholder_case_insensitive(self, sample_context):
+        """Test InsertProcessor middle mode {ANSWER} is case insensitive"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='middle',
+            sentence='Result: {answer}, Check: {ANSWER}'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4"""
+
+        context = {'answer': '99'}
+        result = processor.process(reasoning, context)
+
+        # Both {answer} and {ANSWER} should be replaced
+        assert 'Result: 99, Check: 99' in result
+
+    def test_insert_processor_middle_mode_without_placeholder(self, sample_context):
+        """Test InsertProcessor middle mode without {ANSWER} placeholder"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='middle',
+            sentence='Static text without placeholder.'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4"""
+
+        context = {'answer': '42'}
+        result = processor.process(reasoning, context)
+
+        # Should insert static text without modification
+        assert 'Static text without placeholder.' in result
+
+    def test_insert_processor_middle_mode_ground_truth_fallback(self, sample_context):
+        """Test InsertProcessor middle mode uses ground_truth if answer not available"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='middle',
+            sentence='Answer: {ANSWER}'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4"""
+
+        # Use ground_truth instead of answer
+        context = {'ground_truth': '123'}
+        result = processor.process(reasoning, context)
+
+        assert 'Answer: 123' in result
+
+    def test_insert_processor_middle_mode_get_metadata(self, sample_context):
+        """Test InsertProcessor middle mode metadata"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='middle',
+            sentence='Middle: {ANSWER}'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4"""
+
+        context = {'answer': '42'}
+        _ = processor.process(reasoning, context)
+        metadata = processor.get_metadata()
+
+        assert metadata['processor'] == 'insert'
+        assert metadata['mode'] == 'middle'
+        assert metadata['sentence'] == 'Middle: {ANSWER}'
+        assert metadata['actual_count'] == 1
+        assert len(metadata['insertion_positions']) == 1
+        assert metadata['insertion_positions'][0] == 2  # 4 lines // 2 = 2
+        assert 'input_stats' in metadata
+        assert 'output_stats' in metadata
+
+    def test_insert_processor_middle_mode_empty_reasoning(self, sample_context):
+        """Test InsertProcessor middle mode with empty reasoning"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='middle',
+            sentence='Middle line: {ANSWER}'
+        )
+        reasoning = ""
+
+        context = {'answer': '99'}
+        result = processor.process(reasoning, context)
+
+        # Should just be the inserted sentence (middle of empty is position 0)
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert len(lines) == 1
+        assert lines[0] == 'Middle line: 99'
+
+    def test_insert_processor_middle_mode_single_line(self, sample_context):
+        """Test InsertProcessor middle mode with single line"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='middle',
+            sentence='Inserted.'
+        )
+        reasoning = "Single line"
+
+        result = processor.process(reasoning, sample_context)
+
+        # For 1 line, middle position is 1//2=0 (insert at beginning)
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[0] == 'Inserted.'
+        assert lines[1] == 'Single line'
+
+    def test_insert_processor_middle_mode_two_lines(self, sample_context):
+        """Test InsertProcessor middle mode with two lines"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='middle',
+            sentence='Middle.'
+        )
+        reasoning = """Line 1
+Line 2"""
+
+        result = processor.process(reasoning, sample_context)
+
+        # For 2 lines, middle position is 2//2=1
+        lines = [l.strip() for l in result.split('\n') if l.strip()]
+        assert lines[0] == 'Line 1'
+        assert lines[1] == 'Middle.'
+        assert lines[2] == 'Line 2'
+
+    def test_insert_processor_middle_mode_multiple_answer_placeholders(self, sample_context):
+        """Test InsertProcessor middle mode with multiple {ANSWER} placeholders"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='middle',
+            sentence='Answer: {ANSWER}, Double: {ANSWER}'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4"""
+
+        context = {'answer': '10'}
+        result = processor.process(reasoning, context)
+
+        assert 'Answer: 10, Double: 10' in result
+
+    def test_insert_processor_middle_mode_answer_with_backslash(self, sample_context):
+        """Test InsertProcessor middle mode with answer containing backslash"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='middle',
+            sentence='The answer is {ANSWER}.'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4"""
+
+        # Test with answer containing backslash (common in LaTeX)
+        context = {'answer': r'\frac{1}{2}'}
+        result = processor.process(reasoning, context)
+
+        assert r'The answer is \frac{1}{2}.' in result
+
+    def test_insert_processor_middle_mode_answer_with_special_regex_chars(self, sample_context):
+        """Test InsertProcessor middle mode with answer containing special regex characters"""
+        from processors import InsertProcessor
+
+        processor = InsertProcessor(
+            mode='middle',
+            sentence='Answer: {ANSWER}'
+        )
+        reasoning = """Line 1
+Line 2
+Line 3
+Line 4"""
+
+        # Test with various special regex characters
+        special_answers = [
+            r'\d+',  # Backslash and plus
+            '$100',  # Dollar sign
+            '(a+b)',  # Parentheses and plus
+            'x^2',  # Caret
+            'a|b',  # Pipe
+        ]
+
+        for special_answer in special_answers:
+            context = {'answer': special_answer}
+            result = processor.process(reasoning, context)
+            assert f'Answer: {special_answer}' in result, f"Failed for answer: {special_answer}"
+
 
 class TestQuestionProcessor:
     """Tests for QuestionProcessor"""

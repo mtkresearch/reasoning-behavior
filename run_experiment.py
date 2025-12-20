@@ -66,12 +66,18 @@ Available Processors
    - seed: Random seed for reproducibility
 
 4. insert(mode, sentence='...', count=1, seed=None)
-   Insert text into reasoning chain at random positions.
+   Insert text into reasoning chain.
 
    Modes:
    - 'fix': Insert fixed text at random positions
+   - 'head': Insert text at the beginning (first line) of reasoning
+             Supports {ANSWER} placeholder which will be replaced with ground truth answer
+   - 'middle': Insert text at the middle of reasoning
+               Supports {ANSWER} placeholder which will be replaced with ground truth answer
+   - 'tail': Insert text at the end (last line) of reasoning
+             Supports {ANSWER} placeholder which will be replaced with ground truth answer
 
-   Parameters:
+   Parameters (for 'fix' mode):
    - sentence: Text to insert (default: 'Maybe the answer is 123.')
    - count: Number of times to insert the text
            Can be an integer (e.g., count=5) or a percentage string (e.g., count='100% # of answer')
@@ -86,6 +92,15 @@ Available Processors
            - '50% # of answer': Insert 0.5 times for each answer occurrence (rounded)
 
    - seed: Random seed for reproducibility
+
+   Parameters (for 'head' mode):
+   - sentence: Text to insert at the beginning (supports {ANSWER} placeholder)
+
+   Parameters (for 'middle' mode):
+   - sentence: Text to insert at the middle (supports {ANSWER} placeholder)
+
+   Parameters (for 'tail' mode):
+   - sentence: Text to insert at the end (supports {ANSWER} placeholder)
 
 5. remove(mode)
    Remove or consolidate whitespace characters in reasoning.
@@ -223,6 +238,24 @@ python mask_experiment.py --flow "insert('fix',sentence='Maybe answer: 999.',cou
 
 # Example 11c: Insert noise 50% of answer occurrences (half, rounded)
 python mask_experiment.py --flow "insert('fix',sentence='Check: 000.',count='50% # of answer')"
+
+# Example 11d: Insert text at the beginning (first line) with {ANSWER} placeholder
+python mask_experiment.py --flow "insert('head',sentence='The answer is {ANSWER}.')"
+
+# Example 11e: Insert static text at the beginning without placeholder
+python mask_experiment.py --flow "insert('head',sentence='Important note: Read carefully.')"
+
+# Example 11f: Insert text at the middle with {ANSWER} placeholder
+python mask_experiment.py --flow "insert('middle',sentence='The answer is {ANSWER}.')"
+
+# Example 11g: Insert static text at the middle without placeholder
+python mask_experiment.py --flow "insert('middle',sentence='Let me verify this step.')"
+
+# Example 11h: Insert text at the end (last line) with {ANSWER} placeholder
+python mask_experiment.py --flow "insert('tail',sentence='The answer is {ANSWER}.')"
+
+# Example 11i: Insert static text at the end without placeholder
+python mask_experiment.py --flow "insert('tail',sentence='Remember to verify your answer.')"
 
 # Example 12: Mask all non-blank characters (preserve only whitespace structure)
 python mask_experiment.py --flow "mask('all-nonblank')"
@@ -362,7 +395,7 @@ from pipeline import parse_flow, Pipeline
 # Default concurrency (can be overridden by --max_workers)
 DEFAULT_MAX_WORKERS = 10
 # Default max retry (can be overridden by --max_retry)
-DEFAULT_MAX_RETRY = 3
+DEFAULT_MAX_RETRY = 1
 
 # Setup logger
 logger = setup_logger(__name__, log_file='logs/run_experiment.log')
