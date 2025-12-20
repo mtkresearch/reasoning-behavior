@@ -95,5 +95,15 @@
   "question('remove'),truncate('before_line',r=0.2),answer('retrieval')": "b91e17f2",
   "question('remove'),truncate('before_line',r=0.2),mask('alphabet'),answer('retrieval')": "b3726ecd",
   "question('remove'),mask('alphabet'),answer('retrieval')": "87eba5ee",
-  "question('remove'),truncate('answer'),mask('alphabet'),answer('retrieval')": "b6909e35"
+  "question('remove'),truncate('answer'),mask('alphabet'),answer('retrieval')": "b6909e35",
+  "question('remove'),truncate('answer'),insert('head',sentence='The answer is {ANSWER}.'),mask('alphabet'),answer('retrieval')": "0ae7f28f",
+  "question('remove'),truncate('answer'),insert('tail',sentence='The answer is {ANSWER}.'),mask('alphabet'),answer('retrieval')": "3d12886f",
+  "truncate('after_line',r=0.2),answer('retrieval')": "fb3c56b3",
+  "truncate('after_line',r=0.4),answer('retrieval')": "d4a08436",
+  "truncate('after_line',r=0.6),answer('retrieval')": "ca710ddf",
+  "truncate('after_line',r=0.8),answer('retrieval')": "8a62894d",
+  "shuffle('line'),truncate('after_line',r=0.8),answer('retrieval')": "36d9bc6e",
+  "shuffle('line'),truncate('after_line',r=0.6),answer('retrieval')": "af4015cd",
+  "shuffle('line'),truncate('after_line',r=0.4),answer('retrieval')": "f7bf27f9",
+  "shuffle('line'),truncate('after_line',r=0.2),answer('retrieval')": "3bc94e76"
 }
