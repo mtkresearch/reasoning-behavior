@@ -866,7 +866,10 @@ class HTMLGenerator:
                 // Use white to red colormap
                 const color = getColor(normalized);
 
-                return `<span class="token" style="background-color: ${{color}}" title="Weight: ${{weight.toFixed(4)}}">${{escapeHtml(token)}}</span>`;
+                // Add red border if weight > 0
+                const border = weight > 0 ? 'border: 2px solid red;' : '';
+
+                return `<span class="token" style="background-color: ${{color}}; ${{border}}" title="Weight: ${{weight.toFixed(4)}}">${{escapeHtml(token)}}</span>`;
             }}).join('');
 
             document.getElementById('tokens-container').innerHTML = tokensHtml;
