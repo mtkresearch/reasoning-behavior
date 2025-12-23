@@ -5,11 +5,19 @@ This script visualizes attention distributions in LLM models during answer gener
 It processes experiment results, extracts attention maps, and generates interactive HTML.
 
 Memory Optimizations:
-    - Model quantization (4-bit/8-bit) for reduced memory usage
-    - Immediate memory cleanup after each attention extraction
-    - Streaming JSONL writes to avoid accumulating instances in memory
-    - Context manager for automatic model cleanup
-    - Automatic detection of pre-quantized models (e.g., gpt-oss with Mxfp4)
+    - **Layer-by-layer attention extraction**: Uses forward hooks to extract attention
+      maps one layer at a time, avoiding simultaneous storage of all layers in VRAM
+    - **Model quantization** (4-bit/8-bit) for reduced memory usage
+    - **Immediate memory cleanup** after each attention extraction
+    - **Streaming JSONL writes** to avoid accumulating instances in memory
+    - **Context manager** for automatic model cleanup
+    - **Automatic detection** of pre-quantized models (e.g., gpt-oss with Mxfp4)
+
+VRAM Optimization Details:
+    The hook-based extraction significantly reduces GPU memory usage:
+    - Old method: All layers' attention stored simultaneously (~16GB for 32 layers, 2048 tokens)
+    - New method: Only one layer's attention in VRAM at a time (~512MB per layer)
+    - Fallback: Automatically falls back to standard extraction if hooks fail
 
 Usage:
     # Basic usage (for pre-quantized models like gpt-oss)
@@ -349,12 +357,35 @@ class AttentionExtractor:
         """
         return self.tokenizer(prompt, return_tensors="pt")
 
+    def _get_attention_modules(self):
+        """
+        Get attention modules for the model architecture
+
+        Returns:
+            List of attention modules to register hooks on
+        """
+        model_type = self.model.config.model_type.lower()
+
+        if hasattr(self.model, 'model') and hasattr(self.model.model, 'layers'):
+            # Qwen, LLaMA, Mistral, etc.
+            return [layer.self_attn for layer in self.model.model.layers]
+        elif hasattr(self.model, 'transformer') and hasattr(self.model.transformer, 'h'):
+            # GPT-2, GPT-Neo style
+            return [layer.attn for layer in self.model.transformer.h]
+        elif hasattr(self.model, 'model') and hasattr(self.model.model, 'decoder') and hasattr(self.model.model.decoder, 'layers'):
+            # OPT style
+            return [layer.self_attn for layer in self.model.model.decoder.layers]
+        else:
+            raise ValueError(f"Unknown model architecture: {model_type}. Cannot locate attention modules.")
+
     def extract_last_token_attention(
         self,
         prompt: str
     ) -> Tuple[List[str], List]:
         """
-        Execute forward pass and extract attention for last token
+        Execute forward pass and extract attention for last token using hooks.
+        This method uses forward hooks to extract attention layer-by-layer,
+        avoiding storing all layers' attentions simultaneously in VRAM.
 
         Args:
             prompt: Complete prompt string
@@ -375,6 +406,100 @@ class AttentionExtractor:
         # Get tokens
         tokens = self.tokenizer.convert_ids_to_tokens(input_ids[0])
 
+        # Storage for attention maps (will be populated by hooks)
+        attention_maps = []
+
+        def attention_hook(module, input, output):
+            """
+            Hook function to extract attention weights from each layer.
+            This runs during forward pass for each attention module.
+            """
+            # Different models return attention in different formats
+            # Usually it's in output[1] (attn_weights) or a named tuple
+            attn_weights = None
+
+            if isinstance(output, tuple):
+                # Try to find attention weights in the output
+                for item in output:
+                    if isinstance(item, torch.Tensor) and item.dim() == 4:
+                        # Shape should be (batch, num_heads, seq_len, seq_len)
+                        attn_weights = item
+                        break
+
+            if attn_weights is None:
+                # Fallback: might be directly in output
+                if isinstance(output, torch.Tensor) and output.dim() == 4:
+                    attn_weights = output
+
+            if attn_weights is not None:
+                # Extract attention for last token only: [:, :, -1, :]
+                # Shape: (batch, num_heads, seq_len)
+                last_token_attn = attn_weights[0, :, -1, :].detach().float().cpu().numpy()
+
+                # Average across heads
+                avg_attn = last_token_attn.mean(axis=0)
+
+                # Store the result
+                attention_maps.append(avg_attn)
+
+                # Immediate cleanup of GPU tensor
+                del attn_weights, last_token_attn
+
+        # Get attention modules and register hooks
+        try:
+            attn_modules = self._get_attention_modules()
+        except ValueError as e:
+            print(f"Warning: {e}")
+            print("Falling back to standard attention extraction...")
+            return self._extract_last_token_attention_fallback(prompt)
+
+        hooks = []
+        for module in attn_modules:
+            hook = module.register_forward_hook(attention_hook)
+            hooks.append(hook)
+
+        # Forward pass with hooks active
+        with torch.no_grad():
+            outputs = self.model(
+                input_ids=input_ids,
+                output_attentions=True  # This ensures attention is computed
+            )
+
+        # Remove all hooks
+        for hook in hooks:
+            hook.remove()
+
+        # Immediate memory cleanup
+        del outputs, inputs, input_ids
+        if self.device == "cuda":
+            torch.cuda.empty_cache()
+
+        return tokens, attention_maps
+
+    def _extract_last_token_attention_fallback(
+        self,
+        prompt: str
+    ) -> Tuple[List[str], List]:
+        """
+        Fallback method: standard attention extraction (original implementation)
+        Used when hook-based extraction fails.
+
+        Args:
+            prompt: Complete prompt string
+
+        Returns:
+            Tuple of (tokens, attention_maps)
+        """
+        import torch
+        import numpy as np
+
+        # Tokenize
+        inputs = self.tokenize(prompt)
+        input_ids = inputs['input_ids'].to(self.device)
+
+        # Get tokens
+        tokens = self.tokenizer.convert_ids_to_tokens(input_ids[0])
+
         # Forward pass
         with torch.no_grad():
             outputs = self.model(
@@ -383,13 +508,11 @@ class AttentionExtractor:
             )
 
         # Extract attentions
-        # outputs.attentions: tuple of (batch, num_heads, seq_len, seq_len) for each layer
         attentions = outputs.attentions
 
         # Process each layer
         attention_maps = []
         for layer_attention in attentions:
-            # layer_attention: (batch, num_heads, seq_len, seq_len)
             # Get attention for last token: [:, :, -1, :]
             last_token_attn = layer_attention[0, :, -1, :].float().cpu().numpy()
 
