@@ -1022,8 +1022,8 @@ def main():
     parser.add_argument(
         '--sparse-threshold',
         type=float,
-        default=0.01,
-        help='Threshold for sparse attention storage. Attention values below this threshold will be set to 0. Default: 0.01 (1%%)'
+        default=0.001,
+        help='Threshold for sparse attention storage. Attention values below this threshold will be set to 0. Default: 0.001 (0.1%%)'
     )
 
     args = parser.parse_args()
