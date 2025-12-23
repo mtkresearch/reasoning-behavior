@@ -465,8 +465,8 @@ class AttentionExtractor:
                 # Apply sparse threshold: set values below threshold to 0
                 avg_attn[avg_attn < self.sparse_threshold] = 0.0
 
-                # Store the result
-                attention_maps.append(avg_attn)
+                # Store the result in sparse format
+                attention_maps.append(convert_to_sparse(avg_attn))
 
                 # Immediate cleanup of GPU tensor
                 del attn_weights, last_token_attn
@@ -548,7 +548,7 @@ class AttentionExtractor:
             # Apply sparse threshold: set values below threshold to 0
             avg_attn[avg_attn < self.sparse_threshold] = 0.0
 
-            attention_maps.append(avg_attn)
+            attention_maps.append(convert_to_sparse(avg_attn))
 
         # Immediate memory cleanup
         del outputs, attentions, inputs, input_ids
@@ -1075,16 +1075,13 @@ def main():
                 )
                 print(f"  Built prompt length: {len(prompt)}")
 
-                # Phase 4: Extract attention
+                # Phase 4: Extract attention (already in sparse format)
                 tokens, attention_maps = extractor.extract_last_token_attention(prompt)
                 print(f"  Extracted {len(attention_maps)} layers, {len(tokens)} tokens")
 
-                # Convert to sparse format for storage
-                sparse_attention_maps = [convert_to_sparse(attn) for attn in attention_maps]
-
-                # Calculate sparsity
-                total_values = sum(len(attn) for attn in attention_maps)
-                sparse_values = sum(len(sparse_attn) for sparse_attn in sparse_attention_maps)
+                # Calculate sparsity (attention_maps is already sparse)
+                total_values = len(attention_maps) * len(tokens)  # layers * tokens
+                sparse_values = sum(len(attn) for attn in attention_maps)  # non-zero values
                 sparsity = (1 - sparse_values / total_values) * 100 if total_values > 0 else 0
                 print(f"  Sparsity: {sparsity:.1f}% ({sparse_values}/{total_values} values retained)")
 
@@ -1093,7 +1090,7 @@ def main():
                     'ground_truth': result['ground_truth'],
                     'is_correct': True,
                     'tokens': tokens,
-                    'attention_maps': sparse_attention_maps
+                    'attention_maps': attention_maps  # Already sparse
                 }
 
                 # Write to JSONL immediately
