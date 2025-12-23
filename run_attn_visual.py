@@ -224,12 +224,13 @@ class AttentionExtractor:
 
         self.model_name = model_name
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        print('device:', self.device)
 
         # Load tokenizer and model
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+            torch_dtype=torch.bfloat16 if self.device == "cuda" else torch.float32,
             device_map="auto" if self.device == "cuda" else None,
             output_attentions=True
         )
@@ -293,7 +294,7 @@ class AttentionExtractor:
         for layer_attention in attentions:
             # layer_attention: (batch, num_heads, seq_len, seq_len)
             # Get attention for last token: [:, :, -1, :]
-            last_token_attn = layer_attention[0, :, -1, :].cpu().numpy()
+            last_token_attn = layer_attention[0, :, -1, :].float().cpu().numpy()
 
             # Average across heads
             avg_attn = last_token_attn.mean(axis=0)
