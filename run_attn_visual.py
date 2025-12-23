@@ -5,6 +5,8 @@ This script visualizes attention distributions in LLM models during answer gener
 It processes experiment results, extracts attention maps, and generates interactive HTML.
 
 Memory Optimizations:
+    - **Direct GPU model loading**: Uses low_cpu_mem_usage=True to load models directly
+      on GPU without creating temporary copies in CPU RAM, reducing CPU memory peaks
     - **Layer-by-layer attention extraction**: Uses forward hooks to extract attention
       maps one layer at a time, avoiding simultaneous storage of all layers in VRAM
     - **Sparse attention storage**: Applies threshold filtering (default: 0.01) to set
@@ -307,6 +309,7 @@ class AttentionExtractor:
             }
             if self.device == "cuda":
                 model_kwargs["device_map"] = "auto"
+                model_kwargs["low_cpu_mem_usage"] = True
         else:
             # Configure quantization for non-quantized models
             model_kwargs = {
@@ -325,6 +328,7 @@ class AttentionExtractor:
                     )
                     model_kwargs["quantization_config"] = quantization_config
                     model_kwargs["device_map"] = "auto"
+                    model_kwargs["low_cpu_mem_usage"] = True
                     print(f"Using 4-bit quantization")
                 elif quantization == "8bit":
                     quantization_config = BitsAndBytesConfig(
@@ -332,12 +336,14 @@ class AttentionExtractor:
                     )
                     model_kwargs["quantization_config"] = quantization_config
                     model_kwargs["device_map"] = "auto"
+                    model_kwargs["low_cpu_mem_usage"] = True
                     print(f"Using 8-bit quantization")
             else:
                 # Standard loading without quantization
                 model_kwargs["torch_dtype"] = torch.bfloat16 if self.device == "cuda" else torch.float32
                 if self.device == "cuda":
                     model_kwargs["device_map"] = "auto"
+                    model_kwargs["low_cpu_mem_usage"] = True
 
         # Load model
         self.model = AutoModelForCausalLM.from_pretrained(
