@@ -145,19 +145,19 @@ h1 {
 
 JAVASCRIPT_TEMPLATE = """
 // Populate instance select options
-function populateInstanceSelect() {
+function populateInstanceSelect() {{
     const select = document.getElementById('instance-select');
     select.innerHTML = '';
-    instances.forEach((instance, i) => {
+    instances.forEach((instance, i) => {{
         const status = instance.is_correct ? 'CORRECT' : 'INCORRECT';
         const option = document.createElement('option');
         option.value = i;
-        option.textContent = `Instance ${i} (${status})`;
+        option.textContent = `Instance ${{i}} (${{status}})`;
         select.appendChild(option);
-    });
-}
+    }});
+}}
 
-function updateVisualization() {
+function updateVisualization() {{
     const instanceIdx = parseInt(document.getElementById('instance-select').value);
     const instance = instances[instanceIdx];
 
@@ -168,22 +168,22 @@ function updateVisualization() {
 
     // Update layer slider if needed
     const layerSlider = document.getElementById('layer-slider');
-    if (instance.is_correct && instance.attention_maps.length > 0) {
+    if (instance.is_correct && instance.attention_maps.length > 0) {{
         const numLayers = instance.attention_maps.length;
         layerSlider.max = numLayers - 1;
         layerSlider.value = Math.min(parseInt(layerSlider.value), numLayers - 1);
-        document.getElementById('layer-value').textContent = `Layer ${layerSlider.value}`;
+        document.getElementById('layer-value').textContent = `Layer ${{layerSlider.value}}`;
 
         // Update slider ticks
         updateSliderTicks(numLayers);
-    }
+    }}
 
     // Check if correct
-    if (!instance.is_correct) {
+    if (!instance.is_correct) {{
         document.getElementById('tokens-container').innerHTML =
             '<div class="incorrect-message">INCORRECT - No visualization available</div>';
         return;
-    }
+    }}
 
     // Get selected layer
     const layerIdx = parseInt(layerSlider.value);
@@ -195,25 +195,25 @@ function updateVisualization() {
     const maxWeight = Math.max(...attentionWeights);
 
     // Generate token HTML
-    const tokensHtml = tokens.map((token, i) => {
+    const tokensHtml = tokens.map((token, i) => {{
         const weight = attentionWeights[i];
         const normalized = (weight - minWeight) / (maxWeight - minWeight);
 
         // Use viridis colormap (simplified)
         const color = getColor(normalized);
 
-        return `<span class="token" style="background-color: ${color}" title="Weight: ${weight.toFixed(4)}">${escapeHtml(token)}</span>`;
-    }).join('');
+        return `<span class="token" style="background-color: ${{color}}" title="Weight: ${{weight.toFixed(4)}}\">${{escapeHtml(token)}}</span>`;
+    }}).join('');
 
     document.getElementById('tokens-container').innerHTML = tokensHtml;
-}
+}}
 
-function updateSliderTicks(numLayers) {
+function updateSliderTicks(numLayers) {{
     const ticksContainer = document.getElementById('slider-ticks');
     ticksContainer.innerHTML = '';
 
     // Create tick marks for each layer
-    for (let i = 0; i < numLayers; i++) {
+    for (let i = 0; i < numLayers; i++) {{
         const tick = document.createElement('div');
         tick.className = 'tick';
 
@@ -223,85 +223,85 @@ function updateSliderTicks(numLayers) {
 
         tick.appendChild(label);
         ticksContainer.appendChild(tick);
-    }
-}
+    }}
+}}
 
-function getColor(value) {
+function getColor(value) {{
     // White to Red colormap
     // value in [0, 1], 0 = white (255,255,255), 1 = red (255,0,0)
     const r = 255;
     const g = Math.floor(255 * (1 - value));
     const b = Math.floor(255 * (1 - value));
-    return `rgb(${r}, ${g}, ${b})`;
-}
+    return `rgb(${{r}}, ${{g}}, ${{b}})`;
+}}
 
-function escapeHtml(text) {
+function escapeHtml(text) {{
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
-}
+}}
 
 // Event listeners
-document.getElementById('instance-select').addEventListener('change', () => {
+document.getElementById('instance-select').addEventListener('change', () => {{
     // Reset layer slider when instance changes
     const layerSlider = document.getElementById('layer-slider');
     layerSlider.value = 0;
     updateVisualization();
-});
+}});
 
-document.getElementById('layer-slider').addEventListener('input', () => {
+document.getElementById('layer-slider').addEventListener('input', () => {{
     const layerIdx = document.getElementById('layer-slider').value;
-    document.getElementById('layer-value').textContent = `Layer ${layerIdx}`;
+    document.getElementById('layer-value').textContent = `Layer ${{layerIdx}}`;
     updateVisualization();
-});
+}});
 
 // Keyboard navigation
-document.addEventListener('keydown', (event) => {
+document.addEventListener('keydown', (event) => {{
     const instanceSelect = document.getElementById('instance-select');
     const layerSlider = document.getElementById('layer-slider');
 
-    switch(event.key) {
+    switch(event.key) {{
         case 'ArrowLeft':
             // Decrease layer
             event.preventDefault();
-            if (parseInt(layerSlider.value) > parseInt(layerSlider.min)) {
+            if (parseInt(layerSlider.value) > parseInt(layerSlider.min)) {{
                 layerSlider.value = parseInt(layerSlider.value) - 1;
-                document.getElementById('layer-value').textContent = `Layer ${layerSlider.value}`;
+                document.getElementById('layer-value').textContent = `Layer ${{layerSlider.value}}`;
                 updateVisualization();
-            }
+            }}
             break;
 
         case 'ArrowRight':
             // Increase layer
             event.preventDefault();
-            if (parseInt(layerSlider.value) < parseInt(layerSlider.max)) {
+            if (parseInt(layerSlider.value) < parseInt(layerSlider.max)) {{
                 layerSlider.value = parseInt(layerSlider.value) + 1;
-                document.getElementById('layer-value').textContent = `Layer ${layerSlider.value}`;
+                document.getElementById('layer-value').textContent = `Layer ${{layerSlider.value}}`;
                 updateVisualization();
-            }
+            }}
             break;
 
         case 'ArrowUp':
             // Previous instance
             event.preventDefault();
-            if (instanceSelect.selectedIndex > 0) {
+            if (instanceSelect.selectedIndex > 0) {{
                 instanceSelect.selectedIndex--;
                 layerSlider.value = 0;
                 updateVisualization();
-            }
+            }}
             break;
 
         case 'ArrowDown':
             // Next instance
             event.preventDefault();
-            if (instanceSelect.selectedIndex < instanceSelect.options.length - 1) {
+            if (instanceSelect.selectedIndex < instanceSelect.options.length - 1) {{
                 instanceSelect.selectedIndex++;
                 layerSlider.value = 0;
                 updateVisualization();
-            }
+            }}
             break;
-    }
-});
+    }}
+}});
 
 // Initial render
 populateInstanceSelect();
