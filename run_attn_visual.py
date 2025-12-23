@@ -511,7 +511,12 @@ class AttentionExtractor:
         for hook in hooks:
             hook.remove()
 
-        # Immediate memory cleanup
+        # Immediate memory cleanup - prioritize deleting attentions
+        if hasattr(outputs, 'attentions') and outputs.attentions is not None:
+            del outputs.attentions  # Delete accumulated attentions first
+            import gc
+            gc.collect()  # Force CPU garbage collection immediately
+
         del outputs, inputs, input_ids
         if self.device == "cuda":
             torch.cuda.empty_cache()
@@ -577,8 +582,12 @@ class AttentionExtractor:
 
             attention_maps.append(sparse_dict)
 
-        # Immediate memory cleanup
-        del outputs, attentions, inputs, input_ids
+        # Immediate memory cleanup - prioritize deleting attentions
+        del attentions  # Delete accumulated attentions first
+        import gc
+        gc.collect()  # Force CPU garbage collection immediately
+
+        del outputs, inputs, input_ids
         if self.device == "cuda":
             torch.cuda.empty_cache()
 
