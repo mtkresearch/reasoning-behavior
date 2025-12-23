@@ -4,15 +4,38 @@ Attention Visualization Tool for LLM Reasoning
 This script visualizes attention distributions in LLM models during answer generation.
 It processes experiment results, extracts attention maps, and generates interactive HTML.
 
+Memory Optimizations:
+    - Model quantization (4-bit/8-bit) for reduced memory usage
+    - Immediate memory cleanup after each attention extraction
+    - Streaming JSONL writes to avoid accumulating instances in memory
+    - Context manager for automatic model cleanup
+
 Usage:
+    # Basic usage
     python run_attn_visual.py \\
         --model Qwen/Qwen3-0.6B \\
         --template gpt-oss \\
         --results exp/cdad7f13/results.json \\
         --limit 1
 
+    # With 4-bit quantization (recommended for large models)
+    python run_attn_visual.py \\
+        --model Qwen/Qwen3-0.6B \\
+        --template gpt-oss \\
+        --results exp/cdad7f13/results.json \\
+        --quantization 4bit
+
+    # With 8-bit quantization
+    python run_attn_visual.py \\
+        --model Qwen/Qwen3-0.6B \\
+        --template gpt-oss \\
+        --results exp/cdad7f13/results.json \\
+        --quantization 8bit
+
 Output:
-    Generates attention_visualization.html in the same directory as the results.json file
+    - attention_visualization.html: Interactive HTML visualization
+    - attention_instances.jsonl: Intermediate instance data (JSONL format)
+    Both files are saved in the same directory as the results.json file
 """
 
 import json
@@ -212,12 +235,13 @@ class PromptBuilder:
 class AttentionExtractor:
     """Extract and process attention maps from model"""
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, quantization: Optional[str] = None):
         """
         Load model and tokenizer
 
         Args:
             model_name: Transformers model name
+            quantization: Quantization mode ('4bit', '8bit', or None)
         """
         import torch
         from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -226,19 +250,68 @@ class AttentionExtractor:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         print('device:', self.device)
 
-        # Load tokenizer and model
+        # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+        # Configure quantization
+        model_kwargs = {
+            "output_attentions": True
+        }
+
+        if quantization and self.device == "cuda":
+            from transformers import BitsAndBytesConfig
+
+            if quantization == "4bit":
+                quantization_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4"
+                )
+                model_kwargs["quantization_config"] = quantization_config
+                model_kwargs["device_map"] = "auto"
+                print(f"Using 4-bit quantization")
+            elif quantization == "8bit":
+                quantization_config = BitsAndBytesConfig(
+                    load_in_8bit=True
+                )
+                model_kwargs["quantization_config"] = quantization_config
+                model_kwargs["device_map"] = "auto"
+                print(f"Using 8-bit quantization")
+        else:
+            # Standard loading without quantization
+            model_kwargs["torch_dtype"] = torch.bfloat16 if self.device == "cuda" else torch.float32
+            if self.device == "cuda":
+                model_kwargs["device_map"] = "auto"
+
+        # Load model
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=torch.bfloat16 if self.device == "cuda" else torch.float32,
-            device_map="auto" if self.device == "cuda" else None,
-            output_attentions=True
+            **model_kwargs
         )
 
-        if self.device == "cpu":
+        if self.device == "cpu" and not quantization:
             self.model = self.model.to(self.device)
 
         self.model.eval()
+
+    def __enter__(self):
+        """Context manager entry"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - cleanup model from memory"""
+        import torch
+
+        # Delete model and tokenizer
+        del self.model
+        del self.tokenizer
+
+        # Clear CUDA cache if using GPU
+        if self.device == "cuda":
+            torch.cuda.empty_cache()
+
+        return False
 
     def tokenize(self, prompt: str) -> Dict:
         """
@@ -300,6 +373,11 @@ class AttentionExtractor:
             avg_attn = last_token_attn.mean(axis=0)
 
             attention_maps.append(avg_attn)
+
+        # Immediate memory cleanup
+        del outputs, attentions, inputs, input_ids
+        if self.device == "cuda":
+            torch.cuda.empty_cache()
 
         return tokens, attention_maps
 
@@ -716,6 +794,14 @@ def main():
         help='Limit number of data points to process'
     )
 
+    parser.add_argument(
+        '--quantization',
+        type=str,
+        choices=['4bit', '8bit', None],
+        default=None,
+        help='Model quantization mode (4bit, 8bit, or None for full precision)'
+    )
+
     args = parser.parse_args()
 
     # Phase 1: Load data
@@ -732,63 +818,83 @@ def main():
         valid_results = valid_results[:args.limit]
         print(f"Limited to {len(valid_results)} results")
 
-    # Phase 2-5: Process each instance
-    instances = []
+    # Setup output paths
+    output_dir = Path(args.results).parent
+    instances_jsonl = output_dir / 'attention_instances.jsonl'
+    output_html = output_dir / 'attention_visualization.html'
+
+    # Phase 2-4: Process each instance with streaming write
     truncator = AnswerTruncator()
     builder = PromptBuilder(args.template)
-    extractor = AttentionExtractor(args.model)
 
-    for i, result in enumerate(valid_results):
-        print(f"\nProcessing instance {i}...")
+    # Open JSONL file for streaming writes
+    with open(instances_jsonl, 'w', encoding='utf-8') as jsonl_file:
+        # Use context manager for model lifecycle
+        with AttentionExtractor(args.model, quantization=args.quantization) as extractor:
+            for i, result in enumerate(valid_results):
+                print(f"\nProcessing instance {i}...")
 
-        # Check correctness
-        if not result['is_correct']:
-            print(f"  Skipping incorrect result")
-            instances.append({
-                'question': result['question'],
-                'ground_truth': result['ground_truth'],
-                'is_correct': False,
-                'tokens': [],
-                'attention_maps': []
-            })
-            continue
+                # Check correctness
+                if not result['is_correct']:
+                    print(f"  Skipping incorrect result")
+                    instance = {
+                        'question': result['question'],
+                        'ground_truth': result['ground_truth'],
+                        'is_correct': False,
+                        'tokens': [],
+                        'attention_maps': []
+                    }
+                    jsonl_file.write(json.dumps(instance, ensure_ascii=False) + '\n')
+                    jsonl_file.flush()
+                    continue
 
-        # Phase 2: Truncate answer
-        truncated = truncator.process(
-            result['generated_answer'],
-            result['ground_truth']
-        )
-        print(f"  Truncated answer length: {len(truncated)}")
+                # Phase 2: Truncate answer
+                truncated = truncator.process(
+                    result['generated_answer'],
+                    result['ground_truth']
+                )
+                print(f"  Truncated answer length: {len(truncated)}")
 
-        # Phase 3: Build prompt
-        prompt = builder.build_prompt(
-            question=result['question'],
-            reasoning=result['processed_reasoning'],
-            prefill_text="Thus, the answer is",
-            truncated_answer=truncated
-        )
-        print(f"  Built prompt length: {len(prompt)}")
+                # Phase 3: Build prompt
+                prompt = builder.build_prompt(
+                    question=result['question'],
+                    reasoning=result['processed_reasoning'],
+                    prefill_text="Thus, the answer is",
+                    truncated_answer=truncated
+                )
+                print(f"  Built prompt length: {len(prompt)}")
 
-        # Phase 4: Extract attention
-        tokens, attention_maps = extractor.extract_last_token_attention(prompt)
-        print(f"  Extracted {len(attention_maps)} layers, {len(tokens)} tokens")
+                # Phase 4: Extract attention
+                tokens, attention_maps = extractor.extract_last_token_attention(prompt)
+                print(f"  Extracted {len(attention_maps)} layers, {len(tokens)} tokens")
 
-        instances.append({
-            'question': result['question'],
-            'ground_truth': result['ground_truth'],
-            'is_correct': True,
-            'tokens': tokens,
-            'attention_maps': [attn.tolist() for attn in attention_maps]
-        })
+                instance = {
+                    'question': result['question'],
+                    'ground_truth': result['ground_truth'],
+                    'is_correct': True,
+                    'tokens': tokens,
+                    'attention_maps': [attn.tolist() for attn in attention_maps]
+                }
 
-    # Phase 5: Generate HTML
-    output_path = Path(args.results).parent / 'attention_visualization.html'
-    print(f"\nGenerating HTML at {output_path}...")
+                # Write to JSONL immediately
+                jsonl_file.write(json.dumps(instance, ensure_ascii=False) + '\n')
+                jsonl_file.flush()
+
+    # Phase 5: Generate HTML from JSONL
+    print(f"\nGenerating HTML at {output_html}...")
+    print(f"Reading instances from {instances_jsonl}...")
+
+    # Read instances from JSONL
+    instances = []
+    with open(instances_jsonl, 'r', encoding='utf-8') as f:
+        for line in f:
+            instances.append(json.loads(line))
 
     generator = HTMLGenerator()
-    generator.generate_html(instances, str(output_path))
+    generator.generate_html(instances, str(output_html))
 
-    print(f"Done! Open {output_path} in your browser to view the visualization.")
+    print(f"Done! Open {output_html} in your browser to view the visualization.")
+    print(f"Intermediate data saved to {instances_jsonl}")
 
 
 if __name__ == '__main__':
