@@ -457,19 +457,29 @@ class AttentionExtractor:
             if attn_weights is not None:
                 # Extract attention for last token only: [:, :, -1, :]
                 # Shape: (batch, num_heads, seq_len)
-                last_token_attn = attn_weights[0, :, -1, :].detach().float().cpu().numpy()
+                last_token_attn = attn_weights[0, :, -1, :]  # Keep on GPU
 
-                # Average across heads
-                avg_attn = last_token_attn.mean(axis=0)
+                # Average across heads (still on GPU)
+                avg_attn = last_token_attn.mean(dim=0)  # Shape: (seq_len,)
 
-                # Apply sparse threshold: set values below threshold to 0
-                avg_attn[avg_attn < self.sparse_threshold] = 0.0
+                # Apply sparse threshold on GPU and extract only non-zero indices/values
+                mask = avg_attn >= self.sparse_threshold
+                sparse_indices = mask.nonzero(as_tuple=True)[0]
+                sparse_values = avg_attn[sparse_indices]
 
-                # Store the result in sparse format
-                attention_maps.append(convert_to_sparse(avg_attn))
+                # Convert to CPU only the sparse values
+                sparse_dict = {}
+                if len(sparse_indices) > 0:
+                    indices_cpu = sparse_indices.detach().cpu().numpy()
+                    values_cpu = sparse_values.detach().float().cpu().numpy()
+
+                    for idx, val in zip(indices_cpu, values_cpu):
+                        sparse_dict[str(int(idx))] = float(val)
+
+                attention_maps.append(sparse_dict)
 
                 # Immediate cleanup of GPU tensor
-                del attn_weights, last_token_attn
+                del attn_weights, last_token_attn, avg_attn, mask, sparse_indices, sparse_values
 
         # Get attention modules and register hooks
         try:
@@ -540,15 +550,26 @@ class AttentionExtractor:
         attention_maps = []
         for layer_attention in attentions:
             # Get attention for last token: [:, :, -1, :]
-            last_token_attn = layer_attention[0, :, -1, :].float().cpu().numpy()
+            last_token_attn = layer_attention[0, :, -1, :]  # Keep on GPU
 
-            # Average across heads
-            avg_attn = last_token_attn.mean(axis=0)
+            # Average across heads (still on GPU)
+            avg_attn = last_token_attn.mean(dim=0)  # Shape: (seq_len,)
 
-            # Apply sparse threshold: set values below threshold to 0
-            avg_attn[avg_attn < self.sparse_threshold] = 0.0
+            # Apply sparse threshold on GPU and extract only non-zero indices/values
+            mask = avg_attn >= self.sparse_threshold
+            sparse_indices = mask.nonzero(as_tuple=True)[0]
+            sparse_values = avg_attn[sparse_indices]
 
-            attention_maps.append(convert_to_sparse(avg_attn))
+            # Convert to CPU only the sparse values
+            sparse_dict = {}
+            if len(sparse_indices) > 0:
+                indices_cpu = sparse_indices.detach().cpu().numpy()
+                values_cpu = sparse_values.detach().float().cpu().numpy()
+
+                for idx, val in zip(indices_cpu, values_cpu):
+                    sparse_dict[str(int(idx))] = float(val)
+
+            attention_maps.append(sparse_dict)
 
         # Immediate memory cleanup
         del outputs, attentions, inputs, input_ids
@@ -556,28 +577,6 @@ class AttentionExtractor:
             torch.cuda.empty_cache()
 
         return tokens, attention_maps
-
-
-# =============================================================================
-# Helper Functions
-# =============================================================================
-
-def convert_to_sparse(attention_array) -> Dict:
-    """
-    Convert dense attention array to sparse dictionary format.
-    Only stores non-zero values with their indices.
-
-    Args:
-        attention_array: numpy array of attention weights
-
-    Returns:
-        Dictionary mapping index -> value for non-zero elements
-    """
-    sparse_dict = {}
-    for idx, value in enumerate(attention_array):
-        if value != 0.0:
-            sparse_dict[str(idx)] = float(value)
-    return sparse_dict
 
 
 # =============================================================================
