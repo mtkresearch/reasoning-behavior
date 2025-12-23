@@ -4,6 +4,12 @@ Attention Visualization Tool for LLM Reasoning
 This script visualizes attention distributions in LLM models during answer generation.
 It processes experiment results, extracts attention maps, and generates interactive HTML.
 
+Features:
+    - Streaming HTML generation to avoid memory accumulation
+    - Automatic memory cleanup after each instance
+    - GPU memory management with torch.cuda.empty_cache()
+    - Interactive visualization with layer-by-layer attention viewing
+
 Usage:
     python run_attn_visual.py \\
         --model Qwen/Qwen3-0.6B \\
@@ -13,6 +19,11 @@ Usage:
 
 Output:
     Generates attention_visualization.html in the same directory as the results.json file
+
+Memory Optimization:
+    - Uses HTMLStreamWriter to write instances incrementally to HTML
+    - Cleans up GPU/CPU memory after processing each instance
+    - No instance accumulation in memory
 """
 
 import json
@@ -20,6 +31,13 @@ import argparse
 import re
 from typing import List, Dict, Optional, Tuple
 from pathlib import Path
+
+from attention_visual_templates import (
+    get_html_header,
+    get_html_footer,
+    get_javascript_code,
+    build_complete_html
+)
 
 
 # =============================================================================
@@ -269,7 +287,7 @@ class AttentionExtractor:
                   Each array represents averaged attention across all heads
         """
         import torch
-        import numpy as np
+        import gc
 
         # Tokenize
         inputs = self.tokenize(prompt)
@@ -301,6 +319,12 @@ class AttentionExtractor:
 
             attention_maps.append(avg_attn)
 
+        # Memory cleanup
+        del inputs, input_ids, outputs, attentions
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
+
         return tokens, attention_maps
 
 
@@ -308,8 +332,89 @@ class AttentionExtractor:
 # Phase 5: HTMLGenerator
 # =============================================================================
 
+class HTMLStreamWriter:
+    """Stream HTML generation to avoid memory accumulation"""
+
+    def __init__(self, output_path: str):
+        """
+        Initialize stream writer
+
+        Args:
+            output_path: Path to save HTML file
+        """
+        self.output_path = output_path
+        self.file_handle = None
+        self.instance_count = 0
+
+    def __enter__(self):
+        """Context manager entry"""
+        self.file_handle = open(self.output_path, 'w', encoding='utf-8')
+        self._write_html_header()
+        self._write_javascript_start()
+        return self
+
+    def __exit__(self, _exc_type, _exc_val, _exc_tb):
+        """Context manager exit"""
+        if self.file_handle:
+            self._write_javascript_end()
+            self._write_html_footer()
+            self.file_handle.close()
+
+    def add_instance(self, instance: Dict) -> None:
+        """
+        Add a single instance to the HTML stream
+
+        Args:
+            instance: Data point containing:
+                - question: Question text
+                - ground_truth: Ground truth answer
+                - is_correct: Whether answer is correct
+                - tokens: List of token strings
+                - attention_maps: List of attention arrays (num_layers, seq_len)
+        """
+        import json
+
+        # Add comma separator if not first instance
+        if self.instance_count > 0:
+            self.file_handle.write(',\n')
+
+        # Write instance as JSON
+        json_str = json.dumps(instance, ensure_ascii=False, indent=2)
+        self.file_handle.write(json_str)
+        self.file_handle.flush()
+
+        self.instance_count += 1
+
+    def _write_html_header(self) -> None:
+        """Write HTML header and controls"""
+        header = get_html_header()
+        self.file_handle.write(header)
+        self.file_handle.flush()
+
+    def _write_javascript_start(self) -> None:
+        """Write JavaScript array start"""
+        self.file_handle.write('        const instances = [\n')
+        self.file_handle.flush()
+
+    def _write_javascript_end(self) -> None:
+        """Write JavaScript functions and event listeners"""
+        js_code = f"""
+        ];
+
+        {get_javascript_code()}
+"""
+        self.file_handle.write(js_code)
+        self.file_handle.flush()
+
+    def _write_html_footer(self) -> None:
+        """Write HTML footer"""
+        footer = get_html_footer()
+        self.file_handle.write(footer)
+        self.file_handle.flush()
+
+
 class HTMLGenerator:
-    """Generate interactive HTML visualization"""
+    """Generate interactive HTML visualization (legacy batch mode)"""
 
     def generate_html(
         self,
@@ -328,186 +433,19 @@ class HTMLGenerator:
                 - attention_maps: List of attention arrays (num_layers, seq_len)
             output_path: Path to save HTML file
         """
-        html_content = self._build_html_structure(instances)
+        import json
+
+        # Build instance options
+        instance_options = self._build_instance_options(instances)
+
+        # Convert instances to JSON
+        instances_json = json.dumps(instances, ensure_ascii=False)
+
+        # Build complete HTML using external template
+        html_content = build_complete_html(instances_json, instance_options)
 
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
-
-    def _build_html_structure(self, instances: List[Dict]) -> str:
-        """Build complete HTML structure"""
-        return f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Attention Visualization</title>
-    <style>
-        {self._get_css()}
-    </style>
-</head>
-<body>
-    <h1>Attention Visualization</h1>
-
-    <div class="controls">
-        <label>Instance:</label>
-        <select id="instance-select">
-            {self._build_instance_options(instances)}
-        </select>
-
-        <div class="layer-control">
-            <label>Layer:</label>
-            <span id="layer-value">Layer 0</span>
-            <div class="slider-container">
-                <input type="range" id="layer-slider" min="0" max="0" value="0" step="1" />
-                <div id="slider-ticks"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="metadata">
-        <p><strong>Question:</strong> <span id="question"></span></p>
-        <p><strong>Ground Truth:</strong> <span id="ground-truth"></span></p>
-        <p><strong>Correct:</strong> <span id="is-correct"></span></p>
-    </div>
-
-    <div id="tokens-container">
-        <!-- Tokens will be populated by JavaScript -->
-    </div>
-
-    <script>
-        {self._get_javascript(instances)}
-    </script>
-</body>
-</html>"""
-
-    def _get_css(self) -> str:
-        """Get CSS styles"""
-        return """
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f5f5f5;
-        }
-
-        h1 {
-            color: #333;
-        }
-
-        .controls {
-            margin: 20px 0;
-            padding: 15px;
-            padding-bottom: 35px;
-            background-color: white;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .controls label {
-            margin-right: 10px;
-            font-weight: bold;
-        }
-
-        .controls select {
-            margin-right: 20px;
-            padding: 5px 10px;
-            font-size: 14px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-        }
-
-        .layer-control {
-            display: inline-block;
-            margin-left: 20px;
-        }
-
-        .slider-container {
-            position: relative;
-            width: 900px;
-            margin-top: 10px;
-            height: 45px;
-        }
-
-        #layer-slider {
-            width: 100%;
-            margin: 0;
-            position: relative;
-            z-index: 2;
-        }
-
-        #layer-value {
-            font-weight: bold;
-            color: #333;
-            margin-left: 10px;
-            font-size: 16px;
-        }
-
-        #slider-ticks {
-            position: absolute;
-            top: 25px;
-            left: 0;
-            width: 100%;
-            height: 30px;
-            display: flex;
-            justify-content: space-between;
-            pointer-events: none;
-        }
-
-        .tick {
-            position: relative;
-            width: 2px;
-            height: 8px;
-            background-color: #666;
-        }
-
-        .tick-label {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 11px;
-            color: #666;
-            white-space: nowrap;
-        }
-
-        #metadata {
-            margin: 20px 0;
-            padding: 15px;
-            background-color: white;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        #metadata p {
-            margin: 8px 0;
-        }
-
-        #tokens-container {
-            margin: 20px 0;
-            padding: 15px;
-            background-color: white;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            line-height: 2;
-        }
-
-        .token {
-            display: inline-block;
-            padding: 2px 4px;
-            margin: 1px;
-            border-radius: 2px;
-            font-family: monospace;
-            font-size: 7px;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .incorrect-message {
-            color: #d32f2f;
-            font-size: 18px;
-            font-weight: bold;
-            padding: 20px;
-            text-align: center;
-        }
-        """
 
     def _build_instance_options(self, instances: List[Dict]) -> str:
         """Build HTML options for instance select"""
@@ -518,166 +456,6 @@ class HTMLGenerator:
                 f'<option value="{i}">Instance {i} ({status})</option>'
             )
         return '\n'.join(options)
-
-    def _get_javascript(self, instances: List[Dict]) -> str:
-        """Get JavaScript code"""
-        import json
-
-        # Convert instances to JSON
-        instances_json = json.dumps(instances, ensure_ascii=False)
-
-        return f"""
-        const instances = {instances_json};
-
-        function updateVisualization() {{
-            const instanceIdx = parseInt(document.getElementById('instance-select').value);
-            const instance = instances[instanceIdx];
-
-            // Update metadata
-            document.getElementById('question').textContent = instance.question;
-            document.getElementById('ground-truth').textContent = instance.ground_truth;
-            document.getElementById('is-correct').textContent = instance.is_correct ? 'Yes' : 'No';
-
-            // Update layer slider if needed
-            const layerSlider = document.getElementById('layer-slider');
-            if (instance.is_correct && instance.attention_maps.length > 0) {{
-                const numLayers = instance.attention_maps.length;
-                layerSlider.max = numLayers - 1;
-                layerSlider.value = Math.min(parseInt(layerSlider.value), numLayers - 1);
-                document.getElementById('layer-value').textContent = `Layer ${{layerSlider.value}}`;
-
-                // Update slider ticks
-                updateSliderTicks(numLayers);
-            }}
-
-            // Check if correct
-            if (!instance.is_correct) {{
-                document.getElementById('tokens-container').innerHTML =
-                    '<div class="incorrect-message">INCORRECT - No visualization available</div>';
-                return;
-            }}
-
-            // Get selected layer
-            const layerIdx = parseInt(layerSlider.value);
-            const attentionWeights = instance.attention_maps[layerIdx];
-            const tokens = instance.tokens;
-
-            // Find min and max for normalization
-            const minWeight = Math.min(...attentionWeights);
-            const maxWeight = Math.max(...attentionWeights);
-
-            // Generate token HTML
-            const tokensHtml = tokens.map((token, i) => {{
-                const weight = attentionWeights[i];
-                const normalized = (weight - minWeight) / (maxWeight - minWeight);
-
-                // Use viridis colormap (simplified)
-                const color = getColor(normalized);
-
-                return `<span class="token" style="background-color: ${{color}}" title="Weight: ${{weight.toFixed(4)}}">${{escapeHtml(token)}}</span>`;
-            }}).join('');
-
-            document.getElementById('tokens-container').innerHTML = tokensHtml;
-        }}
-
-        function updateSliderTicks(numLayers) {{
-            const ticksContainer = document.getElementById('slider-ticks');
-            ticksContainer.innerHTML = '';
-
-            // Create tick marks for each layer
-            for (let i = 0; i < numLayers; i++) {{
-                const tick = document.createElement('div');
-                tick.className = 'tick';
-
-                const label = document.createElement('div');
-                label.className = 'tick-label';
-                label.textContent = i;
-
-                tick.appendChild(label);
-                ticksContainer.appendChild(tick);
-            }}
-        }}
-
-        function getColor(value) {{
-            // White to Red colormap
-            // value in [0, 1], 0 = white (255,255,255), 1 = red (255,0,0)
-            const r = 255;
-            const g = Math.floor(255 * (1 - value));
-            const b = Math.floor(255 * (1 - value));
-            return `rgb(${{r}}, ${{g}}, ${{b}})`;
-        }}
-
-        function escapeHtml(text) {{
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }}
-
-        // Event listeners
-        document.getElementById('instance-select').addEventListener('change', () => {{
-            // Reset layer slider when instance changes
-            const layerSlider = document.getElementById('layer-slider');
-            layerSlider.value = 0;
-            updateVisualization();
-        }});
-
-        document.getElementById('layer-slider').addEventListener('input', () => {{
-            const layerIdx = document.getElementById('layer-slider').value;
-            document.getElementById('layer-value').textContent = `Layer ${{layerIdx}}`;
-            updateVisualization();
-        }});
-
-        // Keyboard navigation
-        document.addEventListener('keydown', (event) => {{
-            const instanceSelect = document.getElementById('instance-select');
-            const layerSlider = document.getElementById('layer-slider');
-
-            switch(event.key) {{
-                case 'ArrowLeft':
-                    // Decrease layer
-                    event.preventDefault();
-                    if (parseInt(layerSlider.value) > parseInt(layerSlider.min)) {{
-                        layerSlider.value = parseInt(layerSlider.value) - 1;
-                        document.getElementById('layer-value').textContent = `Layer ${{layerSlider.value}}`;
-                        updateVisualization();
-                    }}
-                    break;
-
-                case 'ArrowRight':
-                    // Increase layer
-                    event.preventDefault();
-                    if (parseInt(layerSlider.value) < parseInt(layerSlider.max)) {{
-                        layerSlider.value = parseInt(layerSlider.value) + 1;
-                        document.getElementById('layer-value').textContent = `Layer ${{layerSlider.value}}`;
-                        updateVisualization();
-                    }}
-                    break;
-
-                case 'ArrowUp':
-                    // Previous instance
-                    event.preventDefault();
-                    if (instanceSelect.selectedIndex > 0) {{
-                        instanceSelect.selectedIndex--;
-                        layerSlider.value = 0;
-                        updateVisualization();
-                    }}
-                    break;
-
-                case 'ArrowDown':
-                    // Next instance
-                    event.preventDefault();
-                    if (instanceSelect.selectedIndex < instanceSelect.options.length - 1) {{
-                        instanceSelect.selectedIndex++;
-                        layerSlider.value = 0;
-                        updateVisualization();
-                    }}
-                    break;
-            }}
-        }});
-
-        // Initial render
-        updateVisualization();
-        """
 
 
 # =============================================================================
@@ -732,63 +510,73 @@ def main():
         valid_results = valid_results[:args.limit]
         print(f"Limited to {len(valid_results)} results")
 
-    # Phase 2-5: Process each instance
-    instances = []
+    # Phase 2-5: Process each instance with streaming HTML generation
     truncator = AnswerTruncator()
     builder = PromptBuilder(args.template)
     extractor = AttentionExtractor(args.model)
 
-    for i, result in enumerate(valid_results):
-        print(f"\nProcessing instance {i}...")
-
-        # Check correctness
-        if not result['is_correct']:
-            print(f"  Skipping incorrect result")
-            instances.append({
-                'question': result['question'],
-                'ground_truth': result['ground_truth'],
-                'is_correct': False,
-                'tokens': [],
-                'attention_maps': []
-            })
-            continue
-
-        # Phase 2: Truncate answer
-        truncated = truncator.process(
-            result['generated_answer'],
-            result['ground_truth']
-        )
-        print(f"  Truncated answer length: {len(truncated)}")
-
-        # Phase 3: Build prompt
-        prompt = builder.build_prompt(
-            question=result['question'],
-            reasoning=result['processed_reasoning'],
-            prefill_text="Thus, the answer is",
-            truncated_answer=truncated
-        )
-        print(f"  Built prompt length: {len(prompt)}")
-
-        # Phase 4: Extract attention
-        tokens, attention_maps = extractor.extract_last_token_attention(prompt)
-        print(f"  Extracted {len(attention_maps)} layers, {len(tokens)} tokens")
-
-        instances.append({
-            'question': result['question'],
-            'ground_truth': result['ground_truth'],
-            'is_correct': True,
-            'tokens': tokens,
-            'attention_maps': [attn.tolist() for attn in attention_maps]
-        })
-
-    # Phase 5: Generate HTML
+    # Initialize streaming HTML writer
     output_path = Path(args.results).parent / 'attention_visualization.html'
     print(f"\nGenerating HTML at {output_path}...")
 
-    generator = HTMLGenerator()
-    generator.generate_html(instances, str(output_path))
+    with HTMLStreamWriter(str(output_path)) as html_writer:
+        for i, result in enumerate(valid_results):
+            print(f"\nProcessing instance {i}...")
 
-    print(f"Done! Open {output_path} in your browser to view the visualization.")
+            # Check correctness
+            if not result['is_correct']:
+                print(f"  Skipping incorrect result")
+                instance = {
+                    'question': result['question'],
+                    'ground_truth': result['ground_truth'],
+                    'is_correct': False,
+                    'tokens': [],
+                    'attention_maps': []
+                }
+                html_writer.add_instance(instance)
+                continue
+
+            # Phase 2: Truncate answer
+            truncated = truncator.process(
+                result['generated_answer'],
+                result['ground_truth']
+            )
+            print(f"  Truncated answer length: {len(truncated)}")
+
+            # Phase 3: Build prompt
+            prompt = builder.build_prompt(
+                question=result['question'],
+                reasoning=result['processed_reasoning'],
+                prefill_text="Thus, the answer is",
+                truncated_answer=truncated
+            )
+            print(f"  Built prompt length: {len(prompt)}")
+
+            # Phase 4: Extract attention
+            tokens, attention_maps = extractor.extract_last_token_attention(prompt)
+            print(f"  Extracted {len(attention_maps)} layers, {len(tokens)} tokens")
+
+            # Create instance and stream to HTML
+            instance = {
+                'question': result['question'],
+                'ground_truth': result['ground_truth'],
+                'is_correct': True,
+                'tokens': tokens,
+                'attention_maps': [attn.tolist() for attn in attention_maps]
+            }
+            html_writer.add_instance(instance)
+
+            # Memory cleanup
+            import gc
+            import torch
+            del instance, tokens, attention_maps, prompt, truncated
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            gc.collect()
+
+            print(f"  Written to HTML and cleaned up memory")
+
+    print(f"\nDone! Open {output_path} in your browser to view the visualization.")
 
 
 if __name__ == '__main__':
