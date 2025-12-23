@@ -9,28 +9,34 @@ Memory Optimizations:
     - Immediate memory cleanup after each attention extraction
     - Streaming JSONL writes to avoid accumulating instances in memory
     - Context manager for automatic model cleanup
+    - Automatic detection of pre-quantized models (e.g., gpt-oss with Mxfp4)
 
 Usage:
-    # Basic usage
+    # Basic usage (for pre-quantized models like gpt-oss)
     python run_attn_visual.py \\
         --model Qwen/Qwen3-0.6B \\
         --template gpt-oss \\
         --results exp/cdad7f13/results.json \\
         --limit 1
 
-    # With 4-bit quantization (recommended for large models)
+    # With 4-bit quantization (for non-quantized models)
     python run_attn_visual.py \\
-        --model Qwen/Qwen3-0.6B \\
+        --model Qwen/Qwen2.5-7B-Instruct \\
         --template gpt-oss \\
         --results exp/cdad7f13/results.json \\
         --quantization 4bit
 
-    # With 8-bit quantization
+    # With 8-bit quantization (for non-quantized models)
     python run_attn_visual.py \\
-        --model Qwen/Qwen3-0.6B \\
+        --model Qwen/Qwen2.5-7B-Instruct \\
         --template gpt-oss \\
         --results exp/cdad7f13/results.json \\
         --quantization 8bit
+
+Notes:
+    - Pre-quantized models (e.g., gpt-oss) will automatically be detected
+    - For pre-quantized models, the --quantization flag will be ignored
+    - Use --quantization only for non-quantized models to reduce memory usage
 
 Output:
     - attention_visualization.html: Interactive HTML visualization
@@ -242,9 +248,10 @@ class AttentionExtractor:
         Args:
             model_name: Transformers model name
             quantization: Quantization mode ('4bit', '8bit', or None)
+                         Note: Ignored if model is already pre-quantized
         """
         import torch
-        from transformers import AutoTokenizer, AutoModelForCausalLM
+        from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
 
         self.model_name = model_name
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -253,36 +260,53 @@ class AttentionExtractor:
         # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-        # Configure quantization
-        model_kwargs = {
-            "output_attentions": True
-        }
+        # Check if model is already pre-quantized
+        config = AutoConfig.from_pretrained(model_name)
+        is_pre_quantized = hasattr(config, 'quantization_config') and config.quantization_config is not None
 
-        if quantization and self.device == "cuda":
-            from transformers import BitsAndBytesConfig
+        if is_pre_quantized:
+            print(f"Model is pre-quantized with {type(config.quantization_config).__name__}")
+            if quantization:
+                print(f"Warning: Ignoring --quantization={quantization} because model is already quantized")
 
-            if quantization == "4bit":
-                quantization_config = BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.bfloat16,
-                    bnb_4bit_use_double_quant=True,
-                    bnb_4bit_quant_type="nf4"
-                )
-                model_kwargs["quantization_config"] = quantization_config
-                model_kwargs["device_map"] = "auto"
-                print(f"Using 4-bit quantization")
-            elif quantization == "8bit":
-                quantization_config = BitsAndBytesConfig(
-                    load_in_8bit=True
-                )
-                model_kwargs["quantization_config"] = quantization_config
-                model_kwargs["device_map"] = "auto"
-                print(f"Using 8-bit quantization")
-        else:
-            # Standard loading without quantization
-            model_kwargs["torch_dtype"] = torch.bfloat16 if self.device == "cuda" else torch.float32
+            # Load pre-quantized model as-is
+            model_kwargs = {
+                "output_attentions": True,
+                "torch_dtype": torch.bfloat16 if self.device == "cuda" else torch.float32,
+            }
             if self.device == "cuda":
                 model_kwargs["device_map"] = "auto"
+        else:
+            # Configure quantization for non-quantized models
+            model_kwargs = {
+                "output_attentions": True
+            }
+
+            if quantization and self.device == "cuda":
+                from transformers import BitsAndBytesConfig
+
+                if quantization == "4bit":
+                    quantization_config = BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_compute_dtype=torch.bfloat16,
+                        bnb_4bit_use_double_quant=True,
+                        bnb_4bit_quant_type="nf4"
+                    )
+                    model_kwargs["quantization_config"] = quantization_config
+                    model_kwargs["device_map"] = "auto"
+                    print(f"Using 4-bit quantization")
+                elif quantization == "8bit":
+                    quantization_config = BitsAndBytesConfig(
+                        load_in_8bit=True
+                    )
+                    model_kwargs["quantization_config"] = quantization_config
+                    model_kwargs["device_map"] = "auto"
+                    print(f"Using 8-bit quantization")
+            else:
+                # Standard loading without quantization
+                model_kwargs["torch_dtype"] = torch.bfloat16 if self.device == "cuda" else torch.float32
+                if self.device == "cuda":
+                    model_kwargs["device_map"] = "auto"
 
         # Load model
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -290,7 +314,7 @@ class AttentionExtractor:
             **model_kwargs
         )
 
-        if self.device == "cpu" and not quantization:
+        if self.device == "cpu" and not quantization and not is_pre_quantized:
             self.model = self.model.to(self.device)
 
         self.model.eval()
