@@ -66,6 +66,10 @@ Notes:
     - For pre-quantized models, the --quantization flag will be ignored
     - Use --quantization only for non-quantized models to reduce memory usage
 
+Debug Options:
+    # Disable output_attentions (for debugging CPU OOM issues)
+    DEBUG_ATTN_OUTPUT_OFF=1 python run_attn_visual.py ...
+
 Output:
     - attention_visualization.html: Interactive HTML visualization
     - attention_instances.jsonl: Intermediate instance data (JSONL format)
@@ -75,8 +79,12 @@ Output:
 import json
 import argparse
 import re
+import os
 from typing import List, Dict, Optional, Tuple
 from pathlib import Path
+
+# Debug flag: Set to '1' to disable output_attentions (for debugging CPU OOM issues)
+DEBUG_ATTN_OUTPUT_OFF = os.environ.get('DEBUG_ATTN_OUTPUT_OFF', '0') == '1'
 
 
 # =============================================================================
@@ -289,6 +297,8 @@ class AttentionExtractor:
         self.sparse_threshold = sparse_threshold
         print('device:', self.device)
         print(f'sparse_threshold: {self.sparse_threshold}')
+        if DEBUG_ATTN_OUTPUT_OFF:
+            print('WARNING: DEBUG_ATTN_OUTPUT_OFF is enabled - output_attentions will be disabled')
 
         # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -304,7 +314,7 @@ class AttentionExtractor:
 
             # Load pre-quantized model as-is
             model_kwargs = {
-                "output_attentions": True,
+                "output_attentions": not DEBUG_ATTN_OUTPUT_OFF,
                 "torch_dtype": torch.bfloat16 if self.device == "cuda" else torch.float32,
             }
             if self.device == "cuda":
@@ -313,7 +323,7 @@ class AttentionExtractor:
         else:
             # Configure quantization for non-quantized models
             model_kwargs = {
-                "output_attentions": True
+                "output_attentions": not DEBUG_ATTN_OUTPUT_OFF
             }
 
             if quantization and self.device == "cuda":
@@ -504,7 +514,7 @@ class AttentionExtractor:
         with torch.no_grad():
             outputs = self.model(
                 input_ids=input_ids,
-                output_attentions=True  # This ensures attention is computed
+                output_attentions=not DEBUG_ATTN_OUTPUT_OFF  # This ensures attention is computed
             )
 
         # Remove all hooks
@@ -551,7 +561,7 @@ class AttentionExtractor:
         with torch.no_grad():
             outputs = self.model(
                 input_ids=input_ids,
-                output_attentions=True
+                output_attentions=not DEBUG_ATTN_OUTPUT_OFF
             )
 
         # Extract attentions
