@@ -487,6 +487,11 @@ class AttentionExtractor:
 
                 # Immediate cleanup of GPU tensor
                 del attn_weights, last_token_attn, avg_attn, mask, sparse_indices, sparse_values
+                # import gc
+                # gc.collect()  # Force CPU garbage collection immediately
+
+                # if self.device == "cuda":
+                #     torch.cuda.empty_cache()
 
         # Get attention modules and register hooks
         try:
