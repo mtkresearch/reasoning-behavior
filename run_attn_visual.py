@@ -301,53 +301,55 @@ class AttentionExtractor:
         config = AutoConfig.from_pretrained(model_name)
         is_pre_quantized = hasattr(config, 'quantization_config') and config.quantization_config is not None
 
+        # Base configuration for all models
+        model_kwargs = {
+            "output_attentions": False,
+            "torch_dtype": torch.bfloat16 if self.device == "cuda" else torch.float32,
+        }
+
+        # Add CUDA-specific settings
+        if self.device == "cuda":
+            model_kwargs["device_map"] = "auto"
+            model_kwargs["low_cpu_mem_usage"] = True
+
+        # Display and handle quantization
+        print("=" * 60)
+        print("Quantization Configuration:")
         if is_pre_quantized:
-            print(f"Model is pre-quantized with {type(config.quantization_config).__name__}")
+            quant_type = type(config.quantization_config).__name__
+            print(f"  Status: Pre-quantized (built-in)")
+            print(f"  Method: {quant_type}")
             if quantization:
-                print(f"Warning: Ignoring --quantization={quantization} because model is already quantized")
+                print(f"  Warning: Ignoring --quantization={quantization}")
+                print(f"           Model is already quantized")
+        elif quantization and self.device == "cuda":
+            # Apply runtime quantization (only for non-pre-quantized models on CUDA)
+            from transformers import BitsAndBytesConfig
 
-            # Load pre-quantized model as-is
-            model_kwargs = {
-                "output_attentions": False,
-                "torch_dtype": torch.bfloat16 if self.device == "cuda" else torch.float32,
-            }
-            if self.device == "cuda":
-                model_kwargs["device_map"] = "auto"
-                model_kwargs["low_cpu_mem_usage"] = True
+            if quantization == "4bit":
+                model_kwargs["quantization_config"] = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4"
+                )
+                print(f"  Status: Runtime quantization")
+                print(f"  Method: 4-bit (NF4)")
+                print(f"  Config: double_quant=True, compute_dtype=bfloat16")
+            elif quantization == "8bit":
+                model_kwargs["quantization_config"] = BitsAndBytesConfig(
+                    load_in_8bit=True
+                )
+                print(f"  Status: Runtime quantization")
+                print(f"  Method: 8-bit")
+        elif quantization and self.device == "cpu":
+            print(f"  Status: Disabled")
+            print(f"  Reason: Quantization not supported on CPU")
+            print(f"  Requested: {quantization} (ignored)")
         else:
-            # Configure quantization for non-quantized models
-            model_kwargs = {
-                "output_attentions": False
-            }
-
-            if quantization and self.device == "cuda":
-                from transformers import BitsAndBytesConfig
-
-                if quantization == "4bit":
-                    quantization_config = BitsAndBytesConfig(
-                        load_in_4bit=True,
-                        bnb_4bit_compute_dtype=torch.bfloat16,
-                        bnb_4bit_use_double_quant=True,
-                        bnb_4bit_quant_type="nf4"
-                    )
-                    model_kwargs["quantization_config"] = quantization_config
-                    model_kwargs["device_map"] = "auto"
-                    model_kwargs["low_cpu_mem_usage"] = True
-                    print(f"Using 4-bit quantization")
-                elif quantization == "8bit":
-                    quantization_config = BitsAndBytesConfig(
-                        load_in_8bit=True
-                    )
-                    model_kwargs["quantization_config"] = quantization_config
-                    model_kwargs["device_map"] = "auto"
-                    model_kwargs["low_cpu_mem_usage"] = True
-                    print(f"Using 8-bit quantization")
-            else:
-                # Standard loading without quantization
-                model_kwargs["torch_dtype"] = torch.bfloat16 if self.device == "cuda" else torch.float32
-                if self.device == "cuda":
-                    model_kwargs["device_map"] = "auto"
-                    model_kwargs["low_cpu_mem_usage"] = True
+            print(f"  Status: None (full precision)")
+            print(f"  Precision: {model_kwargs['torch_dtype']}")
+        print("=" * 60)
 
         # Load model
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -355,6 +357,7 @@ class AttentionExtractor:
             **model_kwargs
         )
 
+        # Only move to device explicitly if on CPU without quantization
         if self.device == "cpu" and not quantization and not is_pre_quantized:
             self.model = self.model.to(self.device)
 
