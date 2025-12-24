@@ -250,7 +250,7 @@ class PromptBuilder:
             from core import build_gpt_oss_prompt_with_reasoning_prefilled_answer
 
             # Merge prefill_text and truncated_answer
-            full_answer = f"{prefill_text} {truncated_answer}".strip()
+            full_answer = f"{prefill_text}{truncated_answer}".strip()
 
             # Build prompt with merged answer
             return build_gpt_oss_prompt_with_reasoning_prefilled_answer(
@@ -355,6 +355,7 @@ class AttentionExtractor:
             self.model = self.model.to(self.device)
 
         self.model.eval()
+        print('The model\'s device is on', self.model.device)
 
     def __enter__(self):
         """Context manager entry"""
