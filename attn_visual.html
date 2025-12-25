@@ -184,6 +184,7 @@
         <p><strong>Question:</strong> <span id="question"></span></p>
         <p><strong>Ground Truth:</strong> <span id="ground-truth"></span></p>
         <p><strong>Correct:</strong> <span id="is-correct"></span></p>
+        <p id="skip-reason-container" style="display: none;"><strong>Skip Reason:</strong> <span id="skip-reason"></span></p>
     </div>
 
     <div id="tokens-container">
@@ -314,7 +315,14 @@
             instanceSelect.innerHTML = '';
 
             window.instances.forEach((instance, i) => {
-                const status = instance.is_correct ? 'CORRECT' : 'INCORRECT';
+                let status;
+                if (instance.skip_reason) {
+                    status = 'SKIPPED';
+                } else if (instance.is_correct) {
+                    status = 'CORRECT';
+                } else {
+                    status = 'INCORRECT';
+                }
                 const option = document.createElement('option');
                 option.value = i;
                 option.textContent = `Instance ${i} (${status})`;
@@ -335,6 +343,16 @@
             document.getElementById('ground-truth').textContent = instance.ground_truth;
             document.getElementById('is-correct').textContent = instance.is_correct ? 'Yes' : 'No';
 
+            // Update skip reason if present
+            const skipReasonContainer = document.getElementById('skip-reason-container');
+            const skipReasonSpan = document.getElementById('skip-reason');
+            if (instance.skip_reason) {
+                skipReasonSpan.textContent = instance.skip_reason;
+                skipReasonContainer.style.display = 'block';
+            } else {
+                skipReasonContainer.style.display = 'none';
+            }
+
             // Update layer slider if needed
             const layerSlider = document.getElementById('layer-slider');
             if (instance.is_correct && instance.attention_maps.length > 0) {
@@ -345,6 +363,13 @@
 
                 // Update slider ticks
                 updateSliderTicks(numLayers);
+            }
+
+            // Check if skipped
+            if (instance.skip_reason) {
+                document.getElementById('tokens-container').innerHTML =
+                    '<div class="incorrect-message">SKIPPED - ' + instance.skip_reason + '</div>';
+                return;
             }
 
             // Check if correct

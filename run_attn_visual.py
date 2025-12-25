@@ -715,6 +715,13 @@ def main():
         help='Threshold for sparse attention storage. Attention values below this threshold will be set to 0. Default: 0.001 (0.1%%)'
     )
 
+    parser.add_argument(
+        '--max-tokens',
+        type=int,
+        default=20000,
+        help='Maximum token length for prompt. Instances with longer prompts will be skipped. Default: 20000'
+    )
+
     args = parser.parse_args()
 
     # Phase 1: Load data
@@ -766,6 +773,7 @@ def main():
                         'question': result['question'],
                         'ground_truth': result['ground_truth'],
                         'is_correct': False,
+                        'skip_reason': None,
                         'tokens': [],
                         'attention_maps': []
                     }
@@ -789,23 +797,64 @@ def main():
                 )
                 print(f"  Built prompt length: {len(prompt)}")
 
+                # Check prompt token length before processing
+                inputs = extractor.tokenize(prompt)
+                num_tokens = inputs['input_ids'].shape[1]
+                print(f"  Prompt tokens: {num_tokens}")
+
+                if num_tokens > args.max_tokens:
+                    print(f"  Skipping: prompt too long ({num_tokens} > {args.max_tokens})")
+                    instance = {
+                        'question': result['question'],
+                        'ground_truth': result['ground_truth'],
+                        'is_correct': True,
+                        'skip_reason': f'too_long (tokens: {num_tokens}, max: {args.max_tokens})',
+                        'tokens': [],
+                        'attention_maps': []
+                    }
+                    jsonl_file.write(json.dumps(instance, ensure_ascii=False) + '\n')
+                    jsonl_file.flush()
+                    continue
+
                 # Phase 4: Extract attention (already in sparse format)
-                tokens, attention_maps = extractor.extract_last_token_attention(prompt)
-                print(f"  Extracted {len(attention_maps)} layers, {len(tokens)} tokens")
+                try:
+                    tokens, attention_maps = extractor.extract_last_token_attention(prompt)
+                    print(f"  Extracted {len(attention_maps)} layers, {len(tokens)} tokens")
 
-                # Calculate sparsity (attention_maps is already sparse)
-                total_values = len(attention_maps) * len(tokens)  # layers * tokens
-                sparse_values = sum(len(attn) for attn in attention_maps)  # non-zero values
-                sparsity = (1 - sparse_values / total_values) * 100 if total_values > 0 else 0
-                print(f"  Sparsity: {sparsity:.1f}% ({sparse_values}/{total_values} values retained)")
+                    # Calculate sparsity (attention_maps is already sparse)
+                    total_values = len(attention_maps) * len(tokens)  # layers * tokens
+                    sparse_values = sum(len(attn) for attn in attention_maps)  # non-zero values
+                    sparsity = (1 - sparse_values / total_values) * 100 if total_values > 0 else 0
+                    print(f"  Sparsity: {sparsity:.1f}% ({sparse_values}/{total_values} values retained)")
 
-                instance = {
-                    'question': result['question'],
-                    'ground_truth': result['ground_truth'],
-                    'is_correct': True,
-                    'tokens': tokens,
-                    'attention_maps': attention_maps  # Already sparse
-                }
+                    instance = {
+                        'question': result['question'],
+                        'ground_truth': result['ground_truth'],
+                        'is_correct': True,
+                        'skip_reason': None,
+                        'tokens': tokens,
+                        'attention_maps': attention_maps  # Already sparse
+                    }
+                except RuntimeError as e:
+                    # Catch CUDA OOM errors
+                    if "out of memory" in str(e).lower() or "oom" in str(e).lower():
+                        print(f"  Skipping: OOM error during attention extraction")
+                        print(f"  Error: {str(e)}")
+                        instance = {
+                            'question': result['question'],
+                            'ground_truth': result['ground_truth'],
+                            'is_correct': True,
+                            'skip_reason': f'oom (tokens: {num_tokens})',
+                            'tokens': [],
+                            'attention_maps': []
+                        }
+                        # Clear CUDA cache after OOM
+                        import torch
+                        if extractor.device == "cuda":
+                            torch.cuda.empty_cache()
+                    else:
+                        # Re-raise if not OOM error
+                        raise
 
                 # Write to JSONL immediately
                 jsonl_file.write(json.dumps(instance, ensure_ascii=False) + '\n')
