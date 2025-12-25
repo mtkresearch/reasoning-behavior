@@ -108,5 +108,6 @@
   "shuffle('line'),truncate('after_line',r=0.2),answer('retrieval')": "3bc94e76",
   "mask('alphabet',mask_char=' '),replace('\\s+',replacement=' '),random('number'),answer('retrieval')": "28e4325d",
   "shuffle('line'),answer('retrieval')": "4f44ad3a",
-  "mask('alphabet',mask_char=' '),replace('\\s+',replacement=' '),truncate('answer'),answer('retrieval')": "5221be9e"
+  "mask('alphabet',mask_char=' '),replace('\\s+',replacement=' '),truncate('answer'),answer('retrieval')": "5221be9e",
+  "answer('retrieval')": "9c3cc7e6"
 }
