@@ -718,8 +718,8 @@ def main():
     parser.add_argument(
         '--max-tokens',
         type=int,
-        default=20000,
-        help='Maximum token length for prompt. Instances with longer prompts will be skipped. Default: 20000'
+        default=16000,
+        help='Maximum token length for prompt. Instances with longer prompts will be skipped. Default: 16000'
     )
 
     args = parser.parse_args()
