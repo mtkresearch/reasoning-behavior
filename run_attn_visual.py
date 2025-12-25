@@ -61,10 +61,28 @@ Usage:
         --quantization 4bit \\
         --sparse-threshold 0.02
 
+    # With Flash Attention (memory-efficient for long sequences)
+    python run_attn_visual.py \\
+        --model Qwen/Qwen2.5-7B-Instruct \\
+        --template gpt-oss \\
+        --results exp/cdad7f13/results.json \\
+        --flash-attn
+
+    # Combined: Flash Attention + quantization + custom sparse threshold
+    python run_attn_visual.py \\
+        --model Qwen/Qwen2.5-7B-Instruct \\
+        --template gpt-oss \\
+        --results exp/cdad7f13/results.json \\
+        --flash-attn \\
+        --quantization 4bit \\
+        --sparse-threshold 0.02
+
 Notes:
     - Pre-quantized models (e.g., gpt-oss) will automatically be detected
     - For pre-quantized models, the --quantization flag will be ignored
     - Use --quantization only for non-quantized models to reduce memory usage
+    - Flash Attention requires: pip install flash-attn --no-build-isolation
+    - Flash Attention significantly reduces memory usage for long sequences (O(n) vs O(n²))
 
 Output:
     - attn_data.js: JavaScript data file containing attention maps
@@ -273,7 +291,7 @@ class PromptBuilder:
 class AttentionExtractor:
     """Extract and process attention maps from model"""
 
-    def __init__(self, model_name: str, quantization: Optional[str] = None, sparse_threshold: float = 0.01):
+    def __init__(self, model_name: str, quantization: Optional[str] = None, sparse_threshold: float = 0.01, use_flash_attn: bool = False):
         """
         Load model and tokenizer
 
@@ -284,6 +302,8 @@ class AttentionExtractor:
             sparse_threshold: Threshold for sparse attention storage.
                             Attention values below this threshold will be set to 0.
                             Default: 0.01 (1%)
+            use_flash_attn: Enable Flash Attention 2 for memory-efficient attention computation.
+                           Requires flash-attn package and CUDA. (default: False)
         """
         import torch
         from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
@@ -291,8 +311,23 @@ class AttentionExtractor:
         self.model_name = model_name
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.sparse_threshold = sparse_threshold
+        self.use_flash_attn = use_flash_attn
         print('device:', self.device)
         print(f'sparse_threshold: {self.sparse_threshold}')
+
+        # Flash Attention validation
+        if use_flash_attn:
+            if self.device != "cuda":
+                print("Warning: Flash Attention requires CUDA. Disabling Flash Attention.")
+                self.use_flash_attn = False
+            else:
+                try:
+                    import flash_attn
+                    print(f"Flash Attention 2 enabled (flash-attn version: {flash_attn.__version__})")
+                except ImportError:
+                    print("Warning: flash-attn package not installed. Disabling Flash Attention.")
+                    print("Install with: pip install flash-attn --no-build-isolation")
+                    self.use_flash_attn = False
 
         # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -311,6 +346,10 @@ class AttentionExtractor:
         if self.device == "cuda":
             model_kwargs["device_map"] = "auto"
             model_kwargs["low_cpu_mem_usage"] = True
+
+        # Add Flash Attention if enabled
+        if self.use_flash_attn:
+            model_kwargs["attn_implementation"] = "flash_attention_2"
 
         # Display and handle quantization
         print("=" * 60)
@@ -350,6 +389,15 @@ class AttentionExtractor:
             print(f"  Status: None (full precision)")
             print(f"  Precision: {model_kwargs['torch_dtype']}")
         print("=" * 60)
+
+        # Display Flash Attention status
+        if self.use_flash_attn:
+            print("=" * 60)
+            print("Flash Attention Configuration:")
+            print(f"  Status: Enabled")
+            print(f"  Implementation: flash_attention_2")
+            print(f"  Benefits: Reduced memory usage, faster computation")
+            print("=" * 60)
 
         # Load model
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -715,6 +763,12 @@ def main():
         help='Threshold for sparse attention storage. Attention values below this threshold will be set to 0. Default: 0.001 (0.1%%)'
     )
 
+    parser.add_argument(
+        '--flash-attn',
+        action='store_true',
+        help='Enable Flash Attention 2 for memory-efficient attention computation. Requires flash-attn package and CUDA.'
+    )
+
     args = parser.parse_args()
 
     # Phase 1: Load data
@@ -754,7 +808,8 @@ def main():
         with AttentionExtractor(
             args.model,
             quantization=args.quantization,
-            sparse_threshold=args.sparse_threshold
+            sparse_threshold=args.sparse_threshold,
+            use_flash_attn=args.flash_attn
         ) as extractor:
             for i, result in enumerate(valid_results):
                 print(f"\nProcessing instance {i}...")
