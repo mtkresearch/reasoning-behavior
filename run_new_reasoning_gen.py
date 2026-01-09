@@ -337,6 +337,235 @@ class EndTokenStoppingCriteria(StoppingCriteria):
 
 
 # =============================================================================
+# Utility Functions for Attention Mask Mode
+# =============================================================================
+
+def get_newline_token_id(tokenizer) -> int:
+    """
+    Get the token ID for newline character in the tokenizer.
+
+    Args:
+        tokenizer: HuggingFace tokenizer instance
+
+    Returns:
+        Token ID of newline character
+    """
+    encoded = tokenizer.encode('\n', add_special_tokens=False)
+    if encoded:
+        return encoded[0]
+    else:
+        # Fallback: some tokenizers might handle newline differently
+        logger.warning("Could not encode newline, trying alternative approach")
+        return tokenizer.encode('\n')[0] if tokenizer.encode('\n') else -1
+
+
+def find_newline_positions(input_ids: torch.Tensor, tokenizer) -> list:
+    """
+    Find positions of newline tokens in input_ids.
+
+    Args:
+        input_ids: Token IDs tensor (1D or 2D)
+        tokenizer: HuggingFace tokenizer instance
+
+    Returns:
+        List of positions where newline tokens appear
+    """
+    newline_id = get_newline_token_id(tokenizer)
+
+    if newline_id < 0:
+        return []
+
+    # Handle both 1D and 2D tensors
+    if input_ids.dim() == 2:
+        input_ids = input_ids[0]
+
+    positions = [int(i) for i, token_id in enumerate(input_ids)
+                 if int(token_id) == newline_id]
+
+    return positions
+
+
+def get_sentence_for_token(token_pos: int, newline_positions: list) -> int:
+    """
+    Get the sentence ID for a given token position.
+
+    Sentences are separated by newline tokens.
+    Sentence ID is determined by the number of newlines before this position.
+
+    Args:
+        token_pos: Position of the token
+        newline_positions: List of positions where newlines appear (sorted)
+
+    Returns:
+        Sentence ID (0, 1, 2, ...)
+    """
+    sentence_id = 0
+    for newline_pos in newline_positions:
+        if newline_pos < token_pos:
+            sentence_id += 1
+        else:
+            break
+    return sentence_id
+
+
+def are_in_different_sentences(query_pos: int, key_pos: int,
+                              newline_positions: list) -> bool:
+    """
+    Check if two token positions are in different sentences.
+
+    Args:
+        query_pos: Position of query token
+        key_pos: Position of key token
+        newline_positions: List of newline positions (sorted)
+
+    Returns:
+        True if in different sentences, False if in same sentence
+    """
+    query_sentence = get_sentence_for_token(query_pos, newline_positions)
+    key_sentence = get_sentence_for_token(key_pos, newline_positions)
+    return query_sentence != key_sentence
+
+
+def identify_letter_only_token_positions(input_ids: torch.Tensor, tokenizer) -> list:
+    """
+    Identify positions of purely alphabetic tokens in input_ids.
+
+    Args:
+        input_ids: Token IDs tensor (1D or 2D)
+        tokenizer: HuggingFace tokenizer instance
+
+    Returns:
+        List of positions containing purely alphabetic tokens
+    """
+    # Handle both 1D and 2D tensors
+    if input_ids.dim() == 2:
+        input_ids = input_ids[0]
+
+    letter_positions = []
+    for pos, token_id in enumerate(input_ids):
+        token_text = tokenizer.decode([int(token_id)])
+        token_stripped = token_text.strip()
+
+        # Check if purely alphabetic
+        if token_stripped and re.match(r'^[A-Za-z]+$', token_stripped):
+            letter_positions.append(int(pos))
+
+    return letter_positions
+
+
+def mask_cross_sentence_letter_attention(
+    attn_weights: torch.Tensor,
+    input_ids: torch.Tensor,
+    tokenizer,
+    letter_token_ids: set,
+    newline_token_id: int
+) -> torch.Tensor:
+    """
+    Mask attention weights for cross-sentence purely alphabetic tokens to 0.
+
+    Args:
+        attn_weights: Attention weights (batch, heads, seq_query, seq_key)
+        input_ids: Input token IDs
+        tokenizer: HuggingFace tokenizer
+        letter_token_ids: Set of token IDs that are purely alphabetic
+        newline_token_id: Token ID for newline
+
+    Returns:
+        Modified attention weights with cross-sentence letter tokens masked to 0
+    """
+    attn_weights = attn_weights.clone()
+
+    # Handle 2D input_ids
+    if input_ids.dim() == 2:
+        input_ids = input_ids[0]
+
+    # Find newline positions
+    newline_positions = [int(i) for i, token_id in enumerate(input_ids)
+                         if int(token_id) == newline_token_id]
+
+    # Get letter positions
+    letter_positions = []
+    for pos, token_id in enumerate(input_ids):
+        if int(token_id) in letter_token_ids:
+            letter_positions.append(int(pos))
+
+    # Mask attention for cross-sentence letter tokens
+    for key_pos in letter_positions:
+        # Check if this key position is a letter token
+        key_sentence = get_sentence_for_token(key_pos, newline_positions)
+
+        # For each query position
+        for query_pos in range(attn_weights.shape[-2]):
+            query_sentence = get_sentence_for_token(query_pos, newline_positions)
+
+            # If in different sentences, mask to 0
+            if query_sentence != key_sentence:
+                attn_weights[:, :, query_pos, key_pos] = 0.0
+
+    return attn_weights
+
+
+class CrossSentenceLetterMaskingHook:
+    """
+    Forward hook to mask cross-sentence purely alphabetic token attention.
+
+    This hook is registered on attention layers to modify attention weights
+    during forward pass.
+    """
+
+    def __init__(self, tokenizer, input_ids: torch.Tensor):
+        """
+        Initialize the hook.
+
+        Args:
+            tokenizer: HuggingFace tokenizer
+            input_ids: Input token IDs
+        """
+        self.tokenizer = tokenizer
+        self.input_ids = input_ids
+
+        # Pre-compute newline positions
+        self.newline_token_id = get_newline_token_id(tokenizer)
+        self.newline_positions = find_newline_positions(input_ids, tokenizer)
+
+        # Pre-compute letter-only token IDs
+        self.letter_only_ids = LetterOnlyTokenFilter(tokenizer).letter_only_ids
+
+    def __call__(self, module, input, output):
+        """
+        Modify attention weights during forward pass.
+
+        Args:
+            module: The attention module
+            input: Input to the module (unused)
+            output: Output from the module (contains attention weights)
+
+        Returns:
+            Modified output with masked attention weights
+        """
+        if not isinstance(output, tuple) or len(output) == 0:
+            return output
+
+        # Get attention weights (usually first element of output)
+        attn_weights = output[0]
+
+        if not isinstance(attn_weights, torch.Tensor):
+            return output
+
+        # Apply masking
+        masked_attn = mask_cross_sentence_letter_attention(
+            attn_weights,
+            self.input_ids,
+            self.tokenizer,
+            self.letter_only_ids,
+            self.newline_token_id
+        )
+
+        # Return modified output
+        return (masked_attn,) + output[1:]
+
+
+# =============================================================================
 # Model Loading
 # =============================================================================
 
@@ -447,13 +676,18 @@ def generate_reasoning(
     tokenizer: AutoTokenizer,
     question: str,
     sys_prompt: str,
-    max_tokens: int = MAX_REASONING_TOKENS
+    max_tokens: int = MAX_REASONING_TOKENS,
+    mode: str = "token-filter"
 ) -> str:
     """
-    Generate reasoning with token filtering.
+    Generate reasoning with token filtering or attention masking.
 
-    Stage 1: Generate reasoning while forbidding purely alphabetic tokens.
+    Stage 1: Generate reasoning with optional constraints on purely alphabetic tokens.
     Stop when <|end|> is detected or max_tokens is reached.
+
+    Modes:
+    - "token-filter": Forbid generation of purely alphabetic tokens (original mode)
+    - "attention-mask": Allow generation but mask cross-sentence alphabetic tokens in attention
 
     Args:
         model: Loaded model
@@ -461,10 +695,17 @@ def generate_reasoning(
         question: Problem question
         sys_prompt: System prompt
         max_tokens: Maximum tokens for reasoning (default: 2000)
+        mode: Generation mode - "token-filter" or "attention-mask" (default: "token-filter")
 
     Returns:
         Generated reasoning text (without <|end|> token)
+
+    Raises:
+        ValueError: If mode is not recognized
     """
+    if mode not in ("token-filter", "attention-mask"):
+        raise ValueError(f"Invalid mode: {mode}. Must be 'token-filter' or 'attention-mask'")
+
     # Build prompt
     prompt = build_reasoning_prompt(question, sys_prompt)
 
@@ -473,15 +714,23 @@ def generate_reasoning(
     input_ids = inputs['input_ids']
 
     logger.debug(f"Reasoning prompt length: {len(input_ids[0])} tokens")
+    logger.info(f"Using generation mode: {mode}")
 
-    # Prepare logits processor and stopping criteria
-    logits_processor = LogitsProcessorList([
-        LetterOnlyTokenFilter(tokenizer)
-    ])
-
+    # Prepare stopping criteria (same for both modes)
     stopping_criteria = StoppingCriteriaList([
         EndTokenStoppingCriteria(tokenizer, '<|end|>')
     ])
+
+    # Prepare logits processor based on mode
+    if mode == "token-filter":
+        logits_processor = LogitsProcessorList([
+            LetterOnlyTokenFilter(tokenizer)
+        ])
+        attention_hooks = []
+    elif mode == "attention-mask":
+        logits_processor = LogitsProcessorList([])
+        # Prepare attention masking hooks
+        attention_hooks = _prepare_attention_hooks(model, tokenizer, input_ids)
 
     # Generate
     try:
@@ -518,6 +767,73 @@ def generate_reasoning(
             raise
         else:
             raise
+    finally:
+        # Remove hooks if they were registered
+        for hook in attention_hooks:
+            hook.remove()
+
+
+def _prepare_attention_hooks(model, tokenizer, input_ids: torch.Tensor) -> list:
+    """
+    Register attention masking hooks on all attention layers.
+
+    Args:
+        model: The model
+        tokenizer: The tokenizer
+        input_ids: Input token IDs
+
+    Returns:
+        List of hook handles for later removal
+    """
+    hooks = []
+
+    try:
+        # Get attention modules
+        attn_modules = _get_attention_modules(model)
+
+        # Register hooks on each attention module
+        for attn_module in attn_modules:
+            hook_fn = CrossSentenceLetterMaskingHook(tokenizer, input_ids)
+            handle = attn_module.register_forward_hook(hook_fn)
+            hooks.append(handle)
+
+        logger.info(f"Registered {len(hooks)} attention masking hooks")
+
+    except Exception as e:
+        logger.warning(f"Failed to register attention hooks: {e}")
+        # Remove any partially registered hooks
+        for hook in hooks:
+            hook.remove()
+        hooks = []
+
+    return hooks
+
+
+def _get_attention_modules(model):
+    """
+    Get attention modules from the model for hook registration.
+
+    Args:
+        model: The model
+
+    Returns:
+        List of attention modules
+    """
+    modules = []
+
+    # Try different model architectures
+    if hasattr(model, 'model') and hasattr(model.model, 'layers'):
+        # Qwen, LLaMA, Mistral, etc.
+        modules = [layer.self_attn for layer in model.model.layers]
+    elif hasattr(model, 'transformer') and hasattr(model.transformer, 'h'):
+        # GPT-2, GPT-Neo style
+        modules = [layer.attn for layer in model.transformer.h]
+    elif hasattr(model, 'model') and hasattr(model.model, 'decoder'):
+        # OPT style
+        if hasattr(model.model.decoder, 'layers'):
+            modules = [layer.self_attn for layer in model.model.decoder.layers]
+
+    return modules
 
 
 def generate_answer(
@@ -594,7 +910,8 @@ def process_single_item(
     model: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
     item: Dict,
-    max_reasoning_tokens: int = MAX_REASONING_TOKENS
+    max_reasoning_tokens: int = MAX_REASONING_TOKENS,
+    mode: str = "token-filter"
 ) -> Dict:
     """
     Process a single data item through both stages.
@@ -604,6 +921,7 @@ def process_single_item(
         tokenizer: Tokenizer
         item: Single item from input data
         max_reasoning_tokens: Maximum tokens for reasoning
+        mode: Generation mode ('token-filter' or 'attention-mask')
 
     Returns:
         Result dictionary with all fields
@@ -619,7 +937,8 @@ def process_single_item(
     try:
         reasoning = generate_reasoning(
             model, tokenizer, question, sys_prompt,
-            max_tokens=max_reasoning_tokens
+            max_tokens=max_reasoning_tokens,
+            mode=mode
         )
     except Exception as e:
         logger.error(f"Failed to generate reasoning for {unique_id}: {e}")
@@ -743,6 +1062,14 @@ def main():
         help='Logging level'
     )
 
+    parser.add_argument(
+        '--mode',
+        type=str,
+        default='token-filter',
+        choices=['token-filter', 'attention-mask'],
+        help='Generation mode: token-filter (ban pure alphabet tokens) or attention-mask (mask cross-sentence attention)'
+    )
+
     args = parser.parse_args()
 
     # Set logging level
@@ -755,6 +1082,7 @@ def main():
     logger.info(f"Output: {args.output_path}")
     logger.info(f"Model:  {args.model_path}")
     logger.info(f"Device: {args.device}")
+    logger.info(f"Mode:   {args.mode}")
     logger.info(f"Max reasoning tokens: {args.max_reasoning_tokens}")
 
     # Load model
@@ -777,7 +1105,8 @@ def main():
         try:
             result = process_single_item(
                 model, tokenizer, item,
-                max_reasoning_tokens=args.max_reasoning_tokens
+                max_reasoning_tokens=args.max_reasoning_tokens,
+                mode=args.mode
             )
             results.append(result)
         except Exception as e:
