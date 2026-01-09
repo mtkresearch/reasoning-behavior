@@ -109,5 +109,9 @@
   "mask('alphabet',mask_char=' '),replace('\\s+',replacement=' '),random('number'),answer('retrieval')": "28e4325d",
   "shuffle('line'),answer('retrieval')": "4f44ad3a",
   "mask('alphabet',mask_char=' '),replace('\\s+',replacement=' '),truncate('answer'),answer('retrieval')": "5221be9e",
-  "answer('retrieval')": "9c3cc7e6"
+  "answer('retrieval')": "9c3cc7e6",
+  "shuffle('in-line-word'),answer('retrieval')": "5fad1139",
+  "shuffle('in-line-word'),shuffle('line'),answer('retrieval')": "e3b4e537",
+  "shuffle('in-line-word'),shuffle('line'),mask('alphabet',mask_char=' '),replace('\\s+',replacement=' '),answer('retrieval')": "22f3addb",
+  "shuffle('in-line-word'),shuffle('line'),mask('alphabet',mask_char=' '),replace(' +',replacement=' '),answer('retrieval')": "98388cdf"
 }
