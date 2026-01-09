@@ -113,5 +113,11 @@
   "shuffle('in-line-word'),answer('retrieval')": "5fad1139",
   "shuffle('in-line-word'),shuffle('line'),answer('retrieval')": "e3b4e537",
   "shuffle('in-line-word'),shuffle('line'),mask('alphabet',mask_char=' '),replace('\\s+',replacement=' '),answer('retrieval')": "22f3addb",
-  "shuffle('in-line-word'),shuffle('line'),mask('alphabet',mask_char=' '),replace(' +',replacement=' '),answer('retrieval')": "98388cdf"
+  "shuffle('in-line-word'),shuffle('line'),mask('alphabet',mask_char=' '),replace(' +',replacement=' '),answer('retrieval')": "98388cdf",
+  "mask('number'),shuffle('line')": "a7cc8ef6",
+  "mask('n-lines')": "078b82bb",
+  "truncate('last_ratio',ratio=0.3)": "632ddd95",
+  "truncate('last_ratio',ratio=0.3),mask('number-advance'),shuffle('token')": "db1749dc",
+  "insert('fix',sentence='Answer: 123.',count=5)": "84043bb3",
+  "insert('fix',sentence='Noise',count=3),shuffle('line')": "fd12ece4"
 }
