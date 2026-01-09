@@ -1010,6 +1010,52 @@ def shuffle_reasoning_words(reasoning: str, seed: int = None) -> str:
     return ' '.join(words)
 
 
+def shuffle_words_in_line(reasoning: str, seed: int = None) -> str:
+    """
+    Shuffle words within each line independently
+
+    This function preserves line boundaries while shuffling words within each line.
+    Each line's words are shuffled independently with the same seed for reproducibility.
+
+    Args:
+        reasoning: Original reasoning content
+        seed: Random seed for reproducibility (optional)
+
+    Returns:
+        Shuffled reasoning content with words shuffled within each line
+
+    Examples:
+        >>> shuffle_words_in_line("The quick brown\\nJumps over lazy", seed=42)
+        "brown quick The\\nlazy Jumps over"  # Each line shuffled independently
+    """
+    if not reasoning:
+        return ""
+
+    # Split by newline to get lines
+    lines = reasoning.split('\n')
+
+    # Shuffle words in each line independently
+    shuffled_lines = []
+    for i, line in enumerate(lines):
+        if not line.strip():  # Empty or whitespace-only line
+            shuffled_lines.append(line)
+            continue
+
+        # Set seed for this line (combining global seed with line index for independence)
+        if seed is not None:
+            random.seed(seed + i)
+
+        # Split line into words and shuffle
+        words = line.split()
+        random.shuffle(words)
+
+        # Rejoin words with single space
+        shuffled_lines.append(' '.join(words))
+
+    # Rejoin lines with newline
+    return '\n'.join(shuffled_lines)
+
+
 def shuffle_reasoning_tokens(reasoning: str, tokenizer_model: str = None, model_type: str = None, seed: int = None) -> str:
     """
     Shuffle reasoning content token-by-token using the model's tokenizer
@@ -1073,7 +1119,7 @@ def shuffle_reasoning(reasoning: str, mode: str = 'line', seed: int = None, **kw
 
     Args:
         reasoning: Original reasoning content
-        mode: Type of shuffle - 'line', 'word', or 'token'
+        mode: Type of shuffle - 'line', 'word', 'in-line-word', or 'token'
         seed: Random seed for reproducibility (optional)
         **kwargs: Additional arguments (e.g., tokenizer_model or model_type for token mode)
 
@@ -1081,18 +1127,20 @@ def shuffle_reasoning(reasoning: str, mode: str = 'line', seed: int = None, **kw
         Shuffled reasoning content
 
     Raises:
-        ValueError: If mode is not one of 'line', 'word', or 'token'
+        ValueError: If mode is not one of 'line', 'word', 'in-line-word', or 'token'
     """
     if mode == 'line':
         return shuffle_lines(reasoning, seed=seed)
     elif mode == 'word':
         return shuffle_reasoning_words(reasoning, seed=seed)
+    elif mode == 'in-line-word':
+        return shuffle_words_in_line(reasoning, seed=seed)
     elif mode == 'token':
         tokenizer_model = kwargs.get('tokenizer_model')
         model_type = kwargs.get('model_type')
         return shuffle_reasoning_tokens(reasoning, tokenizer_model=tokenizer_model, model_type=model_type, seed=seed)
     else:
-        raise ValueError(f"Invalid shuffle mode: {mode}. Must be 'line', 'word', or 'token'")
+        raise ValueError(f"Invalid shuffle mode: {mode}. Must be 'line', 'word', 'in-line-word', or 'token'")
 
 
 # =============================================================================

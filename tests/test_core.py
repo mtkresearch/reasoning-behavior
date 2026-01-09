@@ -310,6 +310,104 @@ class TestShuffleReasoningTokens:
             shuffle_reasoning_tokens(reasoning)
 
 
+class TestShuffleWordsInLine:
+    """Tests for shuffle_words_in_line() - shuffle words within each line"""
+
+    def test_shuffle_words_in_line_basic(self):
+        """Test basic in-line word shuffling"""
+        from core import shuffle_words_in_line
+
+        reasoning = "The quick brown fox\nJumps over the lazy dog"
+        result = shuffle_words_in_line(reasoning, seed=42)
+
+        # Should have same number of lines
+        assert len(result.split('\n')) == len(reasoning.split('\n'))
+
+        # Each line should have same words but potentially different order
+        result_lines = result.split('\n')
+        original_lines = reasoning.split('\n')
+
+        for result_line, original_line in zip(result_lines, original_lines):
+            assert set(result_line.split()) == set(original_line.split())
+
+    def test_shuffle_words_in_line_with_seed_reproducible(self):
+        """Test that same seed produces same shuffle"""
+        from core import shuffle_words_in_line
+
+        reasoning = "The quick brown fox\nJumps over the lazy dog"
+        result1 = shuffle_words_in_line(reasoning, seed=42)
+        result2 = shuffle_words_in_line(reasoning, seed=42)
+
+        assert result1 == result2
+
+    def test_shuffle_words_in_line_different_seeds(self):
+        """Test that different seeds produce different results"""
+        from core import shuffle_words_in_line
+
+        reasoning = "The quick brown fox jumps over\nThe lazy dog sleeps here"
+        result1 = shuffle_words_in_line(reasoning, seed=42)
+        result2 = shuffle_words_in_line(reasoning, seed=123)
+
+        # With high probability, should be different
+        assert result1 != result2
+
+    def test_shuffle_words_in_line_preserves_line_boundaries(self):
+        """Test that line boundaries are preserved"""
+        from core import shuffle_words_in_line
+
+        reasoning = """Line 1 has these words
+Line 2 has different words
+Line 3 has more words"""
+
+        result = shuffle_words_in_line(reasoning, seed=42)
+        result_lines = result.split('\n')
+
+        # Should have exactly 3 lines
+        assert len(result_lines) == 3
+
+        # Line 1 words should stay in line 1, line 2 in line 2, etc.
+        assert set(result_lines[0].split()) == set("Line 1 has these words".split())
+        assert set(result_lines[1].split()) == set("Line 2 has different words".split())
+        assert set(result_lines[2].split()) == set("Line 3 has more words".split())
+
+    def test_shuffle_words_in_line_empty_string(self):
+        """Test empty string handling"""
+        from core import shuffle_words_in_line
+
+        result = shuffle_words_in_line("", seed=42)
+        assert result == ""
+
+    def test_shuffle_words_in_line_single_line(self):
+        """Test with single line"""
+        from core import shuffle_words_in_line
+
+        reasoning = "The quick brown fox"
+        result = shuffle_words_in_line(reasoning, seed=42)
+
+        # Should have same words
+        assert set(result.split()) == set(reasoning.split())
+
+    def test_shuffle_words_in_line_single_word_per_line(self):
+        """Test with single word per line"""
+        from core import shuffle_words_in_line
+
+        reasoning = "Hello\nWorld\nTest"
+        result = shuffle_words_in_line(reasoning, seed=42)
+
+        # Should remain unchanged (each line has only 1 word)
+        assert result == reasoning
+
+    def test_shuffle_words_in_line_empty_lines_preserved(self):
+        """Test that empty lines are preserved"""
+        from core import shuffle_words_in_line
+
+        reasoning = "Line 1\n\nLine 3\n\nLine 5"
+        result = shuffle_words_in_line(reasoning, seed=42)
+
+        # Should have same number of lines including empty ones
+        assert len(result.split('\n')) == len(reasoning.split('\n'))
+
+
 class TestShuffleReasoningUnified:
     """Tests for unified shuffle_reasoning() interface"""
 
@@ -394,6 +492,24 @@ Line 4"""
         reasoning = "The quick brown fox"
         with pytest.raises(ValueError, match="Either tokenizer_model or model_type must be provided"):
             shuffle_reasoning(reasoning, mode='token', seed=42)
+
+    def test_shuffle_reasoning_in_line_word_mode(self):
+        """Test shuffle_reasoning with mode='in-line-word'"""
+        from core import shuffle_reasoning
+
+        reasoning = """Line 1 has these words
+Line 2 has different words"""
+
+        result = shuffle_reasoning(reasoning, mode='in-line-word', seed=42)
+
+        # Should preserve line boundaries
+        result_lines = result.split('\n')
+        original_lines = reasoning.split('\n')
+        assert len(result_lines) == len(original_lines)
+
+        # Each line should have same words
+        for result_line, original_line in zip(result_lines, original_lines):
+            assert set(result_line.split()) == set(original_line.split())
 
 
 class TestRemoveExactAnswer:

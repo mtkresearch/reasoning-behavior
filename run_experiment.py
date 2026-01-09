@@ -59,7 +59,8 @@ Available Processors
 
    Modes:
    - 'line': Shuffle lines
-   - 'word': Shuffle words
+   - 'word': Shuffle words across entire text
+   - 'in-line-word': Shuffle words within each line independently (preserves line boundaries)
    - 'token': Shuffle tokens (specify tokenizer_model='gpt2' or other)
 
    Optional parameters:
@@ -236,6 +237,12 @@ python mask_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('alphabe
 
 # Example 6: Word-level shuffle with specific seed
 python mask_experiment.py --flow "mask('number'),shuffle('word',seed=42)"
+
+# Example 6a: In-line word shuffle (shuffle words within each line independently)
+python mask_experiment.py --flow "shuffle('in-line-word')"
+
+# Example 6b: Combine in-line word shuffle with masking
+python mask_experiment.py --flow "mask('number'),shuffle('in-line-word',seed=42)"
 
 # Example 7: N-lines masking
 python mask_experiment.py --flow "mask('n-lines',num_prev_lines=2)"
@@ -427,7 +434,7 @@ from core import (
 from pipeline import parse_flow, Pipeline
 
 # Default concurrency (can be overridden by --max_workers)
-DEFAULT_MAX_WORKERS = 10
+DEFAULT_MAX_WORKERS = 2
 # Default max retry (can be overridden by --max_retry)
 DEFAULT_MAX_RETRY = 1
 
