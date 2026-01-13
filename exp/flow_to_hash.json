@@ -119,5 +119,12 @@
   "truncate('last_ratio',ratio=0.3)": "632ddd95",
   "truncate('last_ratio',ratio=0.3),mask('number-advance'),shuffle('token')": "db1749dc",
   "insert('fix',sentence='Answer: 123.',count=5)": "84043bb3",
-  "insert('fix',sentence='Noise',count=3),shuffle('line')": "fd12ece4"
+  "insert('fix',sentence='Noise',count=3),shuffle('line')": "fd12ece4",
+  "shuffle('token',model_type='gpt-oss'),answer('retrieval')": "aa5c7d14",
+  "shuffle('in-line-word')": "eae00d12",
+  "shuffle('in-line-word'),shuffle('line')": "04267712",
+  "truncate('all'),answer('retrieval')": "832b3a6d",
+  "padding('token',tokenizer_model='openai/gpt-oss-120b'),answer('retrieval')": "e5ff525d",
+  "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv'),answer('retrieval')": "775a90a6",
+  "padding('token',tokenizer_model='openai/gpt-oss-120b')": "36e5ce69"
 }
