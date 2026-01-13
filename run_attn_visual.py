@@ -253,8 +253,11 @@ class PromptBuilder:
         if self.template == 'gpt-oss':
             from core import build_gpt_oss_prompt_with_reasoning_prefilled_answer
 
-            # Merge prefill_text and truncated_answer
-            full_answer = f"{prefill_text}{truncated_answer}".strip()
+            # Merge prefill_text and truncated_answer with space
+            if truncated_answer:
+                full_answer = f"{prefill_text} {truncated_answer}".strip()
+            else:
+                full_answer = prefill_text.strip()
 
             # Build prompt with merged answer
             return build_gpt_oss_prompt_with_reasoning_prefilled_answer(

@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
 import time
+from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -27,11 +28,15 @@ class Request:
 
 @dataclass
 class CompletionRequest:
-    prompt: str
+    question: str
+    reasoning: str
+    answer_prefix: str = ""
     model_type: str = 'gpt-oss'
     temperature: Optional[float] = None
     max_tokens: int = 20480
     min_tokens: Optional[int] = None
+    system_prompt: str = "You are a helpful assistant"
+    reasoning_on: bool = True
 
 
 @dataclass
@@ -90,8 +95,12 @@ class LLMClient:
             models = response.json()
             return models['data'][0]['id']
         elif self.mode == 'openrouter':
-            assert model_type == 'gpt-oss'
-            return 'openai/gpt-oss-120b'
+            if model_type == 'gpt-oss':
+                return 'openai/gpt-oss-120b'
+            elif model_type == 'deepseek-v3':
+                return 'deepseek/deepseek-v3.2'
+            else:
+                raise ValueError(f"Unsupported model_type for openrouter: {model_type}")
 
     def _parse_deepseek_reasoning_content(self, content):
         think_count = content.count('</think>')
@@ -108,6 +117,9 @@ class LLMClient:
         elif request.model_type == 'gpt-oss':
             if task == 'chat':
                 extra_body["reasoning"] = {"enabled": request.reasoning_on}
+        elif request.model_type == 'deepseek-v3':
+            if task == 'chat':
+                extra_body["reasoning"] = {"enabled": request.reasoning_on}
         elif request.model_type == 'qwen3':
             pass
         return extra_body
@@ -115,8 +127,73 @@ class LLMClient:
     def _get_provider_preferences(self, request):
         """Get provider preferences for OpenRouter API"""
         if request.model_type == 'gpt-oss':
-            return {'quantizations': ['bf16', 'fp16']}
+            return {'quantizations': ['fp4']}
+        elif request.model_type == 'deepseek-v3':
+            return {'quantizations': ['fp4']}
         return None
+
+    def _apply_completion_template(
+        self,
+        question: str,
+        reasoning: str,
+        answer_prefix: str,
+        model_type: str,
+        system_prompt: str = "You are a helpful assistant",
+        reasoning_on: bool = True
+    ) -> str:
+        """
+        Apply chat template for text completion when using OpenRouter.
+
+        For certain models on OpenRouter, text completion requires applying
+        a chat template to format the prompt correctly.
+
+        Args:
+            question: The question/problem to solve
+            reasoning: The reasoning content to prefill
+            answer_prefix: The answer prefix to continue from
+            model_type: Type of model (e.g., 'gpt-oss', 'deepseek-v3')
+            system_prompt: System instruction (default: "You are a helpful assistant")
+            reasoning_on: Whether to enable reasoning mode (default: True)
+
+        Returns:
+            Formatted prompt with template applied
+        """
+        # Local mode: no template needed, VLLM handles it
+        if self.mode == 'local':
+            raise Exception
+
+        # OpenRouter mode: apply templates for specific models
+        if model_type == 'gpt-oss':
+            # Build system message (based on gpt-oss template)
+            model_identity = "You are ChatGPT, a large language model trained by OpenAI."
+            current_date = datetime.now().strftime("%Y-%m-%d")
+
+            system_message = f"{model_identity}\n"
+            system_message += "Knowledge cutoff: 2024-06\n"
+            system_message += f"Current date: {current_date}\n\n"
+            # Set reasoning effort based on reasoning_on flag
+            reasoning_effort = "high" if reasoning_on else "low"
+            system_message += f"Reasoning: {reasoning_effort}\n\n"
+            system_message += "# Valid channels: analysis, commentary, final. Channel must be included for every message."
+
+            # Build complete prompt with question, reasoning, and answer_prefix
+            template = f"<|start|>system<|message|>{system_message}<|end|>"
+            template += f"<|start|>user<|message|>{question}<|end|>"
+            template += f"<|start|>assistant<|channel|>analysis<|message|>{reasoning}<|end|>"
+            template += f"<|start|>assistant<|channel|>final<|message|>{answer_prefix}"
+            return template
+
+        elif model_type == 'deepseek-v3':
+            # DeepSeek-v3 uses ChatML format
+            template = (
+                f"<|im_start|>system\n{system_prompt}<|im_end|>\n"
+                f"<|im_start|>user\n{question}<|im_end|>\n"
+                f"<|im_start|>assistant\n{reasoning}\n{answer_prefix}"
+            )
+            return template
+
+        # For other models or unknown types
+        raise Exception
 
     def generate(self, request):
         if request.model_type == 'deepseek':
@@ -128,6 +205,12 @@ class LLMClient:
             ]
 
         elif request.model_type == 'gpt-oss':
+            messages = [
+                {"role": "system", "content": request.system_prompt},
+                {"role": "user", "content": request.queries[0]},
+            ]
+
+        elif request.model_type == 'deepseek-v3':
             messages = [
                 {"role": "system", "content": request.system_prompt},
                 {"role": "user", "content": request.queries[0]},
@@ -222,6 +305,11 @@ class LLMClient:
                     reasoning_content = message.get('reasoning_content')
                 content = message.get('content')
 
+            elif request.model_type == 'deepseek-v3':
+                if request.reasoning_on:
+                    reasoning_content = message.get('reasoning_content')
+                content = message.get('content')
+
             elif request.model_type == 'qwen3':
                 if request.reasoning_on:
                     reasoning_content, content = self._parse_deepseek_reasoning_content(message.get('content'))
@@ -232,14 +320,24 @@ class LLMClient:
 
     def complete(self, request: CompletionRequest):
         """Text completion (not chat completion)"""
+        # Apply template to format the prompt
+        formatted_prompt = self._apply_completion_template(
+            question=request.question,
+            reasoning=request.reasoning,
+            answer_prefix=request.answer_prefix,
+            model_type=request.model_type,
+            system_prompt=request.system_prompt,
+            reasoning_on=request.reasoning_on
+        )
+
         payload = {
             'model': self._get_model(request.model_type),
-            'prompt': request.prompt,
+            'prompt': formatted_prompt,
             'temperature': request.temperature,
             'max_tokens': request.max_tokens,
         }
         if DEBUG:
-            print('prompt:', request.prompt)
+            print('prompt:', formatted_prompt)
 
         extra_body = self._get_extra_body(request, task='completion')
         if extra_body:

@@ -30,8 +30,6 @@ from llm_client import LLMClient, Task, Request, CompletionRequest
 from logger_config import setup_logger
 from core import (
     parse_yes_no_response,
-    build_gpt_oss_prompt_with_reasoning,
-    build_gpt_oss_prompt_with_reasoning_prefilled_answer,
     GRADING_PROMPT
 )
 from run_experiment import (
@@ -271,22 +269,13 @@ def prepare_answer_generation_task(result: Dict, model_type: str) -> Task:
     reconstructed_reasoning = result['reconstructed_reasoning']
 
     # Check if answer_prefill is present (indicates answer retrieval mode)
-    use_answer_prefill = 'answer_prefill' in result
-    answer_prefill = result.get('answer_prefill', None)
+    answer_prefix = result.get('answer_prefill', '')
 
-    # Build prompt with reconstructed reasoning
-    if use_answer_prefill:
-        prompt = build_gpt_oss_prompt_with_reasoning_prefilled_answer(
-            question,
-            reconstructed_reasoning,
-            prefill_text=answer_prefill
-        )
-    else:
-        prompt = build_gpt_oss_prompt_with_reasoning(question, reconstructed_reasoning)
-
-    # Create CompletionRequest
+    # Create CompletionRequest (template will be applied by LLMClient)
     request = CompletionRequest(
-        prompt=prompt,
+        question=question,
+        reasoning=reconstructed_reasoning,
+        answer_prefix=answer_prefix,
         model_type=model_type,
         temperature=0.5,
         max_tokens=5000
@@ -301,8 +290,8 @@ def prepare_answer_generation_task(result: Dict, model_type: str) -> Task:
     }
 
     # Add answer_prefill to metadata if present
-    if use_answer_prefill:
-        metadata['answer_prefill'] = answer_prefill
+    if answer_prefix:
+        metadata['answer_prefill'] = answer_prefix
 
     task = Task(
         index=result['question_id'],

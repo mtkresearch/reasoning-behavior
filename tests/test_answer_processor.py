@@ -194,9 +194,10 @@ class TestAnswerProcessorIntegration:
         assert 'answer_prefill' in task.metadata
         assert task.metadata['answer_prefill'] == "Thus, the answer is"
 
-        # Prompt should use prefilled answer
-        prompt = task.request.prompt
-        assert '<|channel|>final<|message|>Thus, the answer is' in prompt
+        # CompletionRequest should use prefilled answer
+        assert task.request.answer_prefix == "Thus, the answer is"
+        assert task.request.question == 'What is 2 + 2?'
+        assert 'Calculate' in task.request.reasoning
 
     def test_prepare_task_without_answer_processor(self):
         """Test that prepare_task works normally without answer processor"""
@@ -215,7 +216,7 @@ class TestAnswerProcessorIntegration:
         # Task metadata should NOT contain answer_prefill
         assert 'answer_prefill' not in task.metadata
 
-        # Prompt should use standard format (ends with final channel tag, no prefill)
-        prompt = task.request.prompt
-        assert prompt.endswith('<|channel|>final<|message|>')
-        assert '<|channel|>final<|message|>Thus, the answer is' not in prompt
+        # CompletionRequest should use empty answer_prefix (no prefill)
+        assert task.request.answer_prefix == ""
+        assert task.request.question == 'What is 3 × 3?'
+        assert 'Multiply' in task.request.reasoning

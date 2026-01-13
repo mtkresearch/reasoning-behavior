@@ -380,8 +380,10 @@ class TestAnswerRetrieval:
 
         task = prepare_answer_generation_task(result, model_type='gpt-oss')
 
-        # Should use CompletionRequest (for prefilled prompts)
-        assert hasattr(task.request, 'prompt')
+        # Should use CompletionRequest with answer_prefix
+        assert task.request.answer_prefix == 'Thus, the answer is'
+        assert task.request.question == 'What is 2+2?'
+        assert task.request.reasoning == 'We need to add 2 + 2 = 4'
         # Metadata should track answer_prefill
         assert 'answer_prefill' in task.metadata
         assert task.metadata['answer_prefill'] == 'Thus, the answer is'
@@ -401,8 +403,10 @@ class TestAnswerRetrieval:
 
         task = prepare_answer_generation_task(result, model_type='gpt-oss')
 
-        # Should use CompletionRequest (normal)
-        assert hasattr(task.request, 'prompt')
+        # Should use CompletionRequest with empty answer_prefix
+        assert task.request.answer_prefix == ''
+        assert task.request.question == 'What is 2+2?'
+        assert task.request.reasoning == 'We need to add 2 + 2 = 4'
         # Metadata should not have answer_prefill
         assert 'answer_prefill' not in task.metadata
 

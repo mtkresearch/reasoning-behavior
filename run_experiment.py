@@ -216,6 +216,37 @@ Available Processors
    - Evaluate robustness to numeric variations
    - Test if reasoning patterns are more important than exact numbers
 
+10. padding(mode, position='after', tokenizer_model='gpt2', words_tsv_path=None, seed=42)
+   Replace reasoning text with random tokens or words.
+
+   This processor replaces the original reasoning with random tokens or words sampled from a distribution.
+   The count of replacement tokens/words equals the original reasoning's token/word count.
+
+   Useful for testing if models rely on actual reasoning content or just the presence of
+   reasoning-like text with the same length.
+
+   Modes:
+   - 'token': Replace reasoning with random tokens using a tokenizer (count = original token count)
+   - 'word': Replace reasoning with random words sampled from word frequency distribution (count = original word count)
+
+   Parameters:
+   - position: Where to place the random content - 'after' or 'before' (default: 'after')
+   - tokenizer_model: Model name for tokenizer (for token mode, default: 'gpt2')
+   - words_tsv_path: Path to words.tsv file (required for word mode)
+   - seed: Random seed for reproducibility (default: 42)
+
+   Examples:
+   - padding('token') - Replace reasoning with random tokens (count = original token count) using gpt2 tokenizer
+   - padding('token', tokenizer_model='gpt2', seed=42) - Custom tokenizer and seed
+   - padding('word', words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv') - Replace reasoning with random words (count = original word count)
+   - padding('word', words_tsv_path='data/words.tsv', position='before') - Place random words before question
+
+   Use cases:
+   - Test if model relies on actual reasoning content vs. just having text of the same length
+   - Evaluate baseline performance with random content replacing reasoning
+   - Compare performance between real reasoning and same-length random noise
+   - Test if reasoning structure matters more than content
+
 -----------------------------------------------------------------------------
 Examples
 -----------------------------------------------------------------------------
@@ -385,6 +416,24 @@ python mask_experiment.py --flow "random('number'),shuffle('line')"
 # Example 38: Randomize digits and mask letters
 python mask_experiment.py --flow "random('number'),mask('alphabet')"
 
+# Example 39: Replace reasoning with random tokens (token mode, count = original token count)
+python mask_experiment.py --flow "padding('token')"
+
+# Example 40: Replace reasoning with random tokens using custom tokenizer (count = original token count)
+python mask_experiment.py --flow "padding('token',tokenizer_model='gpt2',seed=42)"
+
+# Example 41: Replace reasoning with random words (word mode, count = original word count)
+python mask_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv')"
+
+# Example 42: Replace reasoning with random words placed before question (count = original word count)
+python mask_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv',position='before')"
+
+# Example 43: Replace reasoning with random words, then apply masking to the random words
+python mask_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv'),mask('number')"
+
+# Example 44: Replace reasoning with random words, apply masking, then shuffle
+python mask_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv'),mask('number'),shuffle('line')"
+
 -----------------------------------------------------------------------------
 Other Parameters
 -----------------------------------------------------------------------------
@@ -415,8 +464,6 @@ from logger_config import setup_logger
 from core import (
     parse_answer_from_completion,
     parse_yes_no_response,
-    build_gpt_oss_prompt_with_reasoning,
-    build_gpt_oss_prompt_with_reasoning_prefilled_answer,
     GRADING_PROMPT,
     mask_numbers_in_reasoning,
     mask_answer_only_in_reasoning,
@@ -434,7 +481,7 @@ from core import (
 from pipeline import parse_flow, Pipeline
 
 # Default concurrency (can be overridden by --max_workers)
-DEFAULT_MAX_WORKERS = 2
+DEFAULT_MAX_WORKERS = 64
 # Default max retry (can be overridden by --max_retry)
 DEFAULT_MAX_RETRY = 1
 
@@ -716,20 +763,15 @@ def prepare_task(
         processing_metadata = []
         final_question = question
 
-    # Build prompt with processed reasoning
-    # Check if answer_prefill is in context (set by AnswerProcessor)
-    if 'answer_prefill' in context:
-        prompt = build_gpt_oss_prompt_with_reasoning_prefilled_answer(
-            final_question,
-            processed_reasoning,
-            prefill_text=context['answer_prefill']
-        )
-    else:
-        prompt = build_gpt_oss_prompt_with_reasoning(final_question, processed_reasoning)
+    # Build CompletionRequest with processed reasoning
+    # Get answer_prefill from context (set by AnswerProcessor)
+    answer_prefix = context.get('answer_prefill', '')
 
-    # Create CompletionRequest
+    # Create CompletionRequest (template will be applied by LLMClient)
     request = CompletionRequest(
-        prompt=prompt,
+        question=final_question,
+        reasoning=processed_reasoning,
+        answer_prefix=answer_prefix,
         model_type=model_type,
         temperature=0.5,
         max_tokens=5000

@@ -12,6 +12,7 @@ to reasoning text:
 - ReplaceProcessor: Replace text using regular expressions
 - AnswerProcessor: Add prefill text to guide model answer generation
 - RandomProcessor: Randomize digits in reasoning text
+- PaddingProcessor: Add random tokens or words to reasoning text
 """
 
 from abc import ABC, abstractmethod
@@ -1019,5 +1020,137 @@ class RandomProcessor(Processor):
             'input_stats': self.last_input_stats,
             'output_stats': self.last_output_stats
         }
+        metadata.update(self.kwargs)
+        return metadata
+
+
+class PaddingProcessor(Processor):
+    """
+    Processor for replacing reasoning text with random tokens or words
+
+    This processor replaces the original reasoning with random tokens or words sampled
+    from a distribution. The count of replacement tokens/words equals the original
+    reasoning's token/word count.
+
+    Useful for testing if models rely on actual reasoning content or just the presence
+    of reasoning-like text with the same length.
+
+    Supported modes:
+    - 'token': Replace reasoning with random tokens using a tokenizer (count = original token count)
+    - 'word': Replace reasoning with random words sampled from word frequency distribution (count = original word count)
+
+    Note: The position parameter is deprecated and ignored (kept for backward compatibility).
+    """
+
+    def __init__(self, mode: str, position: str = 'after',
+                 tokenizer_model: str = 'gpt2', words_tsv_path: str = None,
+                 seed: int = 42, **kwargs):
+        """
+        Initialize PaddingProcessor
+
+        Args:
+            mode: Padding mode ('token' or 'word')
+            position: [DEPRECATED] This parameter is ignored (kept for backward compatibility)
+            tokenizer_model: Model name for tokenizer (required for token mode, default: 'gpt2')
+            words_tsv_path: Path to words.tsv file (required for word mode)
+            seed: Random seed for reproducibility (default: 42)
+            **kwargs: Additional parameters (reserved for future use)
+        """
+        self.mode = mode
+        self.position = position
+        self.tokenizer_model = tokenizer_model
+        self.words_tsv_path = words_tsv_path
+        self.seed = seed
+        self.kwargs = kwargs
+        self.last_input_stats = None
+        self.last_output_stats = None
+        self.padding_text = None
+        self.padding_count = None  # Will be set during process()
+
+    def process(self, reasoning: str, context: Dict) -> str:
+        """
+        Replace reasoning text with random tokens or words
+
+        The count of replacement tokens/words equals the original reasoning's token/word count.
+
+        Args:
+            reasoning: The reasoning text to be replaced
+            context: Context dictionary (not used in this processor)
+
+        Returns:
+            Random tokens/words with the same count as the original reasoning
+
+        Raises:
+            ValueError: If mode is invalid or required parameters are missing
+        """
+        from core import generate_random_tokens, generate_random_words
+        import os
+
+        # Disable tokenizers parallelism to avoid fork warnings
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+        self.last_input_stats = self._compute_stats(reasoning)
+
+        if self.mode == 'token':
+            # Token mode: count original tokens and generate same number of random tokens
+            from transformers import AutoTokenizer
+
+            tokenizer = AutoTokenizer.from_pretrained(
+                self.tokenizer_model,
+                trust_remote_code=True
+            )
+
+            # Count tokens in original reasoning
+            original_tokens = tokenizer.encode(reasoning, add_special_tokens=False)
+            self.padding_count = len(original_tokens)
+
+            # Generate random tokens with same count
+            self.padding_text = generate_random_tokens(
+                self.padding_count,
+                tokenizer,
+                seed=self.seed
+            )
+
+        elif self.mode == 'word':
+            # Word mode: count original words and generate same number of random words
+            if not self.words_tsv_path:
+                raise ValueError("words_tsv_path is required for word mode")
+
+            # Count words in original reasoning (split by whitespace)
+            original_word_count = len(reasoning.split())
+            self.padding_count = original_word_count
+
+            # Generate random words with same count
+            self.padding_text = generate_random_words(
+                self.padding_count,
+                self.words_tsv_path,
+                seed=self.seed
+            )
+
+        else:
+            raise ValueError(f"Invalid padding mode: {self.mode}. Must be 'token' or 'word'")
+
+        # Replace reasoning with random padding (position parameter is ignored)
+        result = self.padding_text
+
+        self.last_output_stats = self._compute_stats(result)
+        return result
+
+    def get_metadata(self) -> Dict:
+        """Get metadata about the padding operation"""
+        metadata = {
+            'processor': 'padding',
+            'mode': self.mode,
+            'padding_count': self.padding_count,  # Actual count of padded tokens/words
+            'position': self.position,
+            'seed': self.seed,
+            'input_stats': self.last_input_stats,
+            'output_stats': self.last_output_stats,
+            'padding_text_preview': self.padding_text[:100] if self.padding_text else None
+        }
+        if self.mode == 'token':
+            metadata['tokenizer_model'] = self.tokenizer_model
+        elif self.mode == 'word':
+            metadata['words_tsv_path'] = self.words_tsv_path
         metadata.update(self.kwargs)
         return metadata

@@ -15,7 +15,7 @@ import json
 import os
 import re
 import random
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from datetime import datetime
 
 
@@ -1141,6 +1141,175 @@ def shuffle_reasoning(reasoning: str, mode: str = 'line', seed: int = None, **kw
         return shuffle_reasoning_tokens(reasoning, tokenizer_model=tokenizer_model, model_type=model_type, seed=seed)
     else:
         raise ValueError(f"Invalid shuffle mode: {mode}. Must be 'line', 'word', 'in-line-word', or 'token'")
+
+
+# =============================================================================
+# Padding Operations (Random Token/Word Generation)
+# =============================================================================
+
+# Cache for English token IDs per tokenizer
+_ENGLISH_TOKEN_CACHE = {}
+
+# Cache for word frequency data
+_WORD_FREQ_CACHE = None
+
+
+def is_english_token(token_text: str) -> bool:
+    """
+    Check if a token contains only English characters, numbers, spaces, and common punctuation
+
+    Args:
+        token_text: The decoded token text
+
+    Returns:
+        True if token is English-only, False otherwise
+    """
+    import re
+    # Allow English letters, digits, spaces, and common punctuation
+    # Pattern: only ASCII printable characters (space to ~)
+    return bool(re.match(r'^[ -~]+$', token_text))
+
+
+def get_english_token_ids(tokenizer) -> List[int]:
+    """
+    Get list of token IDs that decode to English-only text
+
+    Args:
+        tokenizer: Tokenizer instance
+
+    Returns:
+        List of valid English token IDs
+    """
+    # Use cache to avoid recomputing
+    tokenizer_name = str(tokenizer.name_or_path)
+    if tokenizer_name in _ENGLISH_TOKEN_CACHE:
+        return _ENGLISH_TOKEN_CACHE[tokenizer_name]
+
+    vocab_size = len(tokenizer)
+    special_token_ids = set(tokenizer.all_special_ids)
+
+    english_token_ids = []
+
+    debug_print(f"Filtering English tokens from vocabulary (size: {vocab_size})...")
+    for token_id in range(vocab_size):
+        if token_id in special_token_ids:
+            continue
+
+        # Decode single token
+        try:
+            token_text = tokenizer.decode([token_id], skip_special_tokens=True)
+            if token_text and is_english_token(token_text):
+                english_token_ids.append(token_id)
+        except:
+            continue
+
+    debug_print(f"Found {len(english_token_ids)} English tokens out of {vocab_size}")
+
+    # Cache the result
+    _ENGLISH_TOKEN_CACHE[tokenizer_name] = english_token_ids
+
+    return english_token_ids
+
+
+def load_word_frequency(words_tsv_path: str) -> Tuple[List[str], List[float]]:
+    """
+    Load word frequency from TSV file and prepare for weighted sampling
+
+    Args:
+        words_tsv_path: Path to words.tsv file (word\\tfrequency format)
+
+    Returns:
+        (words_list, weights_list) for random.choices
+    """
+    global _WORD_FREQ_CACHE
+
+    if _WORD_FREQ_CACHE is not None:
+        return _WORD_FREQ_CACHE
+
+    debug_print(f"Loading word frequency from {words_tsv_path}...")
+    words = []
+    frequencies = []
+
+    with open(words_tsv_path, 'r', encoding='utf-8') as f:
+        # Skip header
+        next(f)
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split('\t')
+            if len(parts) == 2:
+                word = parts[0]
+                freq = int(parts[1])
+                words.append(word)
+                frequencies.append(freq)
+
+    debug_print(f"Loaded {len(words)} unique words")
+
+    # Cache the result
+    _WORD_FREQ_CACHE = (words, frequencies)
+
+    return words, frequencies
+
+
+def generate_random_tokens(num_tokens: int, tokenizer, seed: int = None) -> str:
+    """
+    Generate a string of random English-only tokens
+
+    Args:
+        num_tokens: Number of tokens to generate
+        tokenizer: Tokenizer instance
+        seed: Random seed for reproducibility
+
+    Returns:
+        Decoded text from random English tokens
+    """
+    if seed is not None:
+        random.seed(seed)
+
+    # Get English-only token IDs
+    english_token_ids = get_english_token_ids(tokenizer)
+
+    if not english_token_ids:
+        raise ValueError("No English tokens found in vocabulary")
+
+    # Generate random token IDs from English-only tokens
+    random_token_ids = random.choices(english_token_ids, k=num_tokens)
+
+    # Decode back to text
+    random_text = tokenizer.decode(random_token_ids, skip_special_tokens=True)
+
+    return random_text
+
+
+def generate_random_words(num_words: int, words_tsv_path: str, seed: int = None) -> str:
+    """
+    Generate a string of random words sampled from word frequency distribution
+
+    Args:
+        num_words: Number of words to generate
+        words_tsv_path: Path to words.tsv file
+        seed: Random seed for reproducibility
+
+    Returns:
+        Text with random words separated by spaces
+    """
+    if seed is not None:
+        random.seed(seed)
+
+    # Load word frequency
+    words, frequencies = load_word_frequency(words_tsv_path)
+
+    if not words:
+        raise ValueError("No words found in word frequency file")
+
+    # Generate random words using frequency as weights
+    random_words = random.choices(words, weights=frequencies, k=num_words)
+
+    # Join with spaces
+    random_text = ' '.join(random_words)
+
+    return random_text
 
 
 # =============================================================================

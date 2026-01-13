@@ -61,11 +61,11 @@ class TestLLMClientGetModel:
         assert model == 'openai/gpt-oss-120b'
 
     def test_get_model_non_gpt_oss_raises_assertion(self, monkeypatch):
-        """Test that non-gpt-oss model types raise AssertionError"""
+        """Test that unsupported model types raise ValueError"""
         monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
         client = LLMClient(mode="openrouter")
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             client._get_model('deepseek')
 
 
@@ -214,7 +214,9 @@ class TestLLMClientCompleteGPTOSS:
 
         client = LLMClient(mode="openrouter")
         request = CompletionRequest(
-            prompt="Complete this: ",
+            question="What is 2 + 2?",
+            reasoning="Let me calculate this",
+            answer_prefix="The answer is",
             model_type='gpt-oss',
             max_tokens=1024
         )
@@ -245,7 +247,9 @@ class TestLLMClientCompleteGPTOSS:
 
         client = LLMClient(mode="openrouter")
         request = CompletionRequest(
-            prompt="Write creatively: ",
+            question="Write a story about a cat",
+            reasoning="Let me think creatively",
+            answer_prefix="Once upon a time",
             model_type='gpt-oss',
             temperature=0.9,
             max_tokens=2048
