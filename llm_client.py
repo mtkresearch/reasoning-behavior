@@ -139,7 +139,7 @@ class LLMClient:
         answer_prefix: str,
         model_type: str,
         system_prompt: str = "You are a helpful assistant",
-        reasoning_on: bool = True
+        reasoning_on: bool = True,
     ) -> str:
         """
         Apply chat template for text completion when using OpenRouter.
@@ -184,12 +184,20 @@ class LLMClient:
             return template
 
         elif model_type == 'deepseek-v3':
-            # DeepSeek-v3 uses ChatML format
-            template = (
-                f"<|im_start|>system\n{system_prompt}<|im_end|>\n"
-                f"<|im_start|>user\n{question}<|im_end|>\n"
-                f"<|im_start|>assistant\n{reasoning}\n{answer_prefix}"
-            )
+            # DeepSeek-V3.1 uses new chat template format
+            # Thinking mode: <｜Assistant｜><think>{reasoning}</think>{answer}
+            # Non-thinking mode: <｜Assistant｜></think>{answer}
+            template = f"<｜begin▁of▁sentence｜>{system_prompt}<｜User｜>{question}"
+            
+            if reasoning_on:
+                # Thinking mode with prefilled reasoning
+                template += f"<｜Assistant｜><think>{reasoning}"
+                
+            else:
+                # Non-thinking mode
+                template += f"<｜Assistant｜>"
+
+            template += f"</think>{answer_prefix}"
             return template
 
         # For other models or unknown types
@@ -255,6 +263,9 @@ class LLMClient:
             # if request.min_tokens is not None:
             #     payload['min_tokens'] = request.min_tokens
 
+            if DEBUG:
+                print(payload)
+
             # Make API request using requests library
             response = requests.post(
                 url=f"{self.base_url}/chat/completions",
@@ -271,6 +282,8 @@ class LLMClient:
 
             # Parse JSON response
             response_data = response.json()
+            if DEBUG:
+                print(response_data)
 
             # Check for errors in response
             if not response_data.get('choices') or len(response_data['choices']) == 0:
@@ -307,7 +320,7 @@ class LLMClient:
 
             elif request.model_type == 'deepseek-v3':
                 if request.reasoning_on:
-                    reasoning_content = message.get('reasoning_content')
+                    reasoning_content = message.get('reasoning')
                 content = message.get('content')
 
             elif request.model_type == 'qwen3':
@@ -327,7 +340,7 @@ class LLMClient:
             answer_prefix=request.answer_prefix,
             model_type=request.model_type,
             system_prompt=request.system_prompt,
-            reasoning_on=request.reasoning_on
+            reasoning_on=request.reasoning_on,
         )
 
         payload = {
@@ -353,6 +366,9 @@ class LLMClient:
         #     payload['min_tokens'] = request.min_tokens
 
         # Make API request using requests library
+        if DEBUG:
+            print(payload)
+
         response = requests.post(
             url=f"{self.base_url}/completions",
             headers={
@@ -374,6 +390,8 @@ class LLMClient:
             raise Exception("API returned no choices")
 
         choice = response_data['choices'][0]
+        if DEBUG:
+            print(response_data['choices'])
 
         # Check finish_reason for errors
         finish_reason = choice.get('finish_reason')
