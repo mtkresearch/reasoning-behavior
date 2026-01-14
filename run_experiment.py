@@ -162,6 +162,10 @@ Available Processors
    - Test if answer format affects model performance
    - Ensure consistent answer structure across responses
 
+   Note:
+   - When using answer('retrieval'), max_tokens is automatically reduced from 5000 to 50
+     to optimize generation speed and cost, since only a short answer is expected
+
 8. reason_is(text)
    Replace reasoning content with a custom text pattern.
 
@@ -481,7 +485,8 @@ from core import (
 from pipeline import parse_flow, Pipeline
 
 # Default concurrency (can be overridden by --max_workers)
-DEFAULT_MAX_WORKERS = 64
+DEFAULT_MAX_WORKERS = 16
+GRADED_MAX_WORKERS = 64
 # Default max retry (can be overridden by --max_retry)
 DEFAULT_MAX_RETRY = 1
 
@@ -578,44 +583,92 @@ def rebuild_json_from_jsonl(
 # Path Generation
 # =============================================================================
 
-def generate_output_path_from_flow(results_path: str, flow: str) -> str:
+def extract_model_from_path(results_path: str) -> str:
     """
-    Generate output path automatically based on flow string using hash-based flat structure
+    Extract model type from results_path
 
-    Creates path: exp/<8-char-hash>/results.json
-
-    The hash is generated from the flow string and stored in exp/flow_to_hash.json
-    for easy lookup.
+    Format: data/{DATASET}/{MODEL}/p{n}/results.json
+    Example: data/AIME2025__R10/gpt-oss/p1/results.json → 'gpt-oss'
 
     Args:
-        results_path: Original results.json path
+        results_path: Path to results.json
+
+    Returns:
+        Model type string
+
+    Raises:
+        ValueError: If model cannot be extracted from path
+    """
+    from pathlib import Path
+
+    path_parts = Path(results_path).parts
+    if 'data' in path_parts:
+        data_index = path_parts.index('data')
+        if len(path_parts) > data_index + 2:
+            return path_parts[data_index + 2]  # MODEL 在第三位置
+    raise ValueError(f"Cannot extract model from path: {results_path}")
+
+
+def generate_output_path_from_flow(results_path: str, flow: str) -> str:
+    """
+    Generate output path based on dataset, model, and flow string
+
+    Rules:
+    - gpt-oss + AIME2025__R10: exp/<hash>/results.json
+    - Other combinations: exp_{DATA}_{MODEL}/<hash>/results.json
+
+    Args:
+        results_path: Original results.json path (format: data/{DATASET}/{MODEL}/p{n}/results.json)
         flow: Flow string
 
     Returns:
         Generated output path
 
     Examples:
-        flow = "mask('number'),shuffle('line')"
-        -> exp/a1b2c3d4/results.json
+        data/AIME2025__R10/gpt-oss/p1/results.json + flow
+        -> exp/<hash>/results.json
 
-        flow = "insert('fix',sentence='Answer: 123.',count=5)"
-        -> exp/e5f6g7h8/results.json
+        data/AIME2025__R10/deepseek/p1/results.json + flow
+        -> exp_AIME2025__R10_deepseek/<hash>/results.json
 
-        flow = "" (empty/no processing)
-        -> exp/d41d8cd9/results.json
+        data/MATH500/gpt-oss/p1/results.json + flow
+        -> exp_MATH500_gpt-oss/<hash>/results.json
     """
     import hashlib
     from pathlib import Path
 
-    # Generate 8-character hash from flow string
+    # Extract dataset name from results_path
+    # e.g., "data/AIME2025__R10/gpt-oss/p1/results.json" -> "AIME2025__R10"
+    dataset_name = "unknown"
+    try:
+        path_parts = Path(results_path).parts
+        if 'data' in path_parts:
+            data_index = path_parts.index('data')
+            if len(path_parts) > data_index + 1:
+                dataset_name = path_parts[data_index + 1]
+    except (ValueError, IndexError, AttributeError) as e:
+        logger.debug(f"Failed to extract dataset name from '{results_path}': {e}")
+
+    # Extract model type from results_path
+    model_type = extract_model_from_path(results_path)
+
+    # Generate hash from flow string
     hash_obj = hashlib.md5(flow.encode('utf-8'))
     flow_hash = hash_obj.hexdigest()[:8]
 
-    # Construct path: exp/<hash>/results.json
-    output_path = Path("exp") / flow_hash / "results.json"
+    # Determine base directory based on dataset and model
+    if model_type == 'gpt-oss' and dataset_name == 'AIME2025__R10':
+        # Default: exp/<hash>/results.json (保持向後兼容)
+        base_dir = Path("exp")
+    else:
+        # New format: exp_{DATA}_{MODEL}/<hash>/results.json
+        base_dir = Path(f"exp_{dataset_name}_{model_type}")
 
-    # Update flow_to_hash.json mapping
-    flow_to_hash_file = Path("exp") / "flow_to_hash.json"
+    # Construct full path
+    output_path = base_dir / flow_hash / "results.json"
+
+    # Update flow_to_hash.json mapping (in base directory)
+    flow_to_hash_file = base_dir / "flow_to_hash.json"
     flow_to_hash = {}
 
     # Load existing mapping if it exists
@@ -624,13 +677,13 @@ def generate_output_path_from_flow(results_path: str, flow: str) -> str:
             with open(flow_to_hash_file, 'r', encoding='utf-8') as f:
                 flow_to_hash = json.load(f)
         except Exception as e:
-            logger.warning(f"Failed to load flow_to_hash.json: {e}")
+            logger.warning(f"Failed to load {flow_to_hash_file}: {e}")
 
     # Add current flow if not already present
     if flow not in flow_to_hash:
         flow_to_hash[flow] = flow_hash
 
-        # Ensure exp/ directory exists
+        # Ensure base directory exists
         flow_to_hash_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Save updated mapping
@@ -638,7 +691,7 @@ def generate_output_path_from_flow(results_path: str, flow: str) -> str:
             with open(flow_to_hash_file, 'w', encoding='utf-8') as f:
                 json.dump(flow_to_hash, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            logger.warning(f"Failed to save flow_to_hash.json: {e}")
+            logger.warning(f"Failed to save {flow_to_hash_file}: {e}")
 
     return str(output_path)
 
@@ -767,14 +820,18 @@ def prepare_task(
     # Get answer_prefill from context (set by AnswerProcessor)
     answer_prefix = context.get('answer_prefill', '')
 
+    # Adjust max_tokens based on whether retrieval mode is used
+    # When using answer('retrieval'), we only need to extract a short answer
+    max_tokens = 50 if answer_prefix else 5000
+
     # Create CompletionRequest (template will be applied by LLMClient)
     request = CompletionRequest(
         question=final_question,
         reasoning=processed_reasoning,
         answer_prefix=answer_prefix,
         model_type=model_type,
-        temperature=0.5,
-        max_tokens=5000
+        temperature=0.01,
+        max_tokens=max_tokens
         # Note: min_tokens not supported by OpenRouter API
     )
 
@@ -970,7 +1027,6 @@ def create_grading_tasks(results: List[Dict], judge_model_type: str = 'gpt-oss')
 def run_experiment(
     results_path: str,
     output_path: str,
-    model_type: str = 'gpt-oss',
     mode: str = 'openrouter',
     flow: str = None,
     limit: int = None,
@@ -981,9 +1037,8 @@ def run_experiment(
     Run the mask numbers experiment using JSONL strategy
 
     Args:
-        results_path: Path to results.json
+        results_path: Path to results.json (format: data/{DATASET}/{MODEL}/p{n}/results.json)
         output_path: Path to save output (e.g., exp/mask_number/results.json)
-        model_type: Model type
         mode: 'openrouter' or 'local'
         flow: Flow string
         limit: Limit number of questions (for testing)
@@ -995,6 +1050,10 @@ def run_experiment(
         - Stage 2 (grading): Write to {output_path}_stage2.jsonl
         - Final: Rebuild {output_path}.json from stage2.jsonl
     """
+    # Extract model_type from results_path
+    model_type = extract_model_from_path(results_path)
+    print(f"Detected model: {model_type}")
+
     print(f"Loading results from {results_path}")
     data = load_results_json(results_path)
 
@@ -1152,11 +1211,11 @@ def run_experiment(
     print(f"Already graded: {len(stage1_successful) - len(need_grading)}")
     print(f"Need to grade: {len(need_grading)}")
 
-    grading_tasks = create_grading_tasks(need_grading, judge_model_type=model_type)
+    grading_tasks = create_grading_tasks(need_grading, judge_model_type='gpt-oss')
 
     if len(grading_tasks) > 0:
         print(f"Grading {len(grading_tasks)} answers...")
-        for grading_task in tqdm(client.generate_concurrent(grading_tasks, max_workers=max_workers),
+        for grading_task in tqdm(client.generate_concurrent(grading_tasks, max_workers=GRADED_MAX_WORKERS),
                                  total=len(grading_tasks)):
             if not grading_task.response.success:
                 logger.error(f"Error in grading task {grading_task.index}: {grading_task.response.err_message}")
@@ -1277,13 +1336,6 @@ def main():
         help='Path to save results. If not specified, auto-generated based on --flow in exp/ directory'
     )
     parser.add_argument(
-        '--model_type',
-        type=str,
-        default='gpt-oss',
-        choices=['gpt-oss', 'deepseek', 'qwen3'],
-        help='Model type'
-    )
-    parser.add_argument(
         '--mode',
         type=str,
         default='openrouter',
@@ -1333,7 +1385,6 @@ def main():
     run_experiment(
         results_path=args.results_path,
         output_path=args.output_path,
-        model_type=args.model_type,
         mode=args.mode,
         flow=args.flow,
         limit=args.limit,

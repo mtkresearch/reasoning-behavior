@@ -63,3 +63,5 @@ coverage.xml
 logs/
 outputs/
 checkpoints/
+
+exp**/**.jsonl

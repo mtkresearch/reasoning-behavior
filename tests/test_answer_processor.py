@@ -220,3 +220,57 @@ class TestAnswerProcessorIntegration:
         assert task.request.answer_prefix == ""
         assert task.request.question == 'What is 3 × 3?'
         assert 'Multiply' in task.request.reasoning
+
+    def test_prepare_task_max_tokens_with_retrieval(self):
+        """Test that prepare_task reduces max_tokens to 50 when using answer('retrieval')"""
+        from run_experiment import prepare_task
+
+        item = {
+            'unique_id': 'test-003',
+            'question': 'What is 5 + 5?',
+            'answer': '10',
+            'result': {'traj': 'Add: 5 + 5 = 10'}
+        }
+
+        flow = "answer('retrieval')"
+        task = prepare_task(item, model_type='gpt-oss', flow=flow)
+
+        # When using retrieval mode, max_tokens should be reduced to 50
+        assert task.request.max_tokens == 50
+        assert task.request.answer_prefix == "Thus, the answer is"
+
+    def test_prepare_task_max_tokens_without_retrieval(self):
+        """Test that prepare_task keeps max_tokens at 5000 without answer processor"""
+        from run_experiment import prepare_task
+
+        item = {
+            'unique_id': 'test-004',
+            'question': 'What is 7 - 3?',
+            'answer': '4',
+            'result': {'traj': 'Subtract: 7 - 3 = 4'}
+        }
+
+        flow = "mask('number')"
+        task = prepare_task(item, model_type='gpt-oss', flow=flow)
+
+        # Without retrieval mode, max_tokens should remain 5000
+        assert task.request.max_tokens == 5000
+        assert task.request.answer_prefix == ""
+
+    def test_prepare_task_max_tokens_with_custom_prefill(self):
+        """Test that max_tokens is reduced even with custom prefill text"""
+        from run_experiment import prepare_task
+
+        item = {
+            'unique_id': 'test-005',
+            'question': 'What is 12 / 3?',
+            'answer': '4',
+            'result': {'traj': 'Divide: 12 / 3 = 4'}
+        }
+
+        flow = "answer('retrieval',prefill_text='The final answer is')"
+        task = prepare_task(item, model_type='gpt-oss', flow=flow)
+
+        # With custom prefill text, max_tokens should still be 50
+        assert task.request.max_tokens == 50
+        assert task.request.answer_prefix == "The final answer is"

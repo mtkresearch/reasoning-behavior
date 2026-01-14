@@ -1,5 +1,6 @@
 import json
 import os
+from time import sleep
 
 import requests
 import asyncio
@@ -97,8 +98,10 @@ class LLMClient:
         elif self.mode == 'openrouter':
             if model_type == 'gpt-oss':
                 return 'openai/gpt-oss-120b'
-            elif model_type == 'deepseek-v3':
-                return 'deepseek/deepseek-v3.2'
+            elif model_type == 'deepseek':
+                return 'deepseek/deepseek-chat-v3.1'
+            elif model_type == 'qwen3':
+                raise ValueError(f"Unsupported model_type for openrouter: {model_type}")
             else:
                 raise ValueError(f"Unsupported model_type for openrouter: {model_type}")
 
@@ -113,11 +116,8 @@ class LLMClient:
         extra_body = {}
         if request.model_type == 'deepseek':
             if task == 'chat':
-                extra_body["chat_template_kwargs"] = {"thinking": request.reasoning_on}
-        elif request.model_type == 'gpt-oss':
-            if task == 'chat':
                 extra_body["reasoning"] = {"enabled": request.reasoning_on}
-        elif request.model_type == 'deepseek-v3':
+        elif request.model_type == 'gpt-oss':
             if task == 'chat':
                 extra_body["reasoning"] = {"enabled": request.reasoning_on}
         elif request.model_type == 'qwen3':
@@ -126,9 +126,7 @@ class LLMClient:
 
     def _get_provider_preferences(self, request):
         """Get provider preferences for OpenRouter API"""
-        if request.model_type == 'gpt-oss':
-            return {'quantizations': ['fp4']}
-        elif request.model_type == 'deepseek-v3':
+        if request.model_type in ['gpt-oss', 'deepseek']:
             return {'quantizations': ['fp4']}
         return None
 
@@ -183,16 +181,16 @@ class LLMClient:
             template += f"<|start|>assistant<|channel|>final<|message|>{answer_prefix}"
             return template
 
-        elif model_type == 'deepseek-v3':
-            # DeepSeek-V3.1 uses new chat template format
+        elif model_type == 'deepseek':
+            # DeepSeek uses new chat template format (v3.2)
             # Thinking mode: <｜Assistant｜><think>{reasoning}</think>{answer}
             # Non-thinking mode: <｜Assistant｜></think>{answer}
-            template = f"<｜begin▁of▁sentence｜>{system_prompt}<｜User｜>{question}"
-            
-            if reasoning_on:
+            template = f"<｜begin▁of▁sentence｜>{system_prompt}<｜User｜>Who are you?<｜Assistant｜></think>I am DeepSeek<｜end▁of▁sentence｜><｜User｜>{question}"
+
+            if reasoning_on and reasoning:
                 # Thinking mode with prefilled reasoning
                 template += f"<｜Assistant｜><think>{reasoning}"
-                
+
             else:
                 # Non-thinking mode
                 template += f"<｜Assistant｜>"
@@ -207,18 +205,10 @@ class LLMClient:
         if request.model_type == 'deepseek':
             messages = [
                 {"role": "system", "content": request.system_prompt},
-                {"role": "user", "content": "Who are you?"},
-                {"role": "assistant", "content": "<think>Hmm</think>I am DeepSeek"},
                 {"role": "user", "content": request.queries[0]},
             ]
 
         elif request.model_type == 'gpt-oss':
-            messages = [
-                {"role": "system", "content": request.system_prompt},
-                {"role": "user", "content": request.queries[0]},
-            ]
-
-        elif request.model_type == 'deepseek-v3':
             messages = [
                 {"role": "system", "content": request.system_prompt},
                 {"role": "user", "content": request.queries[0]},
@@ -309,18 +299,12 @@ class LLMClient:
             reasoning_content = None
             if request.model_type == 'deepseek':
                 if request.reasoning_on:
-                    reasoning_content, content = self._parse_deepseek_reasoning_content(message.get('content'))
-                else:
-                    content = message.get('content')
+                    reasoning_content = message.get('reasoning')
+                content = message.get('content')
 
             elif request.model_type == 'gpt-oss':
                 if request.reasoning_on:
                     reasoning_content = message.get('reasoning_content')
-                content = message.get('content')
-
-            elif request.model_type == 'deepseek-v3':
-                if request.reasoning_on:
-                    reasoning_content = message.get('reasoning')
                 content = message.get('content')
 
             elif request.model_type == 'qwen3':
@@ -380,7 +364,12 @@ class LLMClient:
         )
 
         # Check HTTP errors
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except Exception as e:
+            print(f'Error: {response.json()}')
+            sleep(1.0)
+            raise e
 
         # Parse JSON response
         response_data = response.json()
