@@ -1,16 +1,26 @@
 #!/usr/bin/env python3
 """
 分析 results.json 中 result.traj 的 word 頻率
+
+Usage:
+    python run_analyze_word_frequency.py <results.json>
+
+Example:
+    python run_analyze_word_frequency.py data/AIME2025__R10/deepseek/p1/results.json
 """
+import sys
 import json
 from collections import Counter
 from pathlib import Path
 
 
 def main():
-    # 讀取 results.json
-    input_path = Path("data/AIME2025__R10/gpt-oss/p1/results.json")
-    output_path = Path("data/AIME2025__R10/gpt-oss/p1/words.tsv")
+    if len(sys.argv) < 2:
+        print("Usage: python run_analyze_word_frequency.py <results.json>")
+        sys.exit(1)
+
+    input_path = Path(sys.argv[1])
+    output_path = input_path.parent / "words.tsv"
 
     print(f"讀取檔案: {input_path}")
     with open(input_path, 'r', encoding='utf-8') as f:

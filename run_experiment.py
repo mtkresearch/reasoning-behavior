@@ -10,7 +10,7 @@ USAGE
 =============================================================================
 
 Basic syntax:
-    python mask_experiment.py --flow "<pipeline_steps>"
+    python run_experiment.py --flow "<pipeline_steps>"
 
 The --flow parameter accepts a comma-separated sequence of processing steps.
 
@@ -58,10 +58,10 @@ Available Processors
    Shuffle reasoning content.
 
    Modes:
-   - 'line': Shuffle lines
-   - 'word': Shuffle words across entire text
-   - 'in-line-word': Shuffle words within each line independently (preserves line boundaries)
-   - 'token': Shuffle tokens (specify tokenizer_model='gpt2' or other)
+   - 'line': Shuffle lines (randomly reorder lines while preserving content)
+   - 'word': Shuffle words across entire text (all words randomized globally)
+   - 'in-line-word': Shuffle words within each line independently (preserves line boundaries, shuffles words within each line)
+   - 'token': Shuffle tokens (tokenizer-based shuffling, specify tokenizer_model='gpt2' or other)
 
    Optional parameters:
    - seed: Random seed for reproducibility
@@ -220,7 +220,20 @@ Available Processors
    - Evaluate robustness to numeric variations
    - Test if reasoning patterns are more important than exact numbers
 
-10. padding(mode, position='after', tokenizer_model='gpt2', words_tsv_path=None, seed=42)
+10. question(mode)
+   Modify or remove question text from the prompt.
+
+   This processor modifies the question field in the context rather than the reasoning text.
+   Useful for testing if models rely on the question text or can answer from reasoning alone.
+
+   Modes:
+   - 'remove': Remove entire question (set to empty string)
+
+   Use cases:
+   - Test if model can answer based solely on reasoning without question context
+   - Evaluate model robustness to missing problem statements
+
+11. padding(mode, tokenizer_model='gpt2', words_tsv_path=None, seed=42)
    Replace reasoning text with random tokens or words.
 
    This processor replaces the original reasoning with random tokens or words sampled from a distribution.
@@ -234,16 +247,17 @@ Available Processors
    - 'word': Replace reasoning with random words sampled from word frequency distribution (count = original word count)
 
    Parameters:
-   - position: Where to place the random content - 'after' or 'before' (default: 'after')
    - tokenizer_model: Model name for tokenizer (for token mode, default: 'gpt2')
    - words_tsv_path: Path to words.tsv file (required for word mode)
    - seed: Random seed for reproducibility (default: 42)
+
+   Note: The 'position' parameter was deprecated and is no longer supported
 
    Examples:
    - padding('token') - Replace reasoning with random tokens (count = original token count) using gpt2 tokenizer
    - padding('token', tokenizer_model='gpt2', seed=42) - Custom tokenizer and seed
    - padding('word', words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv') - Replace reasoning with random words (count = original word count)
-   - padding('word', words_tsv_path='data/words.tsv', position='before') - Place random words before question
+   - padding('word', words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv', seed=42) - Custom seed for word selection
 
    Use cases:
    - Test if model relies on actual reasoning content vs. just having text of the same length
@@ -256,197 +270,208 @@ Examples
 -----------------------------------------------------------------------------
 
 # Example 1: Basic masking
-python mask_experiment.py --flow "mask('number')"
+python run_experiment.py --flow "mask('number')"
 
 # Example 2: Mask and shuffle
-python mask_experiment.py --flow "mask('number'),shuffle('line')"
+python run_experiment.py --flow "mask('number'),shuffle('line')"
 
 # Example 3: Full pipeline - truncate, mask, shuffle
-python mask_experiment.py --flow "truncate('answer_and_after'),mask('number'),shuffle('line')"
+python run_experiment.py --flow "truncate('answer_and_after'),mask('number'),shuffle('line')"
 
 # Example 4: Custom mask character
-python mask_experiment.py --flow "mask('number',mask_char='*')"
+python run_experiment.py --flow "mask('number',mask_char='*')"
 
 # Example 5: Ratio-based truncation
-python mask_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('alphabet')"
+python run_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('alphabet')"
 
 # Example 6: Word-level shuffle with specific seed
-python mask_experiment.py --flow "mask('number'),shuffle('word',seed=42)"
+python run_experiment.py --flow "mask('number'),shuffle('word',seed=42)"
 
 # Example 6a: In-line word shuffle (shuffle words within each line independently)
-python mask_experiment.py --flow "shuffle('in-line-word')"
+python run_experiment.py --flow "shuffle('in-line-word')"
 
 # Example 6b: Combine in-line word shuffle with masking
-python mask_experiment.py --flow "mask('number'),shuffle('in-line-word',seed=42)"
+python run_experiment.py --flow "mask('number'),shuffle('in-line-word',seed=42)"
+
+# Example 6c: Token-level shuffle with custom tokenizer
+python run_experiment.py --flow "shuffle('token',tokenizer_model='gpt2',seed=42)"
 
 # Example 7: N-lines masking
-python mask_experiment.py --flow "mask('n-lines',num_prev_lines=2)"
+python run_experiment.py --flow "mask('n-lines',num_prev_lines=2)"
 
 # Example 8: Complex combination
-python mask_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('number-advance'),shuffle('line',seed=123)"
+python run_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('number-advance'),shuffle('line',seed=123)"
 
 # Example 9: Insert noise at random positions
-python mask_experiment.py --flow "insert('fix',sentence='Maybe the answer is 123.',count=5)"
+python run_experiment.py --flow "insert('fix',sentence='Maybe the answer is 123.',count=5)"
 
 # Example 10: Combine insert with other processors
-python mask_experiment.py --flow "insert('fix',sentence='Thus answer: 123.',count=3),shuffle('line')"
+python run_experiment.py --flow "insert('fix',sentence='Thus answer: 123.',count=3),shuffle('line')"
 
 # Example 11: Insert with specific seed for reproducibility
-python mask_experiment.py --flow "insert('fix',sentence='Answer: 456.',count=5,seed=42)"
+python run_experiment.py --flow "insert('fix',sentence='Answer: 456.',count=5,seed=42)"
 
 # Example 11a: Insert noise based on answer occurrence count (100%)
-python mask_experiment.py --flow "insert('fix',sentence='Thus answer: 123.',count='100% # of answer')"
+python run_experiment.py --flow "insert('fix',sentence='Thus answer: 123.',count='100% # of answer')"
 
 # Example 11b: Insert noise 200% of answer occurrences (twice per answer)
-python mask_experiment.py --flow "insert('fix',sentence='Maybe answer: 999.',count='200% # of answer')"
+python run_experiment.py --flow "insert('fix',sentence='Maybe answer: 999.',count='200% # of answer')"
 
 # Example 11c: Insert noise 50% of answer occurrences (half, rounded)
-python mask_experiment.py --flow "insert('fix',sentence='Check: 000.',count='50% # of answer')"
+python run_experiment.py --flow "insert('fix',sentence='Check: 000.',count='50% # of answer')"
 
 # Example 11d: Insert text at the beginning (first line) with {ANSWER} placeholder
-python mask_experiment.py --flow "insert('head',sentence='The answer is {ANSWER}.')"
+python run_experiment.py --flow "insert('head',sentence='The answer is {ANSWER}.')"
 
 # Example 11e: Insert static text at the beginning without placeholder
-python mask_experiment.py --flow "insert('head',sentence='Important note: Read carefully.')"
+python run_experiment.py --flow "insert('head',sentence='Important note: Read carefully.')"
 
 # Example 11f: Insert text at the middle with {ANSWER} placeholder
-python mask_experiment.py --flow "insert('middle',sentence='The answer is {ANSWER}.')"
+python run_experiment.py --flow "insert('middle',sentence='The answer is {ANSWER}.')"
 
 # Example 11g: Insert static text at the middle without placeholder
-python mask_experiment.py --flow "insert('middle',sentence='Let me verify this step.')"
+python run_experiment.py --flow "insert('middle',sentence='Let me verify this step.')"
 
 # Example 11h: Insert text at the end (last line) with {ANSWER} placeholder
-python mask_experiment.py --flow "insert('tail',sentence='The answer is {ANSWER}.')"
+python run_experiment.py --flow "insert('tail',sentence='The answer is {ANSWER}.')"
 
 # Example 11i: Insert static text at the end without placeholder
-python mask_experiment.py --flow "insert('tail',sentence='Remember to verify your answer.')"
+python run_experiment.py --flow "insert('tail',sentence='Remember to verify your answer.')"
 
 # Example 12: Mask all non-blank characters (preserve only whitespace structure)
-python mask_experiment.py --flow "mask('all-nonblank')"
+python run_experiment.py --flow "mask('all-nonblank')"
 
 # Example 13: Combine all-nonblank masking with shuffle
-python mask_experiment.py --flow "mask('all-nonblank'),shuffle('line')"
+python run_experiment.py --flow "mask('all-nonblank'),shuffle('line')"
 
 # Example 13a: Mask all non-digit characters (preserve only numbers)
-python mask_experiment.py --flow "mask('non-number')"
+python run_experiment.py --flow "mask('non-number')"
 
 # Example 13b: Mask all non-digit characters with custom mask character
-python mask_experiment.py --flow "mask('non-number',mask_char=' ')"
+python run_experiment.py --flow "mask('non-number',mask_char=' ')"
 
 # Example 14: Remove all continuous blank characters (consolidate to single space)
-python mask_experiment.py --flow "remove('blank')"
+python run_experiment.py --flow "remove('blank')"
 
 # Example 15: Combine remove with other processors
-python mask_experiment.py --flow "mask('number'),remove('blank')"
+python run_experiment.py --flow "mask('number'),remove('blank')"
 
 # Example 16: Multi-step processing with blank removal
-python mask_experiment.py --flow "truncate('last_ratio',ratio=0.2),mask('alphabet'),remove('blank')"
+python run_experiment.py --flow "truncate('last_ratio',ratio=0.2),mask('alphabet'),remove('blank')"
 
 # Example 17: Replace all whitespace with single space
-python mask_experiment.py --flow "replace('\\s',replacement=' ')"
+python run_experiment.py --flow "replace('\\s',replacement=' ')"
 
 # Example 18: Replace all digits with 'X'
-python mask_experiment.py --flow "replace('\\d',replacement='X')"
+python run_experiment.py --flow "replace('\\d',replacement='X')"
 
 # Example 19: Combine replace with other processors
-python mask_experiment.py --flow "mask('alphabet',mask_char=' '),replace('\\s+',replacement=' ')"
+python run_experiment.py --flow "mask('alphabet',mask_char=' '),replace('\\s+',replacement=' ')"
 
 # Example 20: Replace ground truth answer with a fixed value (e.g., 42 -> 123)
-python mask_experiment.py --flow "replace('{ANSWER}',replacement='123')"
+python run_experiment.py --flow "replace('{ANSWER}',replacement='123')"
 
 # Example 21: Replace ground truth answer and shuffle
-python mask_experiment.py --flow "replace('{ANSWER}',replacement='999'),shuffle('line')"
+python run_experiment.py --flow "replace('{ANSWER}',replacement='999'),shuffle('line')"
 
 # Example 22: Remove exact answer from reasoning (all occurrences)
-python mask_experiment.py --flow "truncate('answer')"
+python run_experiment.py --flow "truncate('answer')"
 
 # Example 23: Combine answer removal with shuffle
-python mask_experiment.py --flow "truncate('answer'),shuffle('line')"
+python run_experiment.py --flow "truncate('answer'),shuffle('line')"
 
 # Example 23a: Keep only first 10 lines, remove all lines after line 10
-python mask_experiment.py --flow "truncate('after_line',n=10)"
+python run_experiment.py --flow "truncate('after_line',n=10)"
 
 # Example 23b: Keep only first 10% of lines (ratio-based truncation)
-python mask_experiment.py --flow "truncate('after_line',r=0.1)"
+python run_experiment.py --flow "truncate('after_line',r=0.1)"
 
 # Example 23c: Remove first 10% of lines (inverse of after_line)
-python mask_experiment.py --flow "truncate('before_line',r=0.1)"
+python run_experiment.py --flow "truncate('before_line',r=0.1)"
 
 # Example 23d: Remove first 5 lines, keep the rest
-python mask_experiment.py --flow "truncate('before_line',n=5)"
+python run_experiment.py --flow "truncate('before_line',n=5)"
 
 # Example 24: Add answer prefill to guide model response format
-python mask_experiment.py --flow "answer('retrieval')"
+python run_experiment.py --flow "answer('retrieval')"
 
 # Example 25: Answer prefill with custom text
-python mask_experiment.py --flow "answer('retrieval',prefill_text='Therefore, the final answer is')"
+python run_experiment.py --flow "answer('retrieval',prefill_text='Therefore, the final answer is')"
 
 # Example 26: Combine answer prefill with masking
-python mask_experiment.py --flow "mask('number'),answer('retrieval')"
+python run_experiment.py --flow "mask('number'),answer('retrieval')"
 
 # Example 27: Full pipeline with answer prefill
-python mask_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('number'),shuffle('line'),answer('retrieval')"
+python run_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('number'),shuffle('line'),answer('retrieval')"
+
+# Example 27a: Remove question and provide only reasoning
+python run_experiment.py --flow "question('remove')"
+
+# Example 27b: Remove question and mask numbers in reasoning
+python run_experiment.py --flow "question('remove'),mask('number')"
 
 # Example 28: Replace reasoning with answer only (pure answer)
-python mask_experiment.py --flow "reason_is('{ANSWER}')"
+python run_experiment.py --flow "reason_is('{ANSWER}')"
 
 # Example 29: Replace reasoning with illustrated answer format
-python mask_experiment.py --flow "reason_is('Thus, the answer is {ANSWER}.')"
+python run_experiment.py --flow "reason_is('Thus, the answer is {ANSWER}.')"
 
 # Example 30: Combine reason_is with other processors (though reason_is replaces all, so order matters)
-python mask_experiment.py --flow "mask('number'),reason_is('{ANSWER}')"
+python run_experiment.py --flow "mask('number'),reason_is('{ANSWER}')"
 
 # Example 31: Use reason_is as baseline for comparison with custom format
-python mask_experiment.py --flow "reason_is('The final result is {ANSWER}')"
+python run_experiment.py --flow "reason_is('The final result is {ANSWER}')"
 
 # Example 32: Replace reasoning with math expression using ANSWER
-python mask_experiment.py --flow "reason_is('The answer is {ANSWER} or {ANSWER * 0.9}')"
+python run_experiment.py --flow "reason_is('The answer is {ANSWER} or {ANSWER * 0.9}')"
 
 # Example 33: Use math expression with addition
-python mask_experiment.py --flow "reason_is('The result is {ANSWER + 10}')"
+python run_experiment.py --flow "reason_is('The result is {ANSWER + 10}')"
 
 # Example 34: Multiple math expressions in one pattern
-python mask_experiment.py --flow "reason_is('Options: {ANSWER}, {ANSWER * 0.9}, {ANSWER * 1.1}')"
+python run_experiment.py --flow "reason_is('Options: {ANSWER}, {ANSWER * 0.9}, {ANSWER * 1.1}')"
 
 # Example 35: Randomize all digits with default seed
-python mask_experiment.py --flow "random('number')"
+python run_experiment.py --flow "random('number')"
 
 # Example 36: Randomize all digits with custom seed
-python mask_experiment.py --flow "random('number',seed=123)"
+python run_experiment.py --flow "random('number',seed=123)"
 
 # Example 37: Combine randomization with other processors
-python mask_experiment.py --flow "random('number'),shuffle('line')"
+python run_experiment.py --flow "random('number'),shuffle('line')"
 
 # Example 38: Randomize digits and mask letters
-python mask_experiment.py --flow "random('number'),mask('alphabet')"
+python run_experiment.py --flow "random('number'),mask('alphabet')"
 
 # Example 39: Replace reasoning with random tokens (token mode, count = original token count)
-python mask_experiment.py --flow "padding('token')"
+python run_experiment.py --flow "padding('token')"
 
 # Example 40: Replace reasoning with random tokens using custom tokenizer (count = original token count)
-python mask_experiment.py --flow "padding('token',tokenizer_model='gpt2',seed=42)"
+python run_experiment.py --flow "padding('token',tokenizer_model='gpt2',seed=42)"
 
 # Example 41: Replace reasoning with random words (word mode, count = original word count)
-python mask_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv')"
+python run_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv')"
 
-# Example 42: Replace reasoning with random words placed before question (count = original word count)
-python mask_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv',position='before')"
+# Example 42: Replace reasoning with random words using custom seed
+python run_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv',seed=123)"
 
 # Example 43: Replace reasoning with random words, then apply masking to the random words
-python mask_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv'),mask('number')"
+python run_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv'),mask('number')"
 
 # Example 44: Replace reasoning with random words, apply masking, then shuffle
-python mask_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv'),mask('number'),shuffle('line')"
+python run_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv'),mask('number'),shuffle('line')"
 
 -----------------------------------------------------------------------------
 Other Parameters
 -----------------------------------------------------------------------------
 
 --results_path: Path to input results.json (default: data/AIME2025__R10/gpt-oss/p1/results.json)
---output_path: Path to save output (default: data/baseline/mask_numbers_experiment.json)
---model_type: Model to use (gpt-oss, deepseek, qwen3)
+                Model type is auto-detected from path (e.g., data/{DATASET}/{MODEL}/p{n}/results.json)
+--output_path: Path to save output (auto-generated based on --flow if not specified)
 --mode: LLM client mode (openrouter, local)
 --limit: Limit number of questions for testing
+--max_workers: Maximum concurrent workers (default: 16)
+--max_retry: Maximum retry attempts for failed tasks (default: 1)
 
 =============================================================================
 """

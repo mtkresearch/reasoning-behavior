@@ -5,12 +5,9 @@ RESULTS_PATH="data/AIME2025__R10/deepseek/p1/results.json"
 
 # 定義 flow 列表
 FLOWS=(
-  "answer('retrieval')"
-  "truncate('all'),answer('retrieval')"
-  "shuffle('word'),answer('retrieval')"
-  "shuffle('line'),answer('retrieval')"
-  "shuffle('in-line-word'),answer('retrieval')"
-  "shuffle('in-line-word'),shuffle('line'),answer('retrieval')"
+  "shuffle('token',tokenizer_model='deepseek-ai/DeepSeek-V3.1'),answer('retrieval')"
+  "padding('token',tokenizer_model='deepseek-ai/DeepSeek-V3.1'),answer('retrieval')"
+  "padding('word',words_tsv_path='data/AIME2025__R10/deepseek/p1/words.tsv'),answer('retrieval')"
 )
 
 # 執行每個 flow
