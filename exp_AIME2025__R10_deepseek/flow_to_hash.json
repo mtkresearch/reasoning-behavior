@@ -2,9 +2,12 @@
   "truncate('all'),answer('retrieval')": "832b3a6d",
   "": "d41d8cd9",
   "answer('retrieval')": "9c3cc7e6",
-  "shuffle('line'),retrieval('answer')": "e087a7d0",
   "shuffle('line'),answer('retrieval')": "4f44ad3a",
   "shuffle('word'),answer('retrieval')": "9c885777",
   "shuffle('in-line-word'),answer('retrieval')": "5fad1139",
-  "shuffle('in-line-word'),shuffle('line'),answer('retrieval')": "e3b4e537"
+  "shuffle('in-line-word'),shuffle('line'),answer('retrieval')": "e3b4e537",
+  "truncate('all')": "79d59000",
+  "padding('token',tokenizer_model='deepseek-ai/DeepSeek-V3.1'),answer('retrieval')": "6264d52a",
+  "padding('word',words_tsv_path='data/AIME2025__R10/deepseek/p1/words.tsv'),answer('retrieval')": "7f768d69",
+  "shuffle('token',tokenizer_model='deepseek-ai/DeepSeek-V3.1'),answer('retrieval')": "0c3b3c14"
 }
