@@ -1359,3 +1359,213 @@ def load_from_jsonl(filepath) -> List[dict]:
                         print(f"Warning: Failed to parse JSONL line: {e}")
                         continue
     return results
+
+
+# =============================================================================
+# C++ Code Execution (for CodeElo integration)
+# =============================================================================
+
+# Import CodeElo's extract_code_blocks function
+import sys
+sys.path.append('CodeElo')
+try:
+    from main import extract_code_blocks
+except ImportError:
+    # Fallback: define extract_code_blocks if CodeElo is not available
+    def extract_code_blocks(text: str) -> List[Tuple[str, str]]:
+        """
+        Extract code blocks from text using regex
+
+        Args:
+            text: Text containing code blocks marked with ```
+
+        Returns:
+            List of (language, code) tuples
+        """
+        import re
+        pattern = r'```(\w*)\n(.*?)\n```'
+        matches = re.findall(pattern, text, re.DOTALL)
+        return matches
+
+
+def normalize_output(output: str) -> str:
+    """
+    標準化輸出用於比對（去除每行尾部空白）
+
+    Args:
+        output: 原始輸出字符串
+
+    Returns:
+        標準化後的輸出字符串
+
+    Examples:
+        >>> normalize_output("hello   \\n")
+        'hello'
+        >>> normalize_output("  line1  \\n  line2  ")
+        'line1\\nline2'
+    """
+    return '\n'.join(line.strip() for line in output.strip().split('\n'))
+
+
+def _detect_cpp_compiler() -> str:
+    """
+    檢測並返回最佳的 C++ 編譯器路徑
+
+    優先順序：
+    1. GCC (g++-14, g++-13, etc.) - 支援 bits/stdc++.h
+    2. 系統默認 g++ (可能是 Clang)
+
+    Returns:
+        編譯器路徑
+    """
+    import shutil
+    import subprocess
+
+    # Try to find GCC (真正的 GCC, 不是 Clang 別名)
+    # 檢查 Homebrew GCC
+    gcc_candidates = [
+        '/opt/homebrew/bin/g++-14',
+        '/opt/homebrew/bin/g++-13',
+        '/opt/homebrew/bin/g++-12',
+        '/usr/local/bin/g++-14',
+        '/usr/local/bin/g++-13',
+        '/usr/local/bin/g++-12',
+    ]
+
+    for gcc_path in gcc_candidates:
+        if shutil.which(gcc_path):
+            # 驗證是否真的是 GCC (不是 Clang 別名)
+            try:
+                result = subprocess.run(
+                    [gcc_path, '--version'],
+                    capture_output=True,
+                    text=True,
+                    timeout=2
+                )
+                if 'GCC' in result.stdout or 'gcc' in result.stdout.lower():
+                    return gcc_path
+            except:
+                continue
+
+    # Fallback to system g++ (可能是 Clang)
+    if shutil.which('g++'):
+        return 'g++'
+
+    return None
+
+
+def compile_and_execute_cpp(code: str, test_input: str, timeout: int = 2) -> Dict:
+    """
+    編譯並執行 C++ 代碼
+
+    Args:
+        code: C++ 源代碼
+        test_input: 測試輸入（通過 stdin 傳入）
+        timeout: 執行超時（秒）
+
+    Returns:
+        {
+            'status': 'AC' | 'WA' | 'CE' | 'RTE' | 'TLE',
+            'output': str,
+            'error': str (if any),
+            'compile_error': str (if CE)
+        }
+
+    Status codes:
+        - AC: Accepted (成功執行)
+        - WA: Wrong Answer (輸出不匹配，需在更高層判定)
+        - CE: Compilation Error (編譯錯誤)
+        - RTE: Runtime Error (運行時錯誤)
+        - TLE: Time Limit Exceeded (超時)
+    """
+    import subprocess
+    import tempfile
+    import shutil
+    from pathlib import Path
+
+    # Detect best C++ compiler
+    compiler = _detect_cpp_compiler()
+    if not compiler:
+        return {
+            'status': 'CE',
+            'output': '',
+            'error': 'g++ compiler not found',
+            'compile_error': 'g++ compiler not found. Please install: brew install gcc'
+        }
+
+    # Create temporary directory for compilation and execution
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir_path = Path(tmpdir)
+        source_file = tmpdir_path / 'solution.cpp'
+        executable_file = tmpdir_path / 'solution'
+
+        # Write source code to file
+        with open(source_file, 'w', encoding='utf-8') as f:
+            f.write(code)
+
+        # Compile C++ code
+        try:
+            compile_result = subprocess.run(
+                [compiler, '-o', str(executable_file), str(source_file), '-std=c++17'],
+                capture_output=True,
+                text=True,
+                timeout=10  # Compilation timeout
+            )
+
+            if compile_result.returncode != 0:
+                return {
+                    'status': 'CE',
+                    'output': '',
+                    'error': compile_result.stderr,
+                    'compile_error': compile_result.stderr
+                }
+        except subprocess.TimeoutExpired:
+            return {
+                'status': 'CE',
+                'output': '',
+                'error': 'Compilation timeout',
+                'compile_error': 'Compilation timeout (> 10s)'
+            }
+        except Exception as e:
+            return {
+                'status': 'CE',
+                'output': '',
+                'error': str(e),
+                'compile_error': str(e)
+            }
+
+        # Execute compiled program
+        try:
+            execute_result = subprocess.run(
+                [str(executable_file)],
+                input=test_input,
+                capture_output=True,
+                text=True,
+                timeout=timeout
+            )
+
+            if execute_result.returncode != 0:
+                return {
+                    'status': 'RTE',
+                    'output': execute_result.stdout,
+                    'error': execute_result.stderr
+                }
+
+            return {
+                'status': 'AC',
+                'output': execute_result.stdout,
+                'error': ''
+            }
+
+        except subprocess.TimeoutExpired:
+            return {
+                'status': 'TLE',
+                'output': '',
+                'error': f'Time limit exceeded (> {timeout}s)'
+            }
+        except Exception as e:
+            return {
+                'status': 'RTE',
+                'output': '',
+                'error': str(e)
+            }

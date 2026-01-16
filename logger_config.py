@@ -12,7 +12,8 @@ def setup_logger(
     log_file: Optional[str] = None,
     level=logging.INFO,
     console_level=logging.INFO,
-    file_level=logging.DEBUG
+    file_level=logging.DEBUG,
+    console_output: bool = False
 ) -> logging.Logger:
     """
     Setup logger with file and console handlers
@@ -23,6 +24,7 @@ def setup_logger(
         level: Overall logger level (default: INFO)
         console_level: Console handler level (default: INFO)
         file_level: File handler level (default: DEBUG)
+        console_output: Whether to output to console (default: False, only to file)
 
     Returns:
         Configured logger instance
@@ -39,15 +41,16 @@ def setup_logger(
     if logger.handlers:
         return logger
 
-    # Console handler - show INFO and above
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(console_level)
-    console_formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    console_handler.setFormatter(console_formatter)
-    logger.addHandler(console_handler)
+    # Console handler - show INFO and above (if console_output is True)
+    if console_output:
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(console_level)
+        console_formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        console_handler.setFormatter(console_formatter)
+        logger.addHandler(console_handler)
 
     # File handler (if specified) - log everything including DEBUG
     if log_file:

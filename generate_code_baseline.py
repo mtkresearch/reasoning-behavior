@@ -245,7 +245,7 @@ def generate_baseline(
 
     # Generate answers
     new_results = []
-    for completed_task in tqdm(client.generate_concurrent(tasks, max_workers=max_workers), total=len(tasks)):
+    for completed_task in tqdm(client.generate_concurrent(tasks, max_workers=max_workers, use_complete_api=True), total=len(tasks)):
         problem = completed_task.metadata['problem']
         instruction = completed_task.metadata['instruction']
         response = completed_task.response
@@ -260,11 +260,17 @@ def generate_baseline(
         reasoning_traj = response.reasoning_content or ''
         final_answer = response.content or ''
 
+
+
         # IMPORTANT: traj must not be empty - if it is, this indicates a bug
         if not reasoning_traj:
             error_msg = f"BUG: reasoning_content (traj) is empty for problem {problem['problem_id']}. This indicates the LLM client or OpenRouter API is not returning reasoning content properly."
             logger.error(error_msg)
-            raise ValueError(error_msg)
+            continue
+        if not final_answer:
+            error_msg = f"BUG: final_answer is empty for problem {problem['problem_id']}. This indicates the LLM client or OpenRouter API is not returning reasoning content properly."
+            logger.error(error_msg)
+            continue
 
         # Build result structure
         # Note: 'test_cases' field contains test cases in format [[input, output], ...]
@@ -355,11 +361,13 @@ def main():
         default=None,
         help='Limit number of problems to process (for testing)'
     )
+
+    DEFAULT_MAX_WORKERS = 4
     parser.add_argument(
         '--max_workers',
         type=int,
-        default=8,
-        help='Maximum concurrent workers (default: 8)'
+        default=DEFAULT_MAX_WORKERS,
+        help=f'Maximum concurrent workers (default: {DEFAULT_MAX_WORKERS})'
     )
 
     args = parser.parse_args()

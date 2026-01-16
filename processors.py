@@ -754,17 +754,22 @@ class AnswerProcessor(Processor):
     - 'retrieval': Add prefill text to guide answer generation
     """
 
-    def __init__(self, mode: str, prefill_text: str = "Thus, the answer is", **kwargs):
+    def __init__(self, mode: str, **kwargs):
         """
         Initialize AnswerProcessor
 
         Args:
             mode: Processing mode (currently only 'retrieval' is supported)
-            prefill_text: Text to prefill in the answer section (default: "Thus, the answer is")
-            **kwargs: Additional parameters (reserved for future use)
+            **kwargs: Additional parameters (ignored - prefill_text is auto-determined by dataset_type)
         """
         self.mode = mode
-        self.prefill_text = prefill_text
+        # Warn if user tried to pass prefill_text
+        if 'prefill_text' in kwargs:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning("prefill_text parameter is deprecated and ignored. "
+                         "Use dataset_type in context to auto-determine prefill text.")
+        self.prefill_text = None  # Will be set based on dataset_type in process()
         self.kwargs = kwargs
         self.last_input_stats = None
         self.last_output_stats = None
@@ -775,10 +780,13 @@ class AnswerProcessor(Processor):
 
         This processor does not modify the reasoning text.
         It adds 'answer_prefill' to the context dictionary.
+        The prefill text is auto-determined based on dataset_type:
+        - 'code': "Thus, the code is\\n```cpp\\n"
+        - 'math' (default): "Thus, the answer is"
 
         Args:
             reasoning: The reasoning text (unchanged)
-            context: Context dictionary to store prefill text
+            context: Context dictionary with optional 'dataset_type' key
 
         Returns:
             Original reasoning text (unchanged)
@@ -788,8 +796,17 @@ class AnswerProcessor(Processor):
         if self.mode != 'retrieval':
             raise ValueError(f"Invalid mode: {self.mode}. Currently only 'retrieval' is supported.")
 
+        # Auto-determine prefill_text based on dataset_type
+        dataset_type = context.get('dataset_type', 'math')
+        if dataset_type == 'code':
+            prefill_text = "Thus, the code is\n```"
+        else:
+            # Default for math datasets
+            prefill_text = "Thus, the answer is"
+
         # Add prefill text to context
-        context['answer_prefill'] = self.prefill_text
+        context['answer_prefill'] = prefill_text
+        self.prefill_text = prefill_text  # Store for metadata
 
         self.last_output_stats = self._compute_stats(reasoning)
         return reasoning

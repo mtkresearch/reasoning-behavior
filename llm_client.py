@@ -1,6 +1,7 @@
 import json
 import os
 from time import sleep
+import logging
 
 import requests
 import asyncio
@@ -15,6 +16,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DEBUG = False
+
+# Setup logger for LLM client
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -100,6 +104,8 @@ class LLMClient:
                 return 'openai/gpt-oss-120b'
             elif model_type == 'deepseek':
                 return 'deepseek/deepseek-chat-v3.1'
+            elif model_type == 'deepseek-base':
+                return 'deepseek/deepseek-v3.1-base'
             elif model_type == 'qwen3':
                 raise ValueError(f"Unsupported model_type for openrouter: {model_type}")
             else:
@@ -126,8 +132,10 @@ class LLMClient:
 
     def _get_provider_preferences(self, request):
         """Get provider preferences for OpenRouter API"""
-        if request.model_type in ['gpt-oss', 'deepseek']:
+        if request.model_type in ['gpt-oss']:
             return {'quantizations': ['fp4']}
+        elif request.model_type in ['deepseek']:
+            return {'only': ['fireworks']}
         return None
 
     def _apply_completion_template(
@@ -163,10 +171,9 @@ class LLMClient:
         # OpenRouter mode: apply templates for specific models
         if model_type == 'gpt-oss':
             # Build system message (based on gpt-oss template)
-            model_identity = "You are ChatGPT, a large language model trained by OpenAI."
             current_date = datetime.now().strftime("%Y-%m-%d")
 
-            system_message = f"{model_identity}\n"
+            system_message = f"{system_prompt}\n"
             system_message += "Knowledge cutoff: 2024-06\n"
             system_message += f"Current date: {current_date}\n\n"
             # Set reasoning effort based on reasoning_on flag
@@ -197,17 +204,33 @@ class LLMClient:
 
             template += f"</think>{answer_prefix}"
             return template
+        
+        elif model_type == 'deepseek-base':
+
+            template = f"<｜begin▁of▁sentence｜>{system_prompt}\n\nUSER:\nWho are you?\n\nASSISTANT:\nI am DeepSeek\n\nUSER:\n{question}\n\n"
+
+            if reasoning_on and reasoning:
+                # Thinking mode with prefilled reasoning
+                template += f"ASSISTANT'S THINK:\n{reasoning}\n\n"
+
+            template += f"ASSISTANT:\n{answer_prefix}"
+            return template
 
         # For other models or unknown types
         raise Exception
 
-    def generate(self, request):
+    def generate(self, request, use_complete_api=False):
+        if use_complete_api:
+            reasoning_content, content, messages = self.chat_complete_with_complete_api(request)
+            return reasoning_content, content, messages
+    
         if request.model_type == 'deepseek':
             messages = [
                 {"role": "system", "content": request.system_prompt},
                 {"role": "user", "content": request.queries[0]},
             ]
-
+        elif request.model_type == 'deepseek-base':
+            raise Exception
         elif request.model_type == 'gpt-oss':
             messages = [
                 {"role": "system", "content": request.system_prompt},
@@ -256,6 +279,10 @@ class LLMClient:
             if DEBUG:
                 print(payload)
 
+            # Log request payload
+            logger.info(f"[CHAT] Model: {payload['model']}, Temp: {payload.get('temperature')}, Msgs: {len(payload['messages'])}")
+            logger.info(f"[CHAT] Messages: {json.dumps(payload['messages'], ensure_ascii=False)}")
+
             # Make API request using requests library
             response = requests.post(
                 url=f"{self.base_url}/chat/completions",
@@ -272,11 +299,13 @@ class LLMClient:
 
             # Parse JSON response
             response_data = response.json()
+            logger.info(f"[CHAT] Response status: {response.status_code}")
             if DEBUG:
                 print(response_data)
 
             # Check for errors in response
             if not response_data.get('choices') or len(response_data['choices']) == 0:
+                logger.error("[CHAT] API returned no choices")
                 raise Exception("API returned no choices")
 
             choice = response_data['choices'][0]
@@ -286,12 +315,13 @@ class LLMClient:
             finish_reason = choice.get('finish_reason')
             if finish_reason == 'error':
                 error_msg = choice.get('error', 'Unknown error')
+                logger.error(f"[CHAT] API error: {error_msg}")
                 raise Exception(f"API error: {error_msg}")
             elif finish_reason == 'content_filter':
+                logger.warning("[CHAT] Content filtered by API")
                 raise Exception("API: Content filtered")
             elif finish_reason == 'length':
-                # This is a warning, not an error - content was truncated due to max_tokens
-                pass
+                logger.warning("[CHAT] Response truncated (max_tokens limit reached)")
 
             # Extract reasoning_details for preservation in next turn
             reasoning_details = message.get('reasoning_details')
@@ -304,7 +334,8 @@ class LLMClient:
 
             elif request.model_type == 'gpt-oss':
                 if request.reasoning_on:
-                    reasoning_content = message.get('reasoning_content')
+                    # OpenRouter returns reasoning in 'reasoning' field for gpt-oss
+                    reasoning_content = message.get('reasoning')
                 content = message.get('content')
 
             elif request.model_type == 'qwen3':
@@ -313,6 +344,59 @@ class LLMClient:
                 else:
                     raise NotImplementedError
 
+        return reasoning_content, content, messages
+    
+    def chat_complete_with_complete_api(self, request):
+        prompt = self._apply_completion_template(
+            question=request.queries[0],
+            reasoning='<<<HALT>>>',
+            answer_prefix='',
+            model_type=request.model_type,
+            system_prompt=request.system_prompt,
+            reasoning_on=True,
+        )
+        prompt = prompt.split('<<<HALT>>>')[0]
+        payload = {
+            'model': self._get_model(request.model_type),
+            'prompt': prompt,
+            'temperature': request.temperature,
+            'stop': ['<｜end▁of▁sentence｜>'],
+            'max_tokens': 160000,
+        }
+
+        extra_body = self._get_extra_body(request, task='completion')
+        if extra_body:
+            payload['extra_body'] = extra_body
+
+        # Add provider preferences if available
+        provider_prefs = self._get_provider_preferences(request)
+        if provider_prefs:
+            payload['provider'] = provider_prefs
+
+        response = requests.post(
+            url=f"{self.base_url}/completions",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            data=json.dumps(payload),
+            timeout=self.timeout
+        )
+
+        # Check HTTP errors
+        try:
+            response.raise_for_status()
+        except Exception as e:
+            error_data = response.json()
+            logger.error(f"[COMPLETION] HTTP Error {response.status_code}: {error_data}")
+            print(f'Error: {error_data}')
+            sleep(1.0)
+            raise e
+
+        response_data = response.json()
+        reasoning_content = response_data['choices'][0]['reasoning']
+        content = response_data['choices'][0]['text']
+        messages = None
         return reasoning_content, content, messages
 
     def complete(self, request: CompletionRequest):
@@ -353,6 +437,10 @@ class LLMClient:
         if DEBUG:
             print(payload)
 
+        # Log request payload
+        logger.info(f"[COMPLETION] Model: {payload['model']}, Temp: {payload.get('temperature')}, Max tokens: {payload.get('max_tokens')}")
+        logger.info(f"[COMPLETION] Prompt: {formatted_prompt}")
+
         response = requests.post(
             url=f"{self.base_url}/completions",
             headers={
@@ -367,12 +455,15 @@ class LLMClient:
         try:
             response.raise_for_status()
         except Exception as e:
-            print(f'Error: {response.json()}')
+            error_data = response.json()
+            logger.error(f"[COMPLETION] HTTP Error {response.status_code}: {error_data}")
+            print(f'Error: {error_data}')
             sleep(1.0)
             raise e
 
         # Parse JSON response
         response_data = response.json()
+        logger.info(f"[COMPLETION] Response status: {response.status_code}")
 
         # Check for errors in response
         if not response_data.get('choices') or len(response_data['choices']) == 0:
@@ -386,17 +477,18 @@ class LLMClient:
         finish_reason = choice.get('finish_reason')
         if finish_reason == 'error':
             error_msg = choice.get('error', 'Unknown error')
+            logger.error(f"[COMPLETION] API error: {error_msg}")
             raise Exception(f"API error: {error_msg}")
         elif finish_reason == 'content_filter':
+            logger.warning("[COMPLETION] Content filtered by API")
             raise Exception("API: Content filtered")
         elif finish_reason == 'length':
-            # This is a warning, not an error - content was truncated due to max_tokens
-            pass
+            logger.warning("[COMPLETION] Response truncated (max_tokens limit reached)")
 
         content = choice.get('text')
         return content
 
-    def generate_concurrent(self, tasks, max_workers=None):
+    def generate_concurrent(self, tasks, max_workers=None, **kwargs):
         """
         Generate responses concurrently for multiple tasks.
 
@@ -410,12 +502,14 @@ class LLMClient:
         def _generate_task(task):
             try:
                 start_time = time.time()
-                reasoning_content, content, history = self.generate(task.request)
+                reasoning_content, content, history = self.generate(task.request, **kwargs)
                 elapsed_seconds = int(time.time() - start_time)
                 task.response = Response(content=content, history=json.dumps(history), reasoning_content=reasoning_content, elapsed_seconds=elapsed_seconds, success=True)
                 return task
             except Exception as e:
                 elapsed_seconds = int(time.time() - start_time if 'start_time' in locals() else 0)
+                task_id = task.metadata.get('unique_id', f'task_{task.index}') if task.metadata else f'task_{task.index}'
+                logger.error(f"[GENERATE] Failed for {task_id}: {str(e)}")
                 task.response = Response(content="", history="", elapsed_seconds=elapsed_seconds, success=False, err_message=str(e))
                 return task
 
@@ -448,6 +542,8 @@ class LLMClient:
                 return task
             except Exception as e:
                 elapsed_seconds = int(time.time() - start_time if 'start_time' in locals() else 0)
+                task_id = task.metadata.get('unique_id', f'task_{task.index}') if task.metadata else f'task_{task.index}'
+                logger.error(f"[COMPLETE] Failed for {task_id}: {str(e)}")
                 task.response = Response(content="", history="", elapsed_seconds=elapsed_seconds, success=False, err_message=str(e))
                 return task
 
@@ -459,3 +555,35 @@ class LLMClient:
 
             for future in as_completed(futures):
                 yield future.result()
+
+
+if __name__ == "__main__":
+    # Try-run example for deepseek-base completion
+    try:
+        # Initialize client
+        client = LLMClient(mode="openrouter")
+
+        # Create a completion request
+        request = CompletionRequest(
+            question="What is 2 + 2?",
+            reasoning="Let me think about this step by step. We need to add two and two.",
+            answer_prefix="The answer is ",
+            model_type="deepseek-base",
+            temperature=0.7,
+            max_tokens=100,
+        )
+
+        print("[Try-run] Deepseek-base completion example")
+        print(f"Question: {request.question}")
+        print(f"Reasoning: {request.reasoning}")
+        print(f"Answer prefix: {request.answer_prefix}")
+        print()
+
+        # Call complete
+        result = client.complete(request)
+        print(f"Result: {result}")
+
+    except Exception as e:
+        print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()

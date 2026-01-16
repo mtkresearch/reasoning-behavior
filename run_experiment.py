@@ -140,31 +140,33 @@ Available Processors
    - Input:  "The answer is 42" (ground truth: 42) with pattern='{ANSWER}', replacement='999'
    - Output: "The answer is 999"
 
-7. answer(mode, prefill_text='Thus, the answer is')
+7. answer(mode)
    Add prefill text to guide model answer generation.
 
    This processor does not modify the reasoning text itself. Instead, it adds
    prefill text at the beginning of the answer section in the prompt to guide
-   the model's response format.
+   the model's response format. The prefill text is auto-determined based on the
+   dataset type (math vs code).
 
    Modes:
    - 'retrieval': Add prefill text to guide answer generation
 
-   Parameters:
-   - prefill_text: Text to prefill at the start of answer (default: 'Thus, the answer is')
+   Auto-determined prefill text:
+   - Math datasets: "Thus, the answer is"
+   - Code datasets: "Thus, the code is\n```cpp\n"
 
    Examples:
-   - answer('retrieval') - Uses default "Thus, the answer is" as prefix
-   - answer('retrieval', prefill_text='Therefore, the final answer is')
+   - answer('retrieval') - Auto-selects prefill based on dataset type
 
    Use cases:
    - Guide the model to start answers in a specific format
-   - Test if answer format affects model performance
    - Ensure consistent answer structure across responses
+   - Improve model performance by providing format hints
 
    Note:
-   - When using answer('retrieval'), max_tokens is automatically reduced from 5000 to 50
-     to optimize generation speed and cost, since only a short answer is expected
+   - For math datasets: max_tokens is automatically reduced from 5000 to 50 when using
+     answer('retrieval') to optimize generation speed and cost, since only a short answer is expected
+   - For code datasets: max_tokens remains at 5000 to allow full code generation
 
 8. reason_is(text)
    Replace reasoning content with a custom text pattern.
@@ -392,73 +394,70 @@ python run_experiment.py --flow "truncate('before_line',r=0.1)"
 # Example 23d: Remove first 5 lines, keep the rest
 python run_experiment.py --flow "truncate('before_line',n=5)"
 
-# Example 24: Add answer prefill to guide model response format
+# Example 24: Add answer prefill to guide model response format (auto-determined by dataset type)
 python run_experiment.py --flow "answer('retrieval')"
 
-# Example 25: Answer prefill with custom text
-python run_experiment.py --flow "answer('retrieval',prefill_text='Therefore, the final answer is')"
-
-# Example 26: Combine answer prefill with masking
+# Example 25: Combine answer prefill with masking
 python run_experiment.py --flow "mask('number'),answer('retrieval')"
 
-# Example 27: Full pipeline with answer prefill
+# Example 26: Full pipeline with answer prefill
 python run_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('number'),shuffle('line'),answer('retrieval')"
 
-# Example 27a: Remove question and provide only reasoning
+# Example 26a: Remove question and provide only reasoning
 python run_experiment.py --flow "question('remove')"
 
-# Example 27b: Remove question and mask numbers in reasoning
+# Example 26b: Remove question and mask numbers in reasoning
 python run_experiment.py --flow "question('remove'),mask('number')"
 
-# Example 28: Replace reasoning with answer only (pure answer)
+# Example 27: Replace reasoning with answer only (pure answer)
 python run_experiment.py --flow "reason_is('{ANSWER}')"
 
-# Example 29: Replace reasoning with illustrated answer format
+# Example 28: Replace reasoning with illustrated answer format
 python run_experiment.py --flow "reason_is('Thus, the answer is {ANSWER}.')"
 
-# Example 30: Combine reason_is with other processors (though reason_is replaces all, so order matters)
+# Example 29: Combine reason_is with other processors (though reason_is replaces all, so order matters)
 python run_experiment.py --flow "mask('number'),reason_is('{ANSWER}')"
 
-# Example 31: Use reason_is as baseline for comparison with custom format
+# Example 30: Use reason_is as baseline for comparison with custom format
 python run_experiment.py --flow "reason_is('The final result is {ANSWER}')"
 
-# Example 32: Replace reasoning with math expression using ANSWER
+# Example 31: Replace reasoning with math expression using ANSWER
 python run_experiment.py --flow "reason_is('The answer is {ANSWER} or {ANSWER * 0.9}')"
 
-# Example 33: Use math expression with addition
+# Example 32: Use math expression with addition
 python run_experiment.py --flow "reason_is('The result is {ANSWER + 10}')"
 
-# Example 34: Multiple math expressions in one pattern
+# Example 33: Multiple math expressions in one pattern
 python run_experiment.py --flow "reason_is('Options: {ANSWER}, {ANSWER * 0.9}, {ANSWER * 1.1}')"
 
-# Example 35: Randomize all digits with default seed
+# Example 34: Randomize all digits with default seed
 python run_experiment.py --flow "random('number')"
 
-# Example 36: Randomize all digits with custom seed
+# Example 35: Randomize all digits with custom seed
 python run_experiment.py --flow "random('number',seed=123)"
 
-# Example 37: Combine randomization with other processors
+# Example 36: Combine randomization with other processors
 python run_experiment.py --flow "random('number'),shuffle('line')"
 
-# Example 38: Randomize digits and mask letters
+# Example 37: Randomize digits and mask letters
 python run_experiment.py --flow "random('number'),mask('alphabet')"
 
-# Example 39: Replace reasoning with random tokens (token mode, count = original token count)
+# Example 38: Replace reasoning with random tokens (token mode, count = original token count)
 python run_experiment.py --flow "padding('token')"
 
-# Example 40: Replace reasoning with random tokens using custom tokenizer (count = original token count)
+# Example 39: Replace reasoning with random tokens using custom tokenizer (count = original token count)
 python run_experiment.py --flow "padding('token',tokenizer_model='gpt2',seed=42)"
 
-# Example 41: Replace reasoning with random words (word mode, count = original word count)
+# Example 40: Replace reasoning with random words (word mode, count = original word count)
 python run_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv')"
 
-# Example 42: Replace reasoning with random words using custom seed
+# Example 41: Replace reasoning with random words using custom seed
 python run_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv',seed=123)"
 
-# Example 43: Replace reasoning with random words, then apply masking to the random words
+# Example 42: Replace reasoning with random words, then apply masking to the random words
 python run_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv'),mask('number')"
 
-# Example 44: Replace reasoning with random words, apply masking, then shuffle
+# Example 43: Replace reasoning with random words, apply masking, then shuffle
 python run_experiment.py --flow "padding('word',words_tsv_path='data/AIME2025__R10/gpt-oss/p1/words.tsv'),mask('number'),shuffle('line')"
 
 -----------------------------------------------------------------------------
@@ -517,6 +516,10 @@ DEFAULT_MAX_RETRY = 1
 
 # Setup logger
 logger = setup_logger(__name__, log_file='logs/run_experiment.log')
+
+# Also setup logging for llm_client module
+import logging
+llm_client_logger = setup_logger('llm_client', log_file='logs/run_experiment.log', level=logging.INFO)
 
 
 # =============================================================================
@@ -794,21 +797,26 @@ def prepare_task(
     item: Dict,
     model_type: str,
     flow: str = None,
+    dataset_type: str = 'math'
 ) -> Task:
     """
     Prepare a Task for reasoning processing (masking, truncating, shuffling, etc.)
 
-    Note: This function supports both the new --flow syntax.
+    Note: This function supports both the new --flow syntax and both math/code formats.
 
     Args:
         item: Result item from results.json
         model_type: Model type
         flow: Flow string (e.g., "mask('number'),shuffle('line')").
-        seed_base: Base seed for shuffling (used when flow doesn't specify seed)
+        dataset_type: Dataset type ('math' or 'code'), used to determine answer prefix format
     """
     unique_id = item['unique_id']
     question = item['question']
-    ground_truth = item['answer']
+
+    # Support both formats:
+    # - Math: item['answer'] (string/number)
+    # - Code: item['test_cases'] (list of test cases)
+    ground_truth = item.get('test_cases') or item.get('answer', '')
     original_reasoning = item['result']['traj']
 
     # Extract index from unique_id (e.g., "aime2025-I-0-2" -> 2)
@@ -825,7 +833,8 @@ def prepare_task(
     context = {
         'question': question,
         'answer': ground_truth,
-        'ground_truth': ground_truth
+        'ground_truth': ground_truth,
+        'dataset_type': dataset_type  # Pass dataset_type to processors for auto-prefill selection
     }
 
     if flow_str:
@@ -842,12 +851,16 @@ def prepare_task(
         final_question = question
 
     # Build CompletionRequest with processed reasoning
-    # Get answer_prefill from context (set by AnswerProcessor)
+    # Get answer_prefill from context (set by AnswerProcessor based on dataset_type)
     answer_prefix = context.get('answer_prefill', '')
 
     # Adjust max_tokens based on whether retrieval mode is used
-    # When using answer('retrieval'), we only need to extract a short answer
-    max_tokens = 50 if answer_prefix else 5000
+    # When using answer('retrieval'), we only need to extract a short answer (math)
+    # For code generation, we need more tokens
+    if answer_prefix:
+        max_tokens = 5000 if dataset_type == 'code' else 50
+    else:
+        max_tokens = 5000
 
     # Create CompletionRequest (template will be applied by LLMClient)
     request = CompletionRequest(
@@ -870,6 +883,11 @@ def prepare_task(
         'flow': flow_str,
         'processing_metadata': processing_metadata,
     }
+
+    # Preserve test_cases for code datasets
+    # ground_truth can be either answer (string) or test_cases (list)
+    if isinstance(ground_truth, list):
+        metadata['test_cases'] = ground_truth
 
     # Add answer_prefill to metadata if present
     if 'answer_prefill' in context:
@@ -902,6 +920,14 @@ def task_to_result(task: Task) -> Dict:
     else:
         error = None
 
+    # Prepare generated_answer with answer_prefix if present
+    # When using answer_prefix (prefill), the API response doesn't include the prefix
+    # We need to prepend it to get the complete answer
+    generated_answer = None
+    if success:
+        answer_prefix = metadata.get('answer_prefill', '')
+        generated_answer = answer_prefix + response.content if answer_prefix else response.content
+
     # Build result dict
     result = {
         'unique_id': metadata['unique_id'],
@@ -912,7 +938,7 @@ def task_to_result(task: Task) -> Dict:
         'processed_reasoning': metadata.get('processed_reasoning', metadata.get('masked_reasoning', '')),
         'flow': metadata.get('flow', ''),
         'processing_metadata': metadata.get('processing_metadata', []),
-        'generated_answer': response.content if success else None,
+        'generated_answer': generated_answer,
         'is_correct': None,
         'grading_reasoning': None,
         'generation_success': success,
@@ -920,6 +946,10 @@ def task_to_result(task: Task) -> Dict:
         'error': error,
         'retry_count': 0  # Track retry attempts
     }
+
+    # Preserve test_cases for code datasets
+    if 'test_cases' in metadata:
+        result['test_cases'] = metadata['test_cases']
 
     return result
 
@@ -1021,8 +1051,81 @@ def _save_results_with_metadata(
         json.dump(output, f, indent=2, ensure_ascii=False)
 
 
-def create_grading_tasks(results: List[Dict], judge_model_type: str = 'gpt-oss') -> List[Task]:
-    """Create grading tasks for generated answers"""
+def detect_dataset_type(results: List[Dict]) -> str:
+    """
+    自動檢測數據集類型
+
+    Args:
+        results: 結果列表
+
+    Returns:
+        'code' 或 'math'
+    """
+    if not results:
+        return 'math'  # 預設為 math
+
+    first_id = results[0].get('unique_id', '')
+    return 'code' if 'codeforces' in first_id else 'math'
+
+
+def create_code_grading_tasks(results: List[Dict]) -> List[Dict]:
+    """
+    創建代碼本地執行任務（非 LLM Task）
+
+    支援兩種格式：
+    1. Baseline 格式：代碼在 result.answer，測試用例在 test_cases
+    2. Experiment 格式：代碼在 generated_answer，測試用例在 test_cases
+
+    Args:
+        results: 結果列表
+
+    Returns:
+        本地執行任務列表（字典格式）
+    """
+    from core import extract_code_blocks
+
+    tasks = []
+    for result in results:
+        if not result.get('generation_success', False):
+            continue
+
+        # 支援兩種格式提取代碼：
+        # 1. Baseline: result.answer
+        # 2. Experiment: generated_answer
+        if 'generated_answer' in result and result['generated_answer']:
+            answer_text = result['generated_answer']
+        else:
+            answer_text = result.get('result', {}).get('answer', '')
+
+        code_blocks = extract_code_blocks(answer_text)
+
+        # 優先選擇 C++ 代碼塊（標記為 cpp, c++, C++）
+        cpp_blocks = [block for block in code_blocks if block[0].lower() in ['cpp', 'c++', 'c']]
+        if cpp_blocks:
+            code = cpp_blocks[0][1]
+        elif code_blocks:
+            # Fallback: 使用第一個代碼塊
+            code = code_blocks[0][1]
+        else:
+            code = ""
+
+        # 從 test_cases 欄位獲取測試用例
+        test_cases = result.get('test_cases', [])
+
+        tasks.append({
+            'type': 'code_execution',
+            'unique_id': result['unique_id'],
+            'question_id': result.get('question_id', 0),
+            'code': code,
+            'test_cases': test_cases,
+            'result': result
+        })
+
+    return tasks
+
+
+def create_math_grading_tasks(results: List[Dict], judge_model_type: str = 'gpt-oss') -> List[Task]:
+    """Create grading tasks for mathematical answers (original logic)"""
     tasks = []
 
     for result in results:
@@ -1047,6 +1150,32 @@ def create_grading_tasks(results: List[Dict], judge_model_type: str = 'gpt-oss')
         ))
 
     return tasks
+
+
+def create_grading_tasks(
+    results: List[Dict],
+    judge_model_type: str = 'gpt-oss',
+    dataset_type: str = None
+) -> List:
+    """
+    Create grading tasks (supports both math and code datasets)
+
+    Args:
+        results: 結果列表
+        judge_model_type: LLM 判官模型（僅用於 math）
+        dataset_type: 數據集類型 ('math' 或 'code')，None 為自動檢測
+
+    Returns:
+        任務列表（math 為 List[Task]，code 為 List[Dict]）
+    """
+    # 自動檢測數據集類型
+    if dataset_type is None:
+        dataset_type = detect_dataset_type(results)
+
+    if dataset_type == 'code':
+        return create_code_grading_tasks(results)
+    else:
+        return create_math_grading_tasks(results, judge_model_type)
 
 
 def run_experiment(
@@ -1124,11 +1253,15 @@ def run_experiment(
     # Initialize LLM client
     client = LLMClient(mode=mode, timeout=60)
 
+    # Detect dataset type early (before preparing tasks)
+    dataset_type = detect_dataset_type(data)
+    print(f"Dataset type: {dataset_type}")
+
     # Prepare tasks
     print("Preparing processing tasks...")
     tasks = []
     for item in data:
-        task = prepare_task(item, model_type, flow=flow_str)
+        task = prepare_task(item, model_type, flow=flow_str, dataset_type=dataset_type)
         tasks.append(task)
 
     # Phase 1: Generate answers with processed reasoning
@@ -1182,7 +1315,11 @@ def run_experiment(
                     response = completed_task.response
 
                     if response.success and response.content:
-                        stage1_results_map[unique_id]['generated_answer'] = response.content
+                        # Prepend answer_prefix if present (prefill doesn't include prefix in response)
+                        answer_prefix = completed_task.metadata.get('answer_prefill', '')
+                        generated_answer = answer_prefix + response.content if answer_prefix else response.content
+
+                        stage1_results_map[unique_id]['generated_answer'] = generated_answer
                         stage1_results_map[unique_id]['generation_success'] = True
                         stage1_results_map[unique_id]['error'] = None
                         stage1_results_map[unique_id]['retry_count'] = retry_attempt + 1
@@ -1236,31 +1373,82 @@ def run_experiment(
     print(f"Already graded: {len(stage1_successful) - len(need_grading)}")
     print(f"Need to grade: {len(need_grading)}")
 
+    # Note: dataset_type was already detected in Phase 1
+
     grading_tasks = create_grading_tasks(need_grading, judge_model_type='gpt-oss')
 
     if len(grading_tasks) > 0:
-        print(f"Grading {len(grading_tasks)} answers...")
-        for grading_task in tqdm(client.generate_concurrent(grading_tasks, max_workers=GRADED_MAX_WORKERS),
-                                 total=len(grading_tasks)):
-            if not grading_task.response.success:
-                logger.error(f"Error in grading task {grading_task.index}: {grading_task.response.err_message}")
-                print(f"\nError in grading task {grading_task.index}: {grading_task.response.err_message}")
-                continue
+        if dataset_type == 'code':
+            # Code grading: local C++ execution
+            print(f"Executing C++ code for {len(grading_tasks)} tasks...")
+            from core import compile_and_execute_cpp, normalize_output
 
-            result_id = grading_task.metadata['result_id']
+            for task in tqdm(grading_tasks, desc="Executing C++"):
+                code = task['code']
+                test_cases = task['test_cases']
 
-            # Get result from Stage 1 and add grading info
-            if result_id in stage1_results_map:
-                graded_result = stage1_results_map[result_id].copy()
-                graded_result['is_correct'] = parse_yes_no_response(grading_task.response.content)
-                graded_result['grading_reasoning'] = grading_task.response.content
+                # Execute all test cases
+                all_passed = True
+                execution_details = []
+
+                for test_input, expected_output in test_cases:
+                    exec_result = compile_and_execute_cpp(
+                        code=code,
+                        test_input=test_input,
+                        timeout=2
+                    )
+
+                    # Check status and output
+                    if exec_result['status'] != 'AC':
+                        all_passed = False
+                    elif normalize_output(exec_result['output']) != normalize_output(expected_output):
+                        all_passed = False
+                        exec_result['status'] = 'WA'
+
+                    execution_details.append({
+                        'input': test_input[:50],
+                        'expected': expected_output[:50],
+                        'actual': exec_result['output'][:50],
+                        'status': exec_result['status']
+                    })
+
+                # Update result
+                graded_result = task['result'].copy()
+                graded_result['is_correct'] = all_passed
+                graded_result['grading_reasoning'] = json.dumps(execution_details, indent=2)
+                graded_result['grading_status'] = 'AC' if all_passed else execution_details[0]['status']
                 graded_result['success'] = True
 
                 # Update Stage 2 map
-                stage2_results_map[result_id] = graded_result
+                stage2_results_map[graded_result['unique_id']] = graded_result
 
                 # Append to Stage 2 JSONL
                 append_to_jsonl(stage2_jsonl, graded_result)
+
+        else:
+            # Math grading: use LLM
+            print(f"Grading {len(grading_tasks)} answers with LLM...")
+            for grading_task in tqdm(client.generate_concurrent(grading_tasks, max_workers=GRADED_MAX_WORKERS),
+                                     total=len(grading_tasks)):
+                if not grading_task.response.success:
+                    logger.error(f"Error in grading task {grading_task.index}: {grading_task.response.err_message}")
+                    print(f"\nError in grading task {grading_task.index}: {grading_task.response.err_message}")
+                    continue
+
+                result_id = grading_task.metadata['result_id']
+
+                # Get result from Stage 1 and add grading info
+                if result_id in stage1_results_map:
+                    graded_result = stage1_results_map[result_id].copy()
+                    graded_result['is_correct'] = parse_yes_no_response(grading_task.response.content)
+                    graded_result['grading_reasoning'] = grading_task.response.content
+                    graded_result['success'] = True
+
+                    # Update Stage 2 map
+                    stage2_results_map[result_id] = graded_result
+
+                    # Append to Stage 2 JSONL
+                    append_to_jsonl(stage2_jsonl, graded_result)
     else:
         print(f"All results already graded, skipping grading phase")
 
