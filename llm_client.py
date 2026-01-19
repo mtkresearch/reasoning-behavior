@@ -106,6 +106,8 @@ class LLMClient:
                 return 'deepseek/deepseek-chat-v3.1'
             elif model_type == 'deepseek-base':
                 return 'deepseek/deepseek-v3.1-base'
+            elif model_type == 'olmo':
+                return 'allenai/olmo-3.1-32b-think'
             elif model_type == 'qwen3':
                 raise ValueError(f"Unsupported model_type for openrouter: {model_type}")
             else:
@@ -126,6 +128,9 @@ class LLMClient:
         elif request.model_type == 'gpt-oss':
             if task == 'chat':
                 extra_body["reasoning"] = {"enabled": request.reasoning_on}
+        elif request.model_type == 'olmo':
+            if task == 'chat':
+                extra_body["reasoning"] = {"enabled": request.reasoning_on}
         elif request.model_type == 'qwen3':
             pass
         return extra_body
@@ -135,7 +140,7 @@ class LLMClient:
         if request.model_type in ['gpt-oss']:
             return {'quantizations': ['fp4']}
         elif request.model_type in ['deepseek']:
-            return {'only': ['fireworks']}
+            return {'quantizations': ['fp8', 'fp4']}
         return None
 
     def _apply_completion_template(
@@ -216,6 +221,21 @@ class LLMClient:
             template += f"ASSISTANT:\n{answer_prefix}"
             return template
 
+        elif model_type == 'olmo':
+            # OLMo requires reasoning to be enabled
+            if not reasoning_on:
+                raise ValueError("OLMo requires reasoning to be enabled (reasoning_on=True)")
+
+            # OLMo uses the Olmo-specific chat template format
+            # System message: <|im_start|>system\n{content}<|im_end|>\n
+            # User message: <|im_start|>user\n{content}<|im_end|>\n
+            # Assistant message: <|im_start|>assistant\n<think>{reasoning}</think>{answer}<|im_end|>\n
+            template = f"<|im_start|>system\n{system_prompt}<|im_end|>\n"
+            template += f"<|im_start|>user\n{question}<|im_end|>\n"
+            template += f"<|im_start|>assistant\n<think>{reasoning}</think>"
+            template += f"{answer_prefix}"
+            return template
+
         # For other models or unknown types
         raise Exception
 
@@ -232,6 +252,11 @@ class LLMClient:
         elif request.model_type == 'deepseek-base':
             raise Exception
         elif request.model_type == 'gpt-oss':
+            messages = [
+                {"role": "system", "content": request.system_prompt},
+                {"role": "user", "content": request.queries[0]},
+            ]
+        elif request.model_type == 'olmo':
             messages = [
                 {"role": "system", "content": request.system_prompt},
                 {"role": "user", "content": request.queries[0]},
@@ -335,6 +360,12 @@ class LLMClient:
             elif request.model_type == 'gpt-oss':
                 if request.reasoning_on:
                     # OpenRouter returns reasoning in 'reasoning' field for gpt-oss
+                    reasoning_content = message.get('reasoning')
+                content = message.get('content')
+
+            elif request.model_type == 'olmo':
+                if request.reasoning_on:
+                    # OpenRouter returns reasoning in 'reasoning' field for olmo
                     reasoning_content = message.get('reasoning')
                 content = message.get('content')
 

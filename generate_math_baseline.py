@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-生成 CodeElo Baseline Results
+生成 AIME2025 Baseline Results
 
-這個腳本從 CodeElo/data/test.json 加載題目，使用 LLM 生成 C++ 代碼，
-並保存為 data/CodeElo/gpt-oss/p1/results.json
+這個腳本從 datasets/AIME2025/data.json 加載數學題目，使用 LLM 生成推理和答案，
+並保存為 data/AIME2025/gpt-oss/p1/results.json
 
 特性：
 - 使用 JSONL 中繼檔案 (.jsonl) 記錄處理進度
@@ -15,12 +15,23 @@
 - results.json: 最終輸出檔案，包含所有題目的結果
 
 Usage:
-    # 首次執行或斷點續傳
-    python generate_code_baseline.py --limit 5
-    python generate_code_baseline.py --model_type gpt-oss --output_path data/CodeElo/gpt-oss/p1/results.json
+    # 基本執行
+    python generate_math_baseline.py --limit 5
+
+    # 使用 R10 格式（重複 10 次）生成完整數據集
+    python generate_math_baseline.py \
+        --repeat_num 10 \
+        --output_path data/AIME2025__R10/olmo/p1/results.json \
+        --model_type olmo
+
+    # 配置特定模型和並發數
+    python generate_math_baseline.py \
+        --model_type gpt-oss \
+        --output_path data/AIME2025/gpt-oss/p1/results.json \
+        --max_workers 8
 
     # 重新執行時會自動跳過已完成的題目
-    python generate_code_baseline.py --output_path data/CodeElo/gpt-oss/p1/results.json
+    python generate_math_baseline.py --repeat_num 10
 """
 
 import json
@@ -32,97 +43,59 @@ import random
 
 from llm_client import LLMClient, Request, Task
 from logger_config import setup_logger
-from core import extract_code_blocks  # Import from core.py (has fallback implementation)
 
 # Setup logger
-logger = setup_logger(__name__, log_file='logs/generate_code_baseline.log')
+logger = setup_logger(__name__, log_file='logs/generate_math_baseline.log')
 
 # Default paths
-DEFAULT_PROBLEMS_PATH = 'CodeElo/data/test.json'
-DEFAULT_OUTPUT_PATH = 'data/CodeElo/gpt-oss/p1/results.json'
+DEFAULT_PROBLEMS_PATH = 'datasets/AIME2025/data.json'
+DEFAULT_OUTPUT_PATH = 'data/AIME2025/gpt-oss/p1/results.json'
 
 
-def load_problems(json_path: str = DEFAULT_PROBLEMS_PATH) -> List[Dict]:
+def load_problems(json_path: str = DEFAULT_PROBLEMS_PATH, repeat_num: int = 1) -> List[Dict]:
     """
-    加載題目數據
+    加載題目數據並重複指定次數
 
     Args:
         json_path: 題目 JSON 文件路徑
+        repeat_num: 重複次數（默認 1）
 
     Returns:
-        題目列表
+        題目列表（重複後）
     """
     with open(json_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+        problems = json.load(f)
 
+    if repeat_num <= 1:
+        return problems
 
-def make_html_problem(problem: Dict) -> str:
-    """
-    構建 HTML 格式的完整題目（類似 CodeElo/main.py:9-20）
+    # Expand problems by repeat_num times, adding repetition index to unique_id
+    # Order: for each problem, repeat repeat_num times before moving to next problem
+    expanded = []
+    for problem in problems:
+        for rep in range(repeat_num):
+            new_problem = {
+                'unique_id': f"{problem['unique_id']}-{rep}",
+                'question': problem['question'],
+                'answer': problem['answer']
+            }
+            expanded.append(new_problem)
 
-    Args:
-        problem: 題目字典
-
-    Returns:
-        HTML 格式的完整題目
-    """
-    html_output = '<html><body>'
-
-    # Title
-    html_output += f"<h1>{problem['title']}</h1>"
-
-    # Time and memory limits
-    html_output += f"<div><b>Time limit:</b> {problem['time_limit_ms']} ms</div>"
-    html_output += f"<div><b>Memory limit:</b> {problem['memory_limit_mb']} MB</div>"
-    html_output += f"<div><b>Rating:</b> {problem['rating']}</div>"
-    html_output += "<br>"
-
-    # Description
-    html_output += "<h2>Description</h2>"
-    html_output += f"<div>{problem['description']}</div>"
-
-    # Input format
-    html_output += "<h2>Input</h2>"
-    html_output += f"<div>{problem['input']}</div>"
-
-    # Output format
-    html_output += "<h2>Output</h2>"
-    html_output += f"<div>{problem['output']}</div>"
-
-    # Examples
-    if 'examples' in problem and problem['examples']:
-        html_output += "<h2>Examples</h2>"
-        for i, (input_text, output_text) in enumerate(problem['examples'], 1):
-            html_output += f"<h3>Example {i}</h3>"
-            html_output += f"<div><b>Input:</b><pre>{input_text}</pre></div>"
-            html_output += f"<div><b>Output:</b><pre>{output_text}</pre></div>"
-
-    # Note
-    if problem.get('note'):
-        html_output += "<h2>Note</h2>"
-        html_output += f"<div>{problem['note']}</div>"
-
-    html_output += '</body></html>'
-    return html_output
+    return expanded
 
 
 def build_prompt(problem: Dict) -> str:
     """
-    構建 C++ 代碼生成 prompt（遵循 CodeElo/main.py:59 的 instruction）
+    構建數學題目的 prompt
 
     Args:
-        problem: 題目字典
+        problem: 題目字典（包含 question 和 answer）
 
     Returns:
         完整的 prompt 字符串
     """
-    instruction = """You are a coding expert. Given a competition-level coding problem, you need to write a C++ program to solve it. You may start by outlining your thought process. In the end, please provide the complete code in a code block enclosed with ``` ```."""
-
-    html_problem = make_html_problem(problem)
-
-    return f"{instruction}\n\n{html_problem}"
-
-
+    question = problem['question']
+    return f"{question}"
 
 
 def load_existing_jsonl_results(jsonl_path: Path) -> Dict[str, Dict]:
@@ -143,11 +116,9 @@ def load_existing_jsonl_results(jsonl_path: Path) -> Dict[str, Dict]:
             for line in f:
                 if line.strip():
                     result = json.loads(line)
-                    # Extract problem_id from unique_id (format: "codeforces-{problem_id}-0")
+                    # Extract problem_id from unique_id
                     unique_id = result.get('unique_id', '')
-                    if unique_id.startswith('codeforces-'):
-                        problem_id = unique_id.split('-')[1]
-                        existing_results[problem_id] = result
+                    existing_results[unique_id] = result
         logger.info(f"Loaded {len(existing_results)} existing results")
 
     return existing_results
@@ -171,7 +142,8 @@ def generate_baseline(
     model_type: str = 'gpt-oss',
     mode: str = 'openrouter',
     limit: int = None,
-    max_workers: int = 16
+    max_workers: int = 16,
+    repeat_num: int = 1
 ) -> List[Dict]:
     """
     生成 baseline results，使用 JSONL 中繼檔案支援斷點續傳
@@ -183,12 +155,15 @@ def generate_baseline(
         mode: LLM 客戶端模式
         limit: 限制生成數量（None 為全部）
         max_workers: 最大並發數
+        repeat_num: 重複次數（已在 load_problems 中處理，此處作為記錄）
 
     Returns:
         結果列表
     """
     # Store the instruction for later use
-    instruction = """You are a coding expert. Given a competition-level coding problem, you need to write a C++ program to solve it. You may start by outlining your thought process. In the end, please provide the complete code in a code block enclosed with ``` ```."""
+    instruction = "You are a helpful assistant"
+
+    logger.info(f"Generating baseline with repeat_num={repeat_num}")
 
     # Setup JSONL cache path
     output_path_obj = Path(output_path)
@@ -203,7 +178,7 @@ def generate_baseline(
     # Filter out already processed problems
     problems_to_process = [
         p for p in problems
-        if p['problem_id'] not in existing_results
+        if p['unique_id'] not in existing_results
     ]
 
     # Limit problems if specified (apply after filtering)
@@ -237,7 +212,7 @@ def generate_baseline(
                 temperature=0.01
             ),
             metadata={
-                'problem_id': problem['problem_id'],
+                'unique_id': problem['unique_id'],
                 'problem': problem,
                 'instruction': instruction
             }
@@ -257,36 +232,27 @@ def generate_baseline(
         success = response.success and bool(response.content)
 
         # Extract reasoning and answer from OpenRouter response
-        # OpenRouter returns (in single call):
-        # - reasoning_content: the model's reasoning process (traj)
-        # - content: the model's final answer (answer)
         reasoning_traj = response.reasoning_content or ''
         final_answer = response.content or ''
 
-
-
         # IMPORTANT: traj must not be empty - if it is, this indicates a bug
         if not reasoning_traj:
-            error_msg = f"BUG: reasoning_content (traj) is empty for problem {problem['problem_id']}. This indicates the LLM client or OpenRouter API is not returning reasoning content properly."
+            error_msg = f"BUG: reasoning_content (traj) is empty for problem {problem['unique_id']}. This indicates the LLM client or OpenRouter API is not returning reasoning content properly."
             logger.error(error_msg)
             continue
         if not final_answer:
-            error_msg = f"BUG: final_answer is empty for problem {problem['problem_id']}. This indicates the LLM client or OpenRouter API is not returning reasoning content properly."
+            error_msg = f"BUG: final_answer is empty for problem {problem['unique_id']}. This indicates the LLM client or OpenRouter API is not returning reasoning content properly."
             logger.error(error_msg)
             continue
 
         # Build result structure
-        # Note: 'test_cases' field contains test cases in format [[input, output], ...]
-        # Each element is a pair where:
-        #   - First element: input string for the test case
-        #   - Second element: expected output string for the test case
         result = {
-            'unique_id': f"codeforces-{problem['problem_id']}-0",
-            'question': make_html_problem(problem),  # Complete HTML-formatted problem
-            'test_cases': problem['examples'],  # Test cases: [[input, output], ...]
+            'unique_id': problem['unique_id'],
+            'question': problem['question'],
+            'answer': problem['answer'],
             'result': {
                 'traj': reasoning_traj,  # 模型的 reasoning 過程
-                'answer': final_answer,  # 模型的最終答案（包含 code）
+                'answer': final_answer,  # 模型的最終答案
                 'sys_prompt': instruction,  # Complete instruction text
                 'elapsed_seconds': response.elapsed_seconds
             }
@@ -298,9 +264,9 @@ def generate_baseline(
 
         # Log success/failure
         if success:
-            logger.info(f"Generated code for {problem['problem_id']}")
+            logger.info(f"Generated solution for {problem['unique_id']}")
         else:
-            logger.error(f"Failed to generate code for {problem['problem_id']}: {response.err_message}")
+            logger.error(f"Failed to generate solution for {problem['unique_id']}: {response.err_message}")
 
     # Combine existing and new results
     all_results = list(existing_results.values()) + new_results
@@ -331,7 +297,7 @@ def save_results(results: List[Dict], output_path: str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate CodeElo baseline results'
+        description='Generate AIME2025 baseline results'
     )
     parser.add_argument(
         '--problems_path',
@@ -372,12 +338,18 @@ def main():
         default=DEFAULT_MAX_WORKERS,
         help=f'Maximum concurrent workers (default: {DEFAULT_MAX_WORKERS})'
     )
+    parser.add_argument(
+        '--repeat_num',
+        type=int,
+        default=1,
+        help='Number of times to repeat the dataset (default: 1). E.g., use 10 for R10'
+    )
 
     args = parser.parse_args()
 
     # Load problems
     print(f"Loading problems from {args.problems_path}...")
-    problems = load_problems(args.problems_path)
+    problems = load_problems(args.problems_path, repeat_num=args.repeat_num)
     print(f"Loaded {len(problems)} problems")
 
     # Generate baseline
@@ -387,7 +359,8 @@ def main():
         model_type=args.model_type,
         mode=args.mode,
         limit=args.limit,
-        max_workers=args.max_workers
+        max_workers=args.max_workers,
+        repeat_num=args.repeat_num
     )
 
     # Save results
