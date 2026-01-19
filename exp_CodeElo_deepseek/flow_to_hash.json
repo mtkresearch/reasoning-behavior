@@ -1,0 +1,8 @@
+{
+  "": "d41d8cd9",
+  "answer('retrieval')": "9c3cc7e6",
+  "truncate('all')": "79d59000",
+  "truncate('all'),answer('retrieval')": "832b3a6d",
+  "shuffle('line'),answer('retrieval')": "4f44ad3a",
+  "shuffle('word'),answer('retrieval')": "9c885777"
+}

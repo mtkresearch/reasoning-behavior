@@ -4,5 +4,6 @@
   "answer('retrieval')": "9c3cc7e6",
   "shuffle('line'),answer('retrieval')": "4f44ad3a",
   "truncaate('all'),answer('retrieval')": "642b1865",
-  "truncate('all'),answer('retrieval')": "832b3a6d"
+  "truncate('all'),answer('retrieval')": "832b3a6d",
+  "shuffle('word'),answer('retrieval')": "9c885777"
 }
