@@ -140,7 +140,7 @@ class LLMClient:
         if request.model_type in ['gpt-oss']:
             return {'quantizations': ['fp4']}
         elif request.model_type in ['deepseek']:
-            return {'quantizations': ['fp8', 'fp4']}
+            return {'quantizations': ['fp4', 'fp8']}
         return None
 
     def _apply_completion_template(
@@ -469,7 +469,8 @@ class LLMClient:
             print(payload)
 
         # Log request payload
-        logger.info(f"[COMPLETION] Model: {payload['model']}, Temp: {payload.get('temperature')}, Max tokens: {payload.get('max_tokens')}")
+        logger.info(f"[COMPLETION] Model: {payload['model']}, Temp: {payload.get('temperature')}, "
+                   f"Max tokens: {payload.get('max_tokens')}")
         logger.info(f"[COMPLETION] Prompt: {formatted_prompt}")
 
         response = requests.post(

@@ -571,17 +571,35 @@ def rebuild_json_from_jsonl(
         experiment_metadata: Experiment metadata dictionary
     """
     # Load all results from stage 2
-    results = load_from_jsonl(stage2_jsonl)
+    all_results = load_from_jsonl(stage2_jsonl)
+
+    # Filter out results with null generated_answer
+    # Any result with null generated_answer is considered a generation failure
+    results = [r for r in all_results if r.get('generated_answer') is not None]
+
+    # Log if we filtered out any results
+    filtered_count = len(all_results) - len(results)
+    if filtered_count > 0:
+        logger.warning(f"Filtered out {filtered_count} results with null generated_answer")
+        print(f"Warning: Filtered out {filtered_count} results with null generated_answer")
 
     # Sort by question_id for consistency
     results.sort(key=lambda x: x.get('question_id', 0))
 
     # Calculate summary statistics
-    total = len(results)
-    generation_successful = sum(1 for r in results if r.get('generation_success', False))
+    total = len(all_results)  # Total including filtered results for transparency
+
+    # generation_successful: must have generation_success=True AND non-null generated_answer
+    generation_successful = sum(1 for r in all_results
+                               if r.get('generation_success', False) and r.get('generated_answer') is not None)
+    # generation_failed: includes both API failures AND null generated_answer results
     generation_failed = total - generation_successful
+
+    # grading stats based on filtered results (only those that passed generation)
     grading_successful = sum(1 for r in results if r.get('success', False))
+    # grading_failed: among successfully generated results, how many failed grading
     grading_failed = generation_successful - grading_successful
+
     correct = sum(1 for r in results if r.get('is_correct', False))
     accuracy = correct / grading_successful if grading_successful > 0 else 0.0
 
@@ -592,7 +610,8 @@ def rebuild_json_from_jsonl(
         'grading_successful': grading_successful,
         'grading_failed': grading_failed,
         'correct': correct,
-        'accuracy': accuracy
+        'accuracy': accuracy,
+        'note': f'Filtered out {filtered_count} results with null generated_answer' if filtered_count > 0 else ''
     }
 
     # Build final structure
@@ -605,6 +624,8 @@ def rebuild_json_from_jsonl(
     # Atomic write to JSON
     atomic_save_json(output_json, output_data)
     logger.info(f"Rebuilt {output_json} from {stage2_jsonl}")
+    if filtered_count > 0:
+        logger.info(f"Filtered out {filtered_count} results with null generated_answer")
 
 
 # =============================================================================
@@ -851,16 +872,13 @@ def prepare_task(
         final_question = question
 
     # Build CompletionRequest with processed reasoning
-    # Get answer_prefill from context (set by AnswerProcessor based on dataset_type)
+    # Get answer_prefill and max_tokens from context (set by AnswerProcessor if using answer('retrieval'))
     answer_prefix = context.get('answer_prefill', '')
+    # Default to 5000 if max_tokens not set by AnswerProcessor
+    max_tokens = context.get('max_tokens', 5000)
 
-    # Adjust max_tokens based on whether retrieval mode is used
-    # When using answer('retrieval'), we only need to extract a short answer (math)
-    # For code generation, we need more tokens
-    if answer_prefix:
-        max_tokens = 5000 if dataset_type == 'code' else 50
-    else:
-        max_tokens = 5000
+    # Get system_prompt from baseline result (if available)
+    system_prompt = item.get('result', {}).get('sys_prompt', 'You are a helpful assistant')
 
     # Create CompletionRequest (template will be applied by LLMClient)
     request = CompletionRequest(
@@ -869,7 +887,8 @@ def prepare_task(
         answer_prefix=answer_prefix,
         model_type=model_type,
         temperature=0.01,
-        max_tokens=max_tokens
+        max_tokens=max_tokens,
+        system_prompt=system_prompt
         # Note: min_tokens not supported by OpenRouter API
     )
 
@@ -902,6 +921,26 @@ def prepare_task(
     return task
 
 
+def _build_generated_answer(response_content: str, metadata: Dict) -> str:
+    """
+    Unified helper to construct generated_answer with answer_prefix.
+
+    When using answer('retrieval'), the API response doesn't include the prefix.
+    This function prepends the answer_prefix from metadata if present.
+
+    Args:
+        response_content: LLM API response content
+        metadata: Task metadata containing optional 'answer_prefill' key
+
+    Returns:
+        Complete generated_answer with prefix prepended (if available)
+    """
+    answer_prefix = metadata.get('answer_prefill', '')
+    if answer_prefix:
+        return answer_prefix + " " + response_content.lstrip()
+    return response_content
+
+
 def task_to_result(task: Task) -> Dict:
     """
     Convert completed Task to result dict
@@ -921,12 +960,9 @@ def task_to_result(task: Task) -> Dict:
         error = None
 
     # Prepare generated_answer with answer_prefix if present
-    # When using answer_prefix (prefill), the API response doesn't include the prefix
-    # We need to prepend it to get the complete answer
     generated_answer = None
     if success:
-        answer_prefix = metadata.get('answer_prefill', '')
-        generated_answer = answer_prefix + response.content if answer_prefix else response.content
+        generated_answer = _build_generated_answer(response.content, metadata)
 
     # Build result dict
     result = {
@@ -1055,17 +1091,66 @@ def detect_dataset_type(results: List[Dict]) -> str:
     """
     自動檢測數據集類型
 
+    採樣檢查多個結果以確定數據集類型，基於 unique_id 和 result 結構。
+
     Args:
         results: 結果列表
 
     Returns:
-        'code' 或 'math'
+        'code'、'science' 或 'math'（預設）
     """
     if not results:
         return 'math'  # 預設為 math
 
-    first_id = results[0].get('unique_id', '')
-    return 'code' if 'codeforces' in first_id else 'math'
+    # 定義數據集類型的檢測模式
+    dataset_patterns = {
+        'code': ['codeforces', 'codeeml', 'arc', 'codeelo'],  # Code contest platforms
+        'science': ['gpqa', 'gsm8k'],  # Science/knowledge datasets
+        'math': ['aime', 'math500', 'mathdialogue']  # Math datasets
+    }
+
+    # 採樣多個結果以驗證一致性（取前3個或全部）
+    sample_size = min(3, len(results))
+    detected_types = []
+
+    for i in range(sample_size):
+        result = results[i]
+        unique_id = result.get('unique_id', '').lower()
+
+        # 檢查 unique_id 中的模式
+        detected_type = None
+        for dataset_type, patterns in dataset_patterns.items():
+            if any(pattern.lower() in unique_id for pattern in patterns):
+                detected_type = dataset_type
+                break
+
+        # 如果無法從 unique_id 確定，檢查 result 結構
+        if detected_type is None:
+            # Code datasets 通常有 test_cases 而不是 answer
+            if 'test_cases' in result and 'answer' not in result:
+                detected_type = 'code'
+            # Science datasets 可能有多選答案
+            elif result.get('answer', '').upper() in ['A', 'B', 'C', 'D']:
+                detected_type = 'science'
+            else:
+                detected_type = 'math'  # 預設
+
+        detected_types.append(detected_type)
+
+    # 如果多個樣本類型一致，使用該類型；否則使用第一個檢測到的類型
+    if detected_types:
+        first_type = detected_types[0]
+        if all(t == first_type for t in detected_types):
+            return first_type
+        else:
+            # 不同的類型被檢測到，記錄警告但使用第一個
+            logger.debug(
+                f"Mixed dataset types detected in sample: {detected_types}. "
+                f"Using first detected type: {first_type}"
+            )
+            return first_type
+
+    return 'math'  # 備用預設
 
 
 def create_code_grading_tasks(results: List[Dict]) -> List[Dict]:
@@ -1230,9 +1315,12 @@ def run_experiment(
 
     # Load existing Stage 1 results from JSONL
     existing_stage1 = load_from_jsonl(stage1_jsonl)
+    # A result is considered truly successful only if:
+    # 1. generation_success = True AND
+    # 2. generated_answer is not None (to avoid including null answers)
     completed_stage1_ids = {
         r['unique_id'] for r in existing_stage1
-        if r.get('generation_success', False)
+        if r.get('generation_success', False) and r.get('generated_answer') is not None
     }
 
     successful_count = len(completed_stage1_ids)
@@ -1315,10 +1403,7 @@ def run_experiment(
                     response = completed_task.response
 
                     if response.success and response.content:
-                        # Prepend answer_prefix if present (prefill doesn't include prefix in response)
-                        answer_prefix = completed_task.metadata.get('answer_prefill', '')
-                        generated_answer = answer_prefix + response.content if answer_prefix else response.content
-
+                        generated_answer = _build_generated_answer(response.content, completed_task.metadata)
                         stage1_results_map[unique_id]['generated_answer'] = generated_answer
                         stage1_results_map[unique_id]['generation_success'] = True
                         stage1_results_map[unique_id]['error'] = None
@@ -1360,8 +1445,11 @@ def run_experiment(
     existing_stage2 = load_from_jsonl(stage2_jsonl)
     stage2_results_map = {r['unique_id']: r for r in existing_stage2}
 
-    # Get all successful Stage 1 results
-    stage1_successful = [r for r in stage1_results_map.values() if r.get('generation_success', False)]
+    # Get all successful Stage 1 results (must have non-null generated_answer)
+    stage1_successful = [
+        r for r in stage1_results_map.values()
+        if r.get('generation_success', False) and r.get('generated_answer') is not None
+    ]
 
     # Identify which need grading
     need_grading = [

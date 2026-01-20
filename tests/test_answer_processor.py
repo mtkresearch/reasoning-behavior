@@ -29,15 +29,20 @@ class TestAnswerProcessor:
         assert sample_context['answer_prefill'] == "Thus, the answer is"
 
     def test_answer_processor_custom_prefill_text(self, sample_context):
-        """Test AnswerProcessor with custom prefill text"""
+        """Test AnswerProcessor auto-determines prefill text (custom param deprecated)"""
+        # Custom prefill_text parameter is deprecated and ignored
+        # Prefill text is now auto-determined based on dataset_type
         custom_text = "Therefore, the final answer is"
         processor = AnswerProcessor(mode='retrieval', prefill_text=custom_text)
         reasoning = "Test reasoning"
+        sample_context['dataset_type'] = 'math'
 
         result = processor.process(reasoning, sample_context)
 
         assert result == reasoning
-        assert sample_context['answer_prefill'] == custom_text
+        # Should use auto-determined prefill, not the custom text
+        assert sample_context['answer_prefill'] == "Thus, the answer is"
+        assert sample_context['max_tokens'] == 50
 
     def test_answer_processor_get_metadata(self, sample_context):
         """Test AnswerProcessor.get_metadata()"""
@@ -258,7 +263,7 @@ class TestAnswerProcessorIntegration:
         assert task.request.answer_prefix == ""
 
     def test_prepare_task_max_tokens_with_custom_prefill(self):
-        """Test that max_tokens is reduced even with custom prefill text"""
+        """Test that custom prefill parameter is ignored (now auto-determined by dataset_type)"""
         from run_experiment import prepare_task
 
         item = {
@@ -268,9 +273,11 @@ class TestAnswerProcessorIntegration:
             'result': {'traj': 'Divide: 12 / 3 = 4'}
         }
 
+        # Custom prefill_text parameter is deprecated and ignored
+        # Prefill text is now auto-determined based on dataset_type
         flow = "answer('retrieval',prefill_text='The final answer is')"
-        task = prepare_task(item, model_type='gpt-oss', flow=flow)
+        task = prepare_task(item, model_type='gpt-oss', flow=flow, dataset_type='math')
 
-        # With custom prefill text, max_tokens should still be 50
+        # Should use auto-determined prefill (not the custom text) and max_tokens should be 50
         assert task.request.max_tokens == 50
-        assert task.request.answer_prefix == "The final answer is"
+        assert task.request.answer_prefix == "Thus, the answer is"  # Auto-determined, not custom

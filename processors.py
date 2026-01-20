@@ -770,6 +770,7 @@ class AnswerProcessor(Processor):
             logger.warning("prefill_text parameter is deprecated and ignored. "
                          "Use dataset_type in context to auto-determine prefill text.")
         self.prefill_text = None  # Will be set based on dataset_type in process()
+        self.max_tokens = None  # Will be set based on dataset_type in process()
         self.kwargs = kwargs
         self.last_input_stats = None
         self.last_output_stats = None
@@ -796,17 +797,26 @@ class AnswerProcessor(Processor):
         if self.mode != 'retrieval':
             raise ValueError(f"Invalid mode: {self.mode}. Currently only 'retrieval' is supported.")
 
-        # Auto-determine prefill_text based on dataset_type
+        # Auto-determine prefill_text and max_tokens based on dataset_type
         dataset_type = context.get('dataset_type', 'math')
         if dataset_type == 'code':
-            prefill_text = "Thus, the code is\n```"
-        else:
+            prefill_text = "Thus, the code is\n```cpp\n"
+            max_tokens = 5000  # Code generation needs more tokens
+        elif dataset_type == 'math':
             # Default for math datasets
             prefill_text = "Thus, the answer is"
+            max_tokens = 50  # Math answer is usually short
+        elif dataset_type == 'science':
+            prefill_text = "Thus, the answer choice is"
+            max_tokens = 50  # Science answer (A/B/C/D) is short
+        else:
+            raise Exception
 
-        # Add prefill text to context
+        # Add prefill text and max_tokens to context
         context['answer_prefill'] = prefill_text
+        context['max_tokens'] = max_tokens
         self.prefill_text = prefill_text  # Store for metadata
+        self.max_tokens = max_tokens  # Store for metadata
 
         self.last_output_stats = self._compute_stats(reasoning)
         return reasoning
@@ -817,6 +827,7 @@ class AnswerProcessor(Processor):
             'processor': 'answer',
             'mode': self.mode,
             'prefill_text': self.prefill_text,
+            'max_tokens': self.max_tokens,
             'input_stats': self.last_input_stats,
             'output_stats': self.last_output_stats
         }

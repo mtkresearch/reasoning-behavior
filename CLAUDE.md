@@ -100,6 +100,10 @@ from core import (
 
 ### Main Components
 
+**Baseline Generation Framework** (unified):
+- `baseline_utils.py` - Shared utilities for all baseline generators (JSONL caching, result formatting, core workflow)
+- `generate_baseline.py` - **NEW** Unified baseline generation script supporting code, math, and science tasks
+
 **Pipeline Experiment Framework**:
 - `run_experiment.py` - Configurable pipeline for processing reasoning (mask, truncate, shuffle, insert) with automatic result caching and grading
 - `run_view_experiment.py` - Web visualization server for browsing experiment results with tree structure and conditional probability analysis
@@ -108,9 +112,14 @@ from core import (
 
 ## Datasets
 
-- **MATH500**: 500 mathematical problems
+- **CodeElo**: C++ competitive programming problems
+  - Path: `datasets/CodeElo/data/test.json`
 - **AIME2025**: American Invitational Mathematics Examination problems
+  - Path: `datasets/AIME2025/data.json`
   - Supports repeated sampling with suffix (e.g., `AIME2025__R10` for 10 repetitions)
+- **GPQA-Diamond** (NEW): Science multiple-choice questions (198 questions)
+  - Path: `datasets/GPQA-Diamond/test/gpqa_diamond.parquet`
+  - Format: Parquet with `question` and `answer` (A/B/C/D) columns
 
 ## Common Commands
 
@@ -121,6 +130,28 @@ source .venv/bin/activate
 
 # Install dependencies
 uv pip install -r requirements.txt
+```
+
+### Baseline Generation Scripts
+
+Unified baseline generation with support for code, math, and science tasks:
+
+```bash
+# Generate CodeElo baseline results
+python generate_baseline.py --task_type code \
+    --output_path data/CodeElo/gpt-oss/p1/results.json
+
+# Generate AIME2025 baseline with R10 (10 repetitions)
+python generate_baseline.py --task_type math \
+    --repeat_num 10 \
+    --output_path data/AIME2025__R10/gpt-oss/p1/results.json
+
+# Generate GPQA-Diamond baseline (NEW)
+python generate_baseline.py --task_type science \
+    --output_path data/GPQA-Diamond/gpt-oss/p1/results.json
+
+# Test with small limit
+python generate_baseline.py --task_type math --limit 2
 ```
 
 ### Experiment Scripts
@@ -145,7 +176,10 @@ python run_view_experiment.py [--port 5000] [--host 127.0.0.1] [--exp-dir experi
 3. **Retry Mechanism**: `MAX_TRY` parameter for handling API failures
 4. **Data Classes**: Uses `@dataclass` for clear data structures (Request, Response, Task)
 5. **Modular Experiments**: Each experiment type has its own script sharing the core infrastructure (`llm_client.py` and `core.py`)
-6. **DRY Principle**: Common utilities extracted to `core.py` to eliminate code duplication across experiment scripts
+6. **DRY Principle**: Common utilities extracted to:
+   - `core.py` - General experiment utilities
+   - `baseline_utils.py` - Baseline generation utilities (refactored to support code, math, science tasks)
+7. **Task-Specific Callbacks**: Unified baseline generation uses callbacks for prompt building and result formatting to support different task types without code duplication
 
 ## Important Configuration
 

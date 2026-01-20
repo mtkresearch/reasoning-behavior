@@ -13,10 +13,12 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from generate_code_baseline import (
-    load_existing_jsonl_results,
-    append_result_to_jsonl,
     make_html_problem,
     build_prompt
+)
+from baseline_utils import (
+    load_existing_jsonl_results,
+    append_result_to_jsonl
 )
 
 
@@ -86,10 +88,11 @@ class TestJSONLCache:
             # Load and verify
             loaded_results = load_existing_jsonl_results(jsonl_path)
             assert len(loaded_results) == 2
-            assert '1234A' in loaded_results
-            assert '5678B' in loaded_results
-            assert loaded_results['1234A']['question'] == 'Question 1'
-            assert loaded_results['5678B']['question'] == 'Question 2'
+            # baseline_utils uses full unique_id as key
+            assert 'codeforces-1234A-0' in loaded_results
+            assert 'codeforces-5678B-0' in loaded_results
+            assert loaded_results['codeforces-1234A-0']['question'] == 'Question 1'
+            assert loaded_results['codeforces-5678B-0']['question'] == 'Question 2'
 
     def test_load_existing_jsonl_results_skip_invalid_lines(self):
         """Test that invalid lines are skipped when loading"""
@@ -202,18 +205,18 @@ class TestResumeCapability:
             # Load existing results
             loaded_results = load_existing_jsonl_results(jsonl_path)
 
-            # Verify that problem '1234A' is loaded
-            assert '1234A' in loaded_results
+            # Verify that problem '1234A' is loaded (with full unique_id format)
+            assert 'codeforces-1234A-0' in loaded_results
 
-            # Simulate filtering problems
+            # Simulate filtering problems using unique_id
             all_problems = [
-                {'problem_id': '1234A', 'title': 'Problem A'},
-                {'problem_id': '5678B', 'title': 'Problem B'}
+                {'problem_id': '1234A', 'title': 'Problem A', 'unique_id': 'codeforces-1234A-0'},
+                {'problem_id': '5678B', 'title': 'Problem B', 'unique_id': 'codeforces-5678B-0'}
             ]
 
             problems_to_process = [
                 p for p in all_problems
-                if p['problem_id'] not in loaded_results
+                if p['unique_id'] not in loaded_results
             ]
 
             # Verify only '5678B' needs processing

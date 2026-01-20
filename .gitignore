@@ -64,4 +64,6 @@ logs/
 outputs/
 checkpoints/
 
-exp**/**.jsonl
+# JSONL files in experiments and data directories
+experiments/**/*.jsonl
+data/**/*.jsonl

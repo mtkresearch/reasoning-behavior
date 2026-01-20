@@ -129,7 +129,7 @@ class TestPrepareTaskWithDatasetType:
         assert task.request.max_tokens == 5000
 
     def test_prepare_task_math_dataset_with_custom_prefill(self):
-        """Test that math dataset respects custom prefill_text"""
+        """Test that custom prefill_text is ignored (auto-determined by dataset_type)"""
         item = {
             'unique_id': 'aime2025-I-0-2',
             'question': 'What is 3 × 4?',
@@ -137,12 +137,13 @@ class TestPrepareTaskWithDatasetType:
             'result': {'traj': 'Multiply: 3 × 4 = 12'}
         }
 
+        # Custom prefill_text parameter is deprecated and ignored
         custom_prefill = "Therefore, the final answer is"
         flow = f"answer('retrieval',prefill_text='{custom_prefill}')"
         task = prepare_task(item, model_type='gpt-oss', flow=flow, dataset_type='math')
 
-        # Math dataset should use custom prefix
-        assert task.request.answer_prefix == custom_prefill
+        # Should use auto-determined prefix for math, not custom
+        assert task.request.answer_prefix == "Thus, the answer is"
 
         # max_tokens should still be 50 for math with retrieval
         assert task.request.max_tokens == 50
