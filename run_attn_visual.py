@@ -36,28 +36,28 @@ Usage:
     python run_attn_visual.py \\
         --model Qwen/Qwen3-0.6B \\
         --template gpt-oss \\
-        --results exp/cdad7f13/results.json \\
+        --results experiments/exp/cdad7f13/results.json \\
         --limit 1
 
     # With custom sparse threshold (more aggressive filtering)
     python run_attn_visual.py \\
         --model Qwen/Qwen3-0.6B \\
         --template gpt-oss \\
-        --results exp/cdad7f13/results.json \\
+        --results experiments/exp/cdad7f13/results.json \\
         --sparse-threshold 0.02
 
     # With 4-bit quantization (for non-quantized models)
     python run_attn_visual.py \\
         --model Qwen/Qwen2.5-7B-Instruct \\
         --template gpt-oss \\
-        --results exp/cdad7f13/results.json \\
+        --results experiments/exp/cdad7f13/results.json \\
         --quantization 4bit
 
     # Combined: quantization + custom sparse threshold
     python run_attn_visual.py \\
         --model Qwen/Qwen2.5-7B-Instruct \\
         --template gpt-oss \\
-        --results exp/cdad7f13/results.json \\
+        --results experiments/exp/cdad7f13/results.json \\
         --quantization 4bit \\
         --sparse-threshold 0.02
 
@@ -69,7 +69,7 @@ Notes:
 Output:
     - attn_data.js: JavaScript data file containing attention maps
     - attention_instances.jsonl: Intermediate instance data (JSONL format)
-    - exp/flow_to_hash.json: Auto-updated mapping of flow descriptions to hash values
+    - experiments/exp/flow_to_hash.json: Auto-updated mapping of flow descriptions to hash values
     Files are saved in the same directory as the results.json file
 
     To view the visualization, open attn_visual.html in the project root directory
@@ -879,11 +879,11 @@ def main():
     # Find flow description from flow_to_hash.json if under exp directory
     if relative_path:
         print(f"Looking up flow description...")
-        flow_desc = generator.update_flow_to_hash(Path('exp'), relative_path)
+        flow_desc = generator.update_flow_to_hash(Path('experiments/exp'), relative_path)
         if flow_desc:
             print(f"Found flow: '{flow_desc}' -> {relative_path}")
         else:
-            print(f"Warning: Hash '{relative_path}' not found in exp/flow_to_hash.json")
+            print(f"Warning: Hash '{relative_path}' not found in experiments/exp/flow_to_hash.json")
             print(f"The visualization will still work, but flow name will be the hash value.")
 
     print(f"\nDone!")

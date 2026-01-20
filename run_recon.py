@@ -9,7 +9,7 @@ This script performs a three-stage reconstruction experiment:
 
 Usage:
     python run_recon.py \
-        --result exp/mask_alphabet_mask_char/replace_s_replacement/results.json \
+        --result experiments/exp/mask_alphabet_mask_char/replace_s_replacement/results.json \
         --out exp/mask_alphabet_mask_char/replace_s_replacement/recon/results.json \
         --model_type gpt-oss \
         --mode openrouter \

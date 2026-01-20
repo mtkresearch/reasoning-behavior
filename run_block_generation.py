@@ -12,7 +12,7 @@ Then merges the blocks and uses retrieval to generate the final answer.
 Usage:
     python run_block_generation.py --limit 3
     python run_block_generation.py --results_path data/AIME2025__R10/gpt-oss/p1/results.json
-    python run_block_generation.py --output_path exp/block_generation/results.json
+    python run_block_generation.py --output_path experiments/exp_block_generation/results.json
 """
 
 import json
@@ -39,7 +39,7 @@ from core import (
 
 # Default parameters
 DEFAULT_RESULTS_PATH = "data/AIME2025__R10/gpt-oss/p1/results.json"
-DEFAULT_OUTPUT_PATH = "exp_block_generation/results.json"
+DEFAULT_OUTPUT_PATH = "experiments/exp_block_generation/results.json"
 TOKENIZER_MODEL = "openai/gpt-oss-120b"
 MODEL_TYPE = "gpt-oss"
 DEFAULT_MAX_WORKERS = 4  # Higher for better parallelism

@@ -8,7 +8,7 @@ confidence by generating multiple completions and analyzing the distribution
 of extracted answers.
 
 Usage:
-    python run_distribution.py --result exp/shuffle_word/results.json \\
+    python run_distribution.py --result experiments/exp/shuffle_word/results.json \\
                                 --out exp/shuffle_word/distributions.json \\
                                 --n 100 \\
                                 --answer_free_gen

@@ -654,13 +654,13 @@ def generate_output_path_from_flow(results_path: str, flow: str) -> str:
 
     Examples:
         data/AIME2025__R10/gpt-oss/p1/results.json + flow
-        -> exp/<hash>/results.json
+        -> experiments/exp/<hash>/results.json
 
         data/AIME2025__R10/deepseek/p1/results.json + flow
-        -> exp_AIME2025__R10_deepseek/<hash>/results.json
+        -> experiments/exp_AIME2025__R10_deepseek/<hash>/results.json
 
         data/MATH500/gpt-oss/p1/results.json + flow
-        -> exp_MATH500_gpt-oss/<hash>/results.json
+        -> experiments/exp_MATH500_gpt-oss/<hash>/results.json
     """
     import hashlib
     from pathlib import Path
@@ -686,11 +686,11 @@ def generate_output_path_from_flow(results_path: str, flow: str) -> str:
 
     # Determine base directory based on dataset and model
     if model_type == 'gpt-oss' and dataset_name == 'AIME2025__R10':
-        # Default: exp/<hash>/results.json (保持向後兼容)
-        base_dir = Path("exp")
+        # Default: experiments/exp/<hash>/results.json (保持向後兼容)
+        base_dir = Path("experiments/exp")
     else:
-        # New format: exp_{DATA}_{MODEL}/<hash>/results.json
-        base_dir = Path(f"exp_{dataset_name}_{model_type}")
+        # New format: experiments/exp_{DATA}_{MODEL}/<hash>/results.json
+        base_dir = Path(f"experiments/exp_{dataset_name}_{model_type}")
 
     # Construct full path
     output_path = base_dir / flow_hash / "results.json"

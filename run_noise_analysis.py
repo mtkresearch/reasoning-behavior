@@ -7,7 +7,7 @@ statistics about how noise answers rank and their probabilities.
 
 Usage:
     python run_noise_analysis.py \\
-        --result exp/insert_fix_sentence_Thus_answer_123_count_100_of_answer/shuffle_word/answer_retrieval/distributions.json \\
+        --result experiments/exp/insert_fix_sentence_Thus_answer_123_count_100_of_answer/shuffle_word/answer_retrieval/distributions.json \\
         --noise_answer 123
 
 Features:

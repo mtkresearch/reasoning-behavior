@@ -28,8 +28,10 @@ reasoning-behavior/
 ├── data/                       # Source experimental results
 │   └── [dataset]__[R{n}]/     # Baseline results with reasoning
 │
-├── exp/                        # Pipeline experiment results
-│   └── [processor1]/[processor2]/.../results.json
+├── experiments/                # Experiment results root
+│   ├── exp/                    # Pipeline experiment results
+│   │   └── [processor1]/[processor2]/.../results.json
+│   └── exp_*/                  # Dataset-specific results
 │
 ├── llm_client.py              # Core LLM abstraction
 ├── core.py                    # Shared utilities for all experiments
@@ -102,7 +104,7 @@ from core import (
 - `run_experiment.py` - Configurable pipeline for processing reasoning (mask, truncate, shuffle, insert) with automatic result caching and grading
 - `run_view_experiment.py` - Web visualization server for browsing experiment results with tree structure and conditional probability analysis
 - `pipeline.py` - Core pipeline infrastructure with processor composition
-- Output structure: `exp/<processor1>/<processor2>/.../results.json`
+- Output structure: `experiments/exp/<processor1>/<processor2>/.../results.json`
 
 ## Datasets
 
@@ -133,7 +135,7 @@ python run_experiment.py --flow "mask('number'),shuffle('line')" \
 python run_experiment.py --flow "truncate('last_ratio',ratio=0.3),mask('alphabet')"
 
 # View experiment results in web interface
-python run_view_experiment.py [--port 5000] [--host 127.0.0.1] [--exp-dir exp/]
+python run_view_experiment.py [--port 5000] [--host 127.0.0.1] [--exp-dir experiments/exp/]
 ```
 
 ## Key Design Patterns
@@ -175,13 +177,17 @@ data/                                # Source experimental results
         └── [prompt]/                # e.g., p1, p2, p3
             └── results.json         # Baseline reasoning results
 
-exp/                                 # Pipeline experiment results
-└── [processor1]/                    # e.g., mask_number
-    └── [processor2]/                # e.g., shuffle_line
-        └── .../                     # nested processors
-            ├── results.json         # Final results with metadata
-            ├── results_stage1.jsonl # Generation stage (cached)
-            └── results_stage2.jsonl # Grading stage (cached)
+experiments/                         # Experiment results root
+├── exp/                             # Pipeline experiment results
+│   └── [processor1]/                # e.g., mask_number
+│       └── [processor2]/            # e.g., shuffle_line
+│           └── .../                 # nested processors
+│               ├── results.json     # Final results with metadata
+│               ├── results_stage1.jsonl # Generation stage (cached)
+│               └── results_stage2.jsonl # Grading stage (cached)
+├── exp_AIME2025__R10_deepseek/      # Dataset-specific results
+├── exp_CodeElo_gpt-oss/             # Dataset-specific results
+└── exp_*/                           # Other dataset-specific results
 
 datasets/                            # Dataset sources
 └── AIME2025/                        # AIME 2025 problems
