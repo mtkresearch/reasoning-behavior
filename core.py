@@ -1367,7 +1367,7 @@ def load_from_jsonl(filepath) -> List[dict]:
 
 # Import CodeElo's extract_code_blocks function
 import sys
-sys.path.append('CodeElo')
+sys.path.append('datasets/CodeElo')
 try:
     from main import extract_code_blocks
 except ImportError:

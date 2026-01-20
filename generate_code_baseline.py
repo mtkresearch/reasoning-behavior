@@ -2,7 +2,7 @@
 """
 生成 CodeElo Baseline Results
 
-這個腳本從 CodeElo/data/test.json 加載題目，使用 LLM 生成 C++ 代碼，
+這個腳本從 datasets/CodeElo/data/test.json 加載題目，使用 LLM 生成 C++ 代碼，
 並保存為 data/CodeElo/gpt-oss/p1/results.json
 
 特性：
@@ -38,7 +38,7 @@ from core import extract_code_blocks  # Import from core.py (has fallback implem
 logger = setup_logger(__name__, log_file='logs/generate_code_baseline.log')
 
 # Default paths
-DEFAULT_PROBLEMS_PATH = 'CodeElo/data/test.json'
+DEFAULT_PROBLEMS_PATH = 'datasets/CodeElo/data/test.json'
 DEFAULT_OUTPUT_PATH = 'data/CodeElo/gpt-oss/p1/results.json'
 
 
@@ -58,7 +58,7 @@ def load_problems(json_path: str = DEFAULT_PROBLEMS_PATH) -> List[Dict]:
 
 def make_html_problem(problem: Dict) -> str:
     """
-    構建 HTML 格式的完整題目（類似 CodeElo/main.py:9-20）
+    構建 HTML 格式的完整題目（類似 datasets/CodeElo/main.py:9-20）
 
     Args:
         problem: 題目字典
@@ -108,7 +108,7 @@ def make_html_problem(problem: Dict) -> str:
 
 def build_prompt(problem: Dict) -> str:
     """
-    構建 C++ 代碼生成 prompt（遵循 CodeElo/main.py:59 的 instruction）
+    構建 C++ 代碼生成 prompt（遵循 datasets/CodeElo/main.py:59 的 instruction）
 
     Args:
         problem: 題目字典
