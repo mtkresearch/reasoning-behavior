@@ -874,8 +874,7 @@ def prepare_task(
     # Build CompletionRequest with processed reasoning
     # Get answer_prefill and max_tokens from context (set by AnswerProcessor if using answer('retrieval'))
     answer_prefix = context.get('answer_prefill', '')
-    # Default to 5000 if max_tokens not set by AnswerProcessor
-    max_tokens = context.get('max_tokens', 5000)
+    max_tokens = context.get('max_tokens', None)
 
     # Get system_prompt from baseline result (if available)
     system_prompt = item.get('result', {}).get('sys_prompt', 'You are a helpful assistant')
