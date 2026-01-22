@@ -5,5 +5,7 @@
   "shuffle('line'),answer('retrieval')": "4f44ad3a",
   "truncaate('all'),answer('retrieval')": "642b1865",
   "truncate('all'),answer('retrieval')": "832b3a6d",
-  "shuffle('word'),answer('retrieval')": "9c885777"
+  "shuffle('word'),answer('retrieval')": "9c885777",
+  "shuffle('in-line-word'),answer('retrieval')": "5fad1139",
+  "shuffle('in-line-word'),shuffle('line'),answer('retrieval')": "e3b4e537"
 }
