@@ -801,7 +801,7 @@ class AnswerProcessor(Processor):
         dataset_type = context.get('dataset_type', 'math')
         if dataset_type == 'code':
             prefill_text = "Thus, the code is\n```cpp\n"
-            max_tokens = 5000  # Code generation needs more tokens
+            max_tokens = 3000  # Code generation needs more tokens
         elif dataset_type == 'math':
             # Default for math datasets
             prefill_text = "Thus, the answer is"

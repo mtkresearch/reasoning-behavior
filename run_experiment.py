@@ -879,6 +879,12 @@ def prepare_task(
     # Get system_prompt from baseline result (if available)
     system_prompt = item.get('result', {}).get('sys_prompt', 'You are a helpful assistant')
 
+    # Determine stop sequences for code datasets with answer('retrieval')
+    stop = None
+    if dataset_type == 'code' and answer_prefix:
+        # When using answer('retrieval') with code datasets, stop at closing code fence
+        stop = '\n```'
+
     # Create CompletionRequest (template will be applied by LLMClient)
     request = CompletionRequest(
         question=final_question,
@@ -887,6 +893,7 @@ def prepare_task(
         model_type=model_type,
         temperature=0.01,
         max_tokens=max_tokens,
+        stop=stop,
         system_prompt=system_prompt
         # Note: min_tokens not supported by OpenRouter API
     )

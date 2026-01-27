@@ -40,6 +40,7 @@ class CompletionRequest:
     temperature: Optional[float] = None
     max_tokens: int = 20480
     min_tokens: Optional[int] = None
+    stop: str = None
     system_prompt: str = "You are a helpful assistant"
     reasoning_on: bool = True
 
@@ -153,10 +154,10 @@ class LLMClient:
         reasoning_on: bool = True,
     ) -> str:
         """
-        Apply chat template for text completion when using OpenRouter.
+        Apply chat template for text completion.
 
-        For certain models on OpenRouter, text completion requires applying
-        a chat template to format the prompt correctly.
+        Both local vLLM and OpenRouter require applying a chat template
+        to format the prompt correctly for the completions API.
 
         Args:
             question: The question/problem to solve
@@ -169,11 +170,7 @@ class LLMClient:
         Returns:
             Formatted prompt with template applied
         """
-        # Local mode: no template needed, VLLM handles it
-        if self.mode == 'local':
-            raise Exception
-
-        # OpenRouter mode: apply templates for specific models
+        # Apply templates for specific models (works for both local and openrouter)
         if model_type == 'gpt-oss':
             # Build system message (based on gpt-oss template)
             current_date = datetime.now().strftime("%Y-%m-%d")
@@ -287,6 +284,7 @@ class LLMClient:
                 'model': self._get_model(request.model_type),
                 'messages': messages,
                 'temperature': request.temperature,
+                'max_tokens': 50000
             }
 
             if extra_body:
@@ -448,6 +446,11 @@ class LLMClient:
             'temperature': request.temperature,
             'max_tokens': request.max_tokens,
         }
+
+        # Add stop parameter if provided
+        if request.stop is not None:
+            payload['stop'] = [request.stop]
+
         if DEBUG:
             print('prompt:', formatted_prompt)
 
@@ -518,6 +521,8 @@ class LLMClient:
             logger.warning("[COMPLETION] Response truncated (max_tokens limit reached)")
 
         content = choice.get('text')
+        if request.stop and finish_reason == 'stop':
+            content += request.stop 
         return content
 
     def generate_concurrent(self, tasks, max_workers=None, **kwargs):

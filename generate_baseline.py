@@ -104,9 +104,8 @@ def make_html_problem(problem: Dict) -> str:
 
 def build_prompt_code(problem: Dict) -> str:
     """Build C++ code generation prompt."""
-    instruction = "You are a coding expert. Given a competition-level coding problem, you need to write a C++ program to solve it. You may start by outlining your thought process. In the end, please provide the complete code in a code block enclosed with ``` ```."
     html_problem = make_html_problem(problem)
-    return f"{instruction}\n\n{html_problem}"
+    return html_problem
 
 
 def format_result_code(problem: Dict, response, system_prompt: str) -> Dict:
@@ -225,13 +224,19 @@ def format_result_science(problem: Dict, response, system_prompt: str) -> Dict:
 # Task Configuration
 # ============================================================================
 
+def get_unique_id_code(problem: Dict) -> str:
+    """Construct unique_id for CodeElo problems."""
+    return f"codeforces-{problem['problem_id']}-0"
+
+
 TASK_CONFIGS = {
     'code': {
         'load_fn': load_problems_code,
         'prompt_fn': build_prompt_code,
         'result_fn': format_result_code,
-        'system_prompt': "You are a coding expert. Given a competition-level coding problem, you need to write a C++ program to solve it. You may start by outlining your thought process. In the end, please provide the complete code in a code block enclosed with ``` ```.",
+        'system_prompt': "You are a coding expert. Given a competition-level coding problem, you need to write a C++ program to solve it. You may start by outlining your thought process. In the end, please provide the complete code in a code block enclosed with ```cpp ```.",
         'id_field': 'problem_id',
+        'get_unique_id_fn': get_unique_id_code,
         'default_path': 'datasets/CodeElo/data/test.json',
         'default_output': 'data/CodeElo/gpt-oss/p1/results.json',
         'supports_repeat': False
@@ -380,7 +385,8 @@ def main():
             mode=args.mode,
             limit=args.limit,
             max_workers=args.max_workers,
-            use_complete_api=use_complete_api
+            use_complete_api=use_complete_api,
+            get_unique_id_fn=config.get('get_unique_id_fn')
         )
     except Exception as e:
         print(f"Error during generation: {e}")

@@ -102,14 +102,15 @@ def generate_baseline_core(
     mode: str = 'openrouter',
     limit: Optional[int] = None,
     max_workers: int = 16,
-    use_complete_api: bool = False
+    use_complete_api: bool = False,
+    get_unique_id_fn: Optional[Callable[[Dict], str]] = None
 ) -> List[Dict]:
     """
     Core baseline generation workflow.
 
     This function encapsulates the common logic used by all baseline generators:
     1. Setup JSONL cache
-    2. Load existing results
+    2. Load existing results (from both JSON and JSONL)
     3. Filter unprocessed problems
     4. Prepare LLM tasks
     5. Generate with concurrent execution
@@ -128,6 +129,9 @@ def generate_baseline_core(
         limit: Limit number of problems to process (None = all)
         max_workers: Maximum concurrent workers (default: 16)
         use_complete_api: Use complete API endpoint for specific models (default: False)
+        get_unique_id_fn: Optional callable to construct unique_id from problem.
+                         If None, uses problem.get(id_field) directly.
+                         Required for tasks where unique_id format differs from id_field.
 
     Returns:
         List of result dicts (existing + newly generated)
@@ -139,17 +143,41 @@ def generate_baseline_core(
     # Ensure output directory exists
     output_path_obj.parent.mkdir(parents=True, exist_ok=True)
 
-    # Load existing results from JSONL
-    existing_results = load_existing_jsonl_results(jsonl_path)
+    # Load existing results from final JSON output file first
+    # Note: All results have 'unique_id' field, regardless of id_field setting
+    existing_results = {}
+    if output_path_obj.exists():
+        logger.info(f"Loading existing results from {output_path_obj}")
+        with open(output_path_obj, 'r', encoding='utf-8') as f:
+            results_list = json.load(f)
+            for result in results_list:
+                unique_id = result.get('unique_id')  # Always use 'unique_id' from results
+                if unique_id:
+                    existing_results[unique_id] = result
+        logger.info(f"Loaded {len(existing_results)} existing results from JSON")
+        print(f"Loaded {len(existing_results)} existing results from {output_path_obj}")
+
+    # Also load from JSONL cache (may have additional results not yet in final JSON)
+    jsonl_results = load_existing_jsonl_results(jsonl_path)
+    for unique_id, result in jsonl_results.items():
+        if unique_id not in existing_results:
+            existing_results[unique_id] = result
 
     # Extract unique IDs from existing results
     existing_ids = set(existing_results.keys())
 
     # Filter out already processed problems
-    problems_to_process = [
-        p for p in problems
-        if p.get(id_field) not in existing_ids
-    ]
+    # Use get_unique_id_fn if provided, otherwise use id_field directly
+    if get_unique_id_fn:
+        problems_to_process = [
+            p for p in problems
+            if get_unique_id_fn(p) not in existing_ids
+        ]
+    else:
+        problems_to_process = [
+            p for p in problems
+            if p.get(id_field) not in existing_ids
+        ]
 
     # Limit problems if specified (apply after filtering)
     if limit:
@@ -177,8 +205,10 @@ def generate_baseline_core(
             index=i,
             request=Request(
                 queries=[prompt],
+                system_prompt=system_prompt,
                 model_type=model_type,
-                temperature=0.01
+                temperature=0.01,
+                reasoning_on=True
             ),
             metadata={
                 'id_field': id_field,
