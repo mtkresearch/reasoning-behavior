@@ -1276,7 +1276,8 @@ def run_experiment(
     flow: str = None,
     limit: int = None,
     max_workers: int = DEFAULT_MAX_WORKERS,
-    max_retry: int = DEFAULT_MAX_RETRY
+    max_retry: int = DEFAULT_MAX_RETRY,
+    model_type: str = None
 ):
     """
     Run the mask numbers experiment using JSONL strategy
@@ -1289,14 +1290,16 @@ def run_experiment(
         limit: Limit number of questions (for testing)
         max_workers: Maximum concurrent workers
         max_retry: Maximum retry attempts
+        model_type: Model type to use (overrides auto-detection from path)
 
     File Strategy:
         - Stage 1 (generation): Write to {output_path}_stage1.jsonl
         - Stage 2 (grading): Write to {output_path}_stage2.jsonl
         - Final: Rebuild {output_path}.json from stage2.jsonl
     """
-    # Extract model_type from results_path
-    model_type = extract_model_from_path(results_path)
+    # Extract model_type from results_path (可被參數覆蓋)
+    if model_type is None:
+        model_type = extract_model_from_path(results_path)
     print(f"Detected model: {model_type}")
 
     print(f"Loading results from {results_path}")
@@ -1673,6 +1676,12 @@ def main():
         default=DEFAULT_MAX_RETRY,
         help=f'Maximum number of retry attempts for failed tasks (default: {DEFAULT_MAX_RETRY})'
     )
+    parser.add_argument(
+        '--model_type',
+        type=str,
+        default=None,
+        help='Model type to use (overrides auto-detection from path). Use this when model differs from path (e.g., olmo--base with olmo data)'
+    )
 
     args = parser.parse_args()
 
@@ -1696,7 +1705,8 @@ def main():
         flow=args.flow,
         limit=args.limit,
         max_workers=args.max_workers,
-        max_retry=args.max_retry
+        max_retry=args.max_retry,
+        model_type=args.model_type
     )
 
 

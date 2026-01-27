@@ -109,6 +109,8 @@ class LLMClient:
                 return 'deepseek/deepseek-v3.1-base'
             elif model_type == 'olmo':
                 return 'allenai/olmo-3.1-32b-think'
+            elif model_type == 'olmo--base':
+                raise ValueError(f"Unsupported model_type for openrouter: {model_type}")
             elif model_type == 'qwen3':
                 raise ValueError(f"Unsupported model_type for openrouter: {model_type}")
             else:
@@ -132,6 +134,8 @@ class LLMClient:
         elif request.model_type == 'olmo':
             if task == 'chat':
                 extra_body["reasoning"] = {"enabled": request.reasoning_on}
+        elif request.model_type == 'olmo--base':
+            pass  # base model 不支援 reasoning.enabled flag
         elif request.model_type == 'qwen3':
             pass
         return extra_body
@@ -233,6 +237,17 @@ class LLMClient:
             template += f"{answer_prefix}"
             return template
 
+        elif model_type == 'olmo--base':
+            # OLMo base model uses plain text format (no chat tokens)
+            template = f"{system_prompt}\n\n"
+            template += f"## Question:\n{question}\n\n"
+
+            if reasoning_on and reasoning:
+                template += f"## Reasoning:\n{reasoning}\n\n"
+
+            template += f"## Answer:\n{answer_prefix}"
+            return template
+
         # For other models or unknown types
         raise Exception
 
@@ -258,6 +273,8 @@ class LLMClient:
                 {"role": "system", "content": request.system_prompt},
                 {"role": "user", "content": request.queries[0]},
             ]
+        elif request.model_type == 'olmo--base':
+            raise Exception("OLMo base model only supports completion API. Use complete() method instead.")
 
         elif request.model_type == 'qwen3':
             messages = [
