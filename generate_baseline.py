@@ -111,7 +111,7 @@ def build_prompt_code(problem: Dict) -> str:
 def format_result_code(problem: Dict, response, system_prompt: str) -> Dict:
     """Format CodeElo result."""
     return {
-        'unique_id': f"codeforces-{problem['problem_id']}-0",
+        'unique_id': f"codeelo-{problem['problem_id']}-0",
         'question': make_html_problem(problem),
         'test_cases': problem['examples'],
         'result': {
@@ -226,7 +226,7 @@ def format_result_science(problem: Dict, response, system_prompt: str) -> Dict:
 
 def get_unique_id_code(problem: Dict) -> str:
     """Construct unique_id for CodeElo problems."""
-    return f"codeforces-{problem['problem_id']}-0"
+    return f"codeelo-{problem['problem_id']}-0"
 
 
 TASK_CONFIGS = {

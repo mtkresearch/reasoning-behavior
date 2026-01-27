@@ -100,7 +100,7 @@ class TestCodeTaskSupport:
 
         result = format_result_code(problem, mock_response, 'system prompt')
 
-        assert result['unique_id'] == 'codeforces-1234A-0'
+        assert result['unique_id'] == 'codeelo-1234A-0'
         assert result['test_cases'] == [['1', '2']]
         assert result['result']['traj'] == 'Test reasoning'
         assert result['result']['answer'] == 'Test code'

@@ -23,11 +23,11 @@ class TestDatasetTypeDetection:
 
         assert dataset_type == 'math'
 
-    def test_detect_code_dataset_from_codeforces_id(self):
-        """Test detection of code dataset from codeforces unique_id"""
+    def test_detect_code_dataset_from_codeelo_id(self):
+        """Test detection of code dataset from codeelo unique_id"""
         results = [
-            {'unique_id': 'codeforces-1234-A-0', 'question': 'Code problem'},
-            {'unique_id': 'codeforces-1234-B-0', 'question': 'Code problem'}
+            {'unique_id': 'codeelo-1234-A-0', 'question': 'Code problem'},
+            {'unique_id': 'codeelo-1234-B-0', 'question': 'Code problem'}
         ]
 
         dataset_type = detect_dataset_type(results)
@@ -91,7 +91,7 @@ class TestPrepareTaskWithDatasetType:
     def test_prepare_task_code_dataset_with_retrieval(self):
         """Test prepare_task for code dataset with answer('retrieval')"""
         item = {
-            'unique_id': 'codeforces-1234-A-0',
+            'unique_id': 'codeelo-1234-A-0',
             'question': 'Write a function to add two numbers',
             'test_cases': [(['2', '3'], '5'), (['10', '20'], '30')],
             'result': {'traj': 'Let me think about the solution...'}
@@ -113,7 +113,7 @@ class TestPrepareTaskWithDatasetType:
     def test_prepare_task_code_dataset_with_custom_prefill(self):
         """Test that code dataset ignores custom prefill_text and uses code prefix"""
         item = {
-            'unique_id': 'codeforces-1234-B-0',
+            'unique_id': 'codeelo-1234-B-0',
             'question': 'Write a function',
             'test_cases': [(['1'], '1')],
             'result': {'traj': 'Solution approach...'}
@@ -151,7 +151,7 @@ class TestPrepareTaskWithDatasetType:
     def test_prepare_task_code_dataset_without_retrieval(self):
         """Test prepare_task for code dataset without answer('retrieval')"""
         item = {
-            'unique_id': 'codeforces-1234-C-0',
+            'unique_id': 'codeelo-1234-C-0',
             'question': 'Implement a sorting function',
             'test_cases': [(['3', '1', '2'], '1 2 3')],
             'result': {'traj': 'Use merge sort...'}
@@ -213,7 +213,7 @@ class TestAnswerPrefixIntegration:
         from pipeline import parse_flow, Pipeline
 
         item = {
-            'unique_id': 'codeforces-1234-D-0',
+            'unique_id': 'codeelo-1234-D-0',
             'question': 'Write a function',
             'test_cases': [(['1', '2'], '3')],
             'result': {'traj': 'Implementation strategy...\nStep 1: Initialize variables\nStep 2: Process input'}
@@ -235,7 +235,7 @@ class TestAnswerPrefixIntegration:
     def test_multiple_processors_with_code_retrieval(self):
         """Test complex pipeline with code dataset and retrieval"""
         item = {
-            'unique_id': 'codeforces-5678-E-0',
+            'unique_id': 'codeelo-5678-E-0',
             'question': 'Implement binary search',
             'test_cases': [(['1', '2', '3', '4', '5'], '3')],
             'result': {'traj': 'Binary search implementation:\nStep 1: Initialize pointers\nStep 2: Compare middle element'}
@@ -261,8 +261,8 @@ class TestAnswerPrefixIntegration:
 
         # Code dataset items
         code_items = [
-            {'unique_id': 'codeforces-1234-A-0', 'question': 'Code Q1'},
-            {'unique_id': 'codeforces-1234-B-0', 'question': 'Code Q2'}
+            {'unique_id': 'codeelo-1234-A-0', 'question': 'Code Q1'},
+            {'unique_id': 'codeelo-1234-B-0', 'question': 'Code Q2'}
         ]
 
         # Test math detection
@@ -296,7 +296,7 @@ class TestEdgeCases:
     def test_prepare_task_code_dataset_with_none_flow(self):
         """Test prepare_task for code dataset with None flow"""
         item = {
-            'unique_id': 'codeforces-9999-Z-0',
+            'unique_id': 'codeelo-9999-Z-0',
             'question': 'Code problem',
             'test_cases': [(['input'], 'output')],
             'result': {'traj': 'Solution...'}
@@ -328,7 +328,7 @@ class TestEdgeCases:
         ]
 
         item = {
-            'unique_id': 'codeforces-1111-A-0',
+            'unique_id': 'codeelo-1111-A-0',
             'question': 'Sum two numbers',
             'test_cases': test_cases,
             'result': {'traj': 'Implementation...'}

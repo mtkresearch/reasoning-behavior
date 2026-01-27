@@ -1110,9 +1110,9 @@ def detect_dataset_type(results: List[Dict]) -> str:
 
     # 定義數據集類型的檢測模式
     dataset_patterns = {
-        'code': ['codeforces', 'codeeml', 'arc', 'codeelo'],  # Code contest platforms
-        'science': ['gpqa', 'gsm8k'],  # Science/knowledge datasets
-        'math': ['aime', 'math500', 'mathdialogue']  # Math datasets
+        'code': ['codeelo'],
+        'science': ['gpqa-diamond'],
+        'math': ['aime2025']
     }
 
     # 採樣多個結果以驗證一致性（取前3個或全部）

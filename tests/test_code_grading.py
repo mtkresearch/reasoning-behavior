@@ -15,11 +15,11 @@ from core import extract_code_blocks
 class TestDetectDatasetType:
     """測試數據集類型檢測"""
 
-    def test_detect_codeforces_dataset(self):
+    def test_detect_codeelo_dataset(self):
         """測試檢測 CodeForces 數據集"""
         results = [
-            {'unique_id': 'codeforces-1971A-0'},
-            {'unique_id': 'codeforces-1971B-1'}
+            {'unique_id': 'codeelo-1971A-0'},
+            {'unique_id': 'codeelo-1971B-1'}
         ]
         assert detect_dataset_type(results) == 'code'
 
@@ -44,7 +44,7 @@ class TestCreateCodeGradingTasksNewFormat:
         """測試使用新的 baseline 格式創建任務"""
         results = [
             {
-                'unique_id': 'codeforces-1971A-0',
+                'unique_id': 'codeelo-1971A-0',
                 'question_id': 0,
                 'generation_success': True,
                 'result': {
@@ -58,7 +58,7 @@ class TestCreateCodeGradingTasksNewFormat:
 
         assert len(tasks) == 1
         assert tasks[0]['type'] == 'code_execution'
-        assert tasks[0]['unique_id'] == 'codeforces-1971A-0'
+        assert tasks[0]['unique_id'] == 'codeelo-1971A-0'
         assert tasks[0]['question_id'] == 0
         assert '#include <iostream>' in tasks[0]['code']
         assert len(tasks[0]['test_cases']) == 2
@@ -68,7 +68,7 @@ class TestCreateCodeGradingTasksNewFormat:
         """測試從 result.answer 提取代碼"""
         results = [
             {
-                'unique_id': 'codeforces-1971A-0',
+                'unique_id': 'codeelo-1971A-0',
                 'question_id': 0,
                 'generation_success': True,
                 'result': {
@@ -90,7 +90,7 @@ class TestCreateCodeGradingTasksNewFormat:
         """測試沒有代碼塊的情況"""
         results = [
             {
-                'unique_id': 'codeforces-1971A-0',
+                'unique_id': 'codeelo-1971A-0',
                 'question_id': 0,
                 'generation_success': True,
                 'result': {
@@ -109,7 +109,7 @@ class TestCreateCodeGradingTasksNewFormat:
         """測試空的測試用例"""
         results = [
             {
-                'unique_id': 'codeforces-1971A-0',
+                'unique_id': 'codeelo-1971A-0',
                 'question_id': 0,
                 'generation_success': True,
                 'result': {
@@ -128,7 +128,7 @@ class TestCreateCodeGradingTasksNewFormat:
         """測試多個代碼塊時優先選擇 C++ 代碼"""
         results = [
             {
-                'unique_id': 'codeforces-1971A-0',
+                'unique_id': 'codeelo-1971A-0',
                 'question_id': 0,
                 'generation_success': True,
                 'result': {
@@ -165,11 +165,11 @@ class TestCodeExecution:
 
         task = {
             'type': 'code_execution',
-            'unique_id': 'codeforces-test-0',
+            'unique_id': 'codeelo-test-0',
             'question_id': 0,
             'code': '#include <iostream>\nint main() { std::cout << "Hello\\n"; return 0; }',
             'test_cases': [['', 'Hello']],
-            'result': {'unique_id': 'codeforces-test-0'}
+            'result': {'unique_id': 'codeelo-test-0'}
         }
 
         # Execute test cases
@@ -206,11 +206,11 @@ class TestCodeExecution:
 
         task = {
             'type': 'code_execution',
-            'unique_id': 'codeforces-test-0',
+            'unique_id': 'codeelo-test-0',
             'question_id': 0,
             'code': '#include <iostream>\nint main() { std::cout << "World\\n"; return 0; }',
             'test_cases': [['', 'Hello']],
-            'result': {'unique_id': 'codeforces-test-0'}
+            'result': {'unique_id': 'codeelo-test-0'}
         }
 
         # Execute test cases

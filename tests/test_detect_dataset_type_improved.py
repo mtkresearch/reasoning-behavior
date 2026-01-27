@@ -90,10 +90,10 @@ class TestMultipleResultSampling:
     def test_consistent_type_across_sample(self):
         """Test that consistent types across sample are detected correctly"""
         results = [
-            {'unique_id': 'codeforces-1-A-1', 'test_cases': [(['1'], '1')]},
-            {'unique_id': 'codeforces-1-B-2', 'test_cases': [(['2'], '2')]},
-            {'unique_id': 'codeforces-1-C-3', 'test_cases': [(['3'], '3')]},
-            {'unique_id': 'codeforces-1-D-4', 'test_cases': [(['4'], '4')]}  # More results
+            {'unique_id': 'codeelo-1-A-1', 'test_cases': [(['1'], '1')]},
+            {'unique_id': 'codeelo-1-B-2', 'test_cases': [(['2'], '2')]},
+            {'unique_id': 'codeelo-1-C-3', 'test_cases': [(['3'], '3')]},
+            {'unique_id': 'codeelo-1-D-4', 'test_cases': [(['4'], '4')]}  # More results
         ]
 
         dataset_type = detect_dataset_type(results)
@@ -107,7 +107,7 @@ class TestMultipleResultSampling:
             {'unique_id': 'aime2025-I-2', 'answer': '20'},
             {'unique_id': 'aime2025-I-3', 'answer': '30'},
             # If more samples were checked, might detect inconsistency
-            {'unique_id': 'codeforces-1-A-1', 'test_cases': [(['1'], '1')]}
+            {'unique_id': 'codeelo-1-A-1', 'test_cases': [(['1'], '1')]}
         ]
 
         dataset_type = detect_dataset_type(results)
@@ -118,7 +118,7 @@ class TestMultipleResultSampling:
     def test_works_with_single_result(self):
         """Test that detection works with single result"""
         results = [
-            {'unique_id': 'codeforces-123-A-0', 'test_cases': [(['1'], '1')]}
+            {'unique_id': 'codeelo-123-A-0', 'test_cases': [(['1'], '1')]}
         ]
 
         dataset_type = detect_dataset_type(results)
@@ -292,8 +292,8 @@ class TestBackwardCompatibility:
     def test_original_code_detection(self):
         """Test original code detection still works"""
         results = [
-            {'unique_id': 'codeforces-1234-A-0', 'test_cases': []},
-            {'unique_id': 'codeforces-1234-B-0', 'test_cases': []}
+            {'unique_id': 'codeelo-1234-A-0', 'test_cases': []},
+            {'unique_id': 'codeelo-1234-B-0', 'test_cases': []}
         ]
 
         dataset_type = detect_dataset_type(results)
