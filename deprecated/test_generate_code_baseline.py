@@ -38,7 +38,7 @@ class TestJSONLCache:
             jsonl_path = Path(tmpdir) / "results.jsonl"
 
             result = {
-                'unique_id': 'codeforces-1234A-0',
+                'unique_id': 'codeelo-1234A-0',
                 'question': 'Test question',
                 'test_cases': [['1', '2']],
                 'result': {
@@ -68,13 +68,13 @@ class TestJSONLCache:
             # Create test data
             results = [
                 {
-                    'unique_id': 'codeforces-1234A-0',
+                    'unique_id': 'codeelo-1234A-0',
                     'question': 'Question 1',
                     'test_cases': [['1', '2']],
                     'result': {'traj': 'Reasoning 1', 'answer': 'Answer 1', 'sys_prompt': 'Prompt', 'elapsed_seconds': 1.0}
                 },
                 {
-                    'unique_id': 'codeforces-5678B-0',
+                    'unique_id': 'codeelo-5678B-0',
                     'question': 'Question 2',
                     'test_cases': [['3', '4']],
                     'result': {'traj': 'Reasoning 2', 'answer': 'Answer 2', 'sys_prompt': 'Prompt', 'elapsed_seconds': 2.0}
@@ -89,10 +89,10 @@ class TestJSONLCache:
             loaded_results = load_existing_jsonl_results(jsonl_path)
             assert len(loaded_results) == 2
             # baseline_utils uses full unique_id as key
-            assert 'codeforces-1234A-0' in loaded_results
-            assert 'codeforces-5678B-0' in loaded_results
-            assert loaded_results['codeforces-1234A-0']['question'] == 'Question 1'
-            assert loaded_results['codeforces-5678B-0']['question'] == 'Question 2'
+            assert 'codeelo-1234A-0' in loaded_results
+            assert 'codeelo-5678B-0' in loaded_results
+            assert loaded_results['codeelo-1234A-0']['question'] == 'Question 1'
+            assert loaded_results['codeelo-5678B-0']['question'] == 'Question 2'
 
     def test_load_existing_jsonl_results_skip_invalid_lines(self):
         """Test that invalid lines are skipped when loading"""
@@ -101,9 +101,9 @@ class TestJSONLCache:
 
             # Write valid and invalid lines
             with open(jsonl_path, 'w', encoding='utf-8') as f:
-                f.write(json.dumps({'unique_id': 'codeforces-1234A-0', 'question': 'Q1'}) + '\n')
+                f.write(json.dumps({'unique_id': 'codeelo-1234A-0', 'question': 'Q1'}) + '\n')
                 f.write('\n')  # Empty line
-                f.write(json.dumps({'unique_id': 'codeforces-5678B-0', 'question': 'Q2'}) + '\n')
+                f.write(json.dumps({'unique_id': 'codeelo-5678B-0', 'question': 'Q2'}) + '\n')
 
             # Load and verify
             loaded_results = load_existing_jsonl_results(jsonl_path)
@@ -195,7 +195,7 @@ class TestResumeCapability:
 
             # Simulate existing results for problem_id '1234A'
             existing_result = {
-                'unique_id': 'codeforces-1234A-0',
+                'unique_id': 'codeelo-1234A-0',
                 'question': 'Question 1',
                 'test_cases': [['1', '2']],
                 'result': {'traj': 'Reasoning 1', 'answer': 'Answer 1', 'sys_prompt': 'Prompt', 'elapsed_seconds': 1.0}
@@ -206,12 +206,12 @@ class TestResumeCapability:
             loaded_results = load_existing_jsonl_results(jsonl_path)
 
             # Verify that problem '1234A' is loaded (with full unique_id format)
-            assert 'codeforces-1234A-0' in loaded_results
+            assert 'codeelo-1234A-0' in loaded_results
 
             # Simulate filtering problems using unique_id
             all_problems = [
-                {'problem_id': '1234A', 'title': 'Problem A', 'unique_id': 'codeforces-1234A-0'},
-                {'problem_id': '5678B', 'title': 'Problem B', 'unique_id': 'codeforces-5678B-0'}
+                {'problem_id': '1234A', 'title': 'Problem A', 'unique_id': 'codeelo-1234A-0'},
+                {'problem_id': '5678B', 'title': 'Problem B', 'unique_id': 'codeelo-5678B-0'}
             ]
 
             problems_to_process = [

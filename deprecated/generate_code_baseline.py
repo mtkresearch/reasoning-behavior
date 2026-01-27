@@ -157,7 +157,7 @@ def generate_baseline(
         output_path=output_path,
         build_prompt_fn=build_prompt,
         format_result_fn=lambda problem, response, sys_prompt: {
-            'unique_id': f"codeforces-{problem['problem_id']}-0",
+            'unique_id': f"codeelo-{problem['problem_id']}-0",
             'question': make_html_problem(problem),
             'test_cases': problem['examples'],
             'result': {
