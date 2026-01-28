@@ -1277,7 +1277,8 @@ def run_experiment(
     limit: int = None,
     max_workers: int = DEFAULT_MAX_WORKERS,
     max_retry: int = DEFAULT_MAX_RETRY,
-    model_type: str = None
+    model_type: str = None,
+    inference_only: bool = False
 ):
     """
     Run the mask numbers experiment using JSONL strategy
@@ -1291,11 +1292,12 @@ def run_experiment(
         max_workers: Maximum concurrent workers
         max_retry: Maximum retry attempts
         model_type: Model type to use (overrides auto-detection from path)
+        inference_only: If True, only run Phase 1 (inference), skip Phase 2 (grading) and JSON generation
 
     File Strategy:
         - Stage 1 (generation): Write to {output_path}_stage1.jsonl
-        - Stage 2 (grading): Write to {output_path}_stage2.jsonl
-        - Final: Rebuild {output_path}.json from stage2.jsonl
+        - Stage 2 (grading): Write to {output_path}_stage2.jsonl (skipped if inference_only=True)
+        - Final: Rebuild {output_path}.json from stage2.jsonl (skipped if inference_only=True)
     """
     # Extract model_type from results_path (可被參數覆蓋)
     if model_type is None:
@@ -1446,6 +1448,34 @@ def run_experiment(
                 print(f"  - {result['unique_id']}: {error_msg}")
     else:
         print(f"\n=== Phase 1: All tasks already completed, skipping generation ===")
+
+    # If inference_only mode, skip Phase 2 and JSON generation
+    if inference_only:
+        print(f"\n=== Inference-only mode: Skipping Phase 2 (grading) and JSON generation ===")
+
+        # Calculate Phase 1 statistics
+        all_stage1_results = list(stage1_results_map.values())
+        total_tasks = len(all_stage1_results)
+        successful_tasks = sum(
+            1 for r in all_stage1_results
+            if r.get('generation_success', False) and r.get('generated_answer') is not None
+        )
+        failed_tasks = total_tasks - successful_tasks
+
+        # Print Phase 1 summary
+        print("\n" + "="*60)
+        print("INFERENCE RESULTS (Phase 1 Only)")
+        print("="*60)
+        print(f"Flow:                         {flow_str}")
+        print(f"Model:                        {model_type}")
+        print(f"Total Tasks:                  {total_tasks}")
+        print(f"Successful Generations:       {successful_tasks}")
+        print(f"Failed Generations:           {failed_tasks}")
+        print(f"Success Rate:                 {successful_tasks/total_tasks:.2%}" if total_tasks > 0 else "Success Rate: N/A")
+        print("="*60)
+        print(f"\nFinal output: {stage1_jsonl}")
+        print("Note: Use this JSONL file for downstream processing or grading")
+        return
 
     # Phase 2: Grade answers
     print(f"\n=== Phase 2: Grading answers ===")
@@ -1682,6 +1712,11 @@ def main():
         default=None,
         help='Model type to use (overrides auto-detection from path). Use this when model differs from path (e.g., olmo--base with olmo data)'
     )
+    parser.add_argument(
+        '--inference-only',
+        action='store_true',
+        help='Only run inference (Phase 1), skip grading (Phase 2) and JSON generation. Final output is stage1.jsonl only.'
+    )
 
     args = parser.parse_args()
 
@@ -1706,7 +1741,8 @@ def main():
         limit=args.limit,
         max_workers=args.max_workers,
         max_retry=args.max_retry,
-        model_type=args.model_type
+        model_type=args.model_type,
+        inference_only=args.inference_only
     )
 
 
