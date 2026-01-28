@@ -1349,8 +1349,11 @@ def run_experiment(
 
     print(f"Total questions: {len(data)}")
 
-    # Initialize LLM client
-    client = LLMClient(mode=mode, timeout=60)
+    # Initialize LLM client with mode-specific timeout
+    # Local models need more time for generation (3600s)
+    # OpenRouter has faster inference but network overhead (600s)
+    timeout = 3600 if mode == 'local' else 600
+    client = LLMClient(mode=mode, timeout=timeout)
 
     # Detect dataset type early (before preparing tasks)
     dataset_type = detect_dataset_type(data)
