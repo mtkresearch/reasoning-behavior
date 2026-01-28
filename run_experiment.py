@@ -887,11 +887,27 @@ def prepare_task(
     # Get system_prompt from baseline result (if available)
     system_prompt = item.get('result', {}).get('sys_prompt', 'You are a helpful assistant')
 
-    # Determine stop sequences for code datasets with answer('retrieval')
+    # Determine stop sequences based on model_type and dataset_type
     stop = None
-    if dataset_type == 'code' and answer_prefix:
-        # When using answer('retrieval') with code datasets, stop at closing code fence
+    stop_without_refill = None
+
+    # Check if answer('retrieval') processor is used by examining processing_metadata
+    # Look for processor='answer' and mode='retrieval' in metadata list
+    uses_answer_retrieval = any(
+        meta.get('processor') == 'answer' and meta.get('mode') == 'retrieval'
+        for meta in processing_metadata
+    )
+
+    # Priority 1: Code datasets with answer('retrieval') - stop at code fence
+    # Use stop (with refill) to preserve closing code fence in output
+    if dataset_type == 'code' and uses_answer_retrieval:
         stop = '\n```'
+
+    # Priority 2: OLMo base model (only if stop not already set)
+    # Base models lack instruction-following capability and need explicit stop sequences
+    # Use stop_without_refill to avoid appending stop strings to output
+    elif model_type == 'olmo--base':
+        stop_without_refill = ['## Question', '## Reasoning', '## Answer']
 
     # Create CompletionRequest (template will be applied by LLMClient)
     request = CompletionRequest(
@@ -902,6 +918,7 @@ def prepare_task(
         temperature=0.01,
         max_tokens=max_tokens,
         stop=stop,
+        stop_without_refill=stop_without_refill,
         system_prompt=system_prompt
         # Note: min_tokens not supported by OpenRouter API
     )

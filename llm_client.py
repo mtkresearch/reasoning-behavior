@@ -41,6 +41,7 @@ class CompletionRequest:
     max_tokens: int = 20480
     min_tokens: Optional[int] = None
     stop: str = None
+    stop_without_refill: Optional[List[str]] = None
     system_prompt: str = "You are a helpful assistant"
     reasoning_on: bool = True
 
@@ -464,9 +465,16 @@ class LLMClient:
             'max_tokens': request.max_tokens,
         }
 
-        # Add stop parameter if provided
+        # Add stop sequences parameter
+        # Mutual exclusion check: stop and stop_without_refill cannot be used together
+        if request.stop is not None and request.stop_without_refill is not None:
+            raise ValueError("stop and stop_without_refill are mutually exclusive. Use only one.")
+
+        # Set stop sequences
         if request.stop is not None:
             payload['stop'] = [request.stop]
+        elif request.stop_without_refill is not None:
+            payload['stop'] = request.stop_without_refill
 
         if DEBUG:
             print('prompt:', formatted_prompt)
