@@ -658,30 +658,37 @@ def extract_model_from_path(results_path: str) -> str:
     raise ValueError(f"Cannot extract model from path: {results_path}")
 
 
-def generate_output_path_from_flow(results_path: str, flow: str) -> str:
+def generate_output_path_from_flow(
+    results_path: str,
+    flow: str,
+    model_type: str = None,
+    output_root: str = "./experiments/"
+) -> str:
     """
     Generate output path based on dataset, model, and flow string
 
     Rules:
-    - gpt-oss + AIME2025__R10: exp/<hash>/results.json
-    - Other combinations: exp_{DATA}_{MODEL}/<hash>/results.json
+    - gpt-oss + AIME2025__R10: <output_root>/exp/<hash>/results.json
+    - Other combinations: <output_root>/exp_{DATA}_{MODEL}/<hash>/results.json
 
     Args:
         results_path: Original results.json path (format: data/{DATASET}/{MODEL}/p{n}/results.json)
         flow: Flow string
+        model_type: Model type to use (overrides auto-detection from path)
+        output_root: Root directory for experiment outputs (default: ./experiments/)
 
     Returns:
         Generated output path
 
     Examples:
         data/AIME2025__R10/gpt-oss/p1/results.json + flow
-        -> experiments/exp/<hash>/results.json
+        -> ./experiments/exp/<hash>/results.json
 
-        data/AIME2025__R10/deepseek/p1/results.json + flow
-        -> experiments/exp_AIME2025__R10_deepseek/<hash>/results.json
+        data/AIME2025__R10/olmo/p1/results.json + flow + model_type='olmo--base'
+        -> ./experiments/exp_AIME2025__R10_olmo--base/<hash>/results.json
 
-        data/MATH500/gpt-oss/p1/results.json + flow
-        -> experiments/exp_MATH500_gpt-oss/<hash>/results.json
+        data/MATH500/gpt-oss/p1/results.json + flow + output_root='./custom/'
+        -> ./custom/exp_MATH500_gpt-oss/<hash>/results.json
     """
     import hashlib
     from pathlib import Path
@@ -698,8 +705,9 @@ def generate_output_path_from_flow(results_path: str, flow: str) -> str:
     except (ValueError, IndexError, AttributeError) as e:
         logger.debug(f"Failed to extract dataset name from '{results_path}': {e}")
 
-    # Extract model type from results_path
-    model_type = extract_model_from_path(results_path)
+    # Extract model type from results_path (if not provided)
+    if model_type is None:
+        model_type = extract_model_from_path(results_path)
 
     # Generate hash from flow string
     hash_obj = hashlib.md5(flow.encode('utf-8'))
@@ -707,11 +715,11 @@ def generate_output_path_from_flow(results_path: str, flow: str) -> str:
 
     # Determine base directory based on dataset and model
     if model_type == 'gpt-oss' and dataset_name == 'AIME2025__R10':
-        # Default: experiments/exp/<hash>/results.json (保持向後兼容)
-        base_dir = Path("experiments/exp")
+        # Default: <output_root>/exp/<hash>/results.json (保持向後兼容)
+        base_dir = Path(output_root) / "exp"
     else:
-        # New format: experiments/exp_{DATA}_{MODEL}/<hash>/results.json
-        base_dir = Path(f"experiments/exp_{dataset_name}_{model_type}")
+        # New format: <output_root>/exp_{DATA}_{MODEL}/<hash>/results.json
+        base_dir = Path(output_root) / f"exp_{dataset_name}_{model_type}"
 
     # Construct full path
     output_path = base_dir / flow_hash / "results.json"
@@ -1673,10 +1681,10 @@ def main():
         help='Path to results.json'
     )
     parser.add_argument(
-        '--output_path',
+        '--output_root',
         type=str,
-        default=None,
-        help='Path to save results. If not specified, auto-generated based on --flow in exp/ directory'
+        default='./experiments/',
+        help='Root directory for experiment outputs (default: ./experiments/). Final path will be <output_root>/exp_<dataset>_<model>/<hash>/results.json'
     )
     parser.add_argument(
         '--mode',
@@ -1713,7 +1721,7 @@ def main():
         '--model_type',
         type=str,
         default=None,
-        help='Model type to use (overrides auto-detection from path). Use this when model differs from path (e.g., olmo--base with olmo data)'
+        help='Model type to use (overrides auto-detection from path). This affects both model inference AND output path generation. Use when model differs from path (e.g., --model_type olmo--base with data/.../olmo/... path)'
     )
     parser.add_argument(
         '--inference-only',
@@ -1726,10 +1734,14 @@ def main():
     # Determine flow string
     flow_str = args.flow
 
-    # Auto-generate output path if not specified
-    if args.output_path is None:
-        args.output_path = generate_output_path_from_flow(args.results_path, flow_str)
-        print(f"Auto-generated output path: {args.output_path}")
+    # Auto-generate output path using model_type and output_root
+    args.output_path = generate_output_path_from_flow(
+        args.results_path,
+        flow_str,
+        model_type=args.model_type,
+        output_root=args.output_root
+    )
+    print(f"Auto-generated output path: {args.output_path}")
 
     # Create output directory if needed
     output_dir = Path(args.output_path).parent
