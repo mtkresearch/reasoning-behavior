@@ -1364,6 +1364,12 @@ def run_experiment(
     logger.info(f"Found {len(existing_stage1)} Stage 1 results: {successful_count} successful, {failed_count} to retry")
     print(f"Found {len(existing_stage1)} Stage 1 results: {successful_count} successful, {failed_count} to retry")
 
+    # Detect dataset type early (BEFORE filtering data, to avoid empty list)
+    # Use existing_stage1 if available, otherwise use original data
+    dataset_type_source = existing_stage1 if existing_stage1 else data
+    dataset_type = detect_dataset_type(dataset_type_source)
+    print(f"Dataset type: {dataset_type}")
+
     # Filter out only successfully completed items
     data = [item for item in data if item['unique_id'] not in completed_stage1_ids]
     print(f"Tasks to process: {len(data)}")
@@ -1379,10 +1385,6 @@ def run_experiment(
     # OpenRouter has faster inference but network overhead (600s)
     timeout = 3600 if mode == 'local' else 600
     client = LLMClient(mode=mode, timeout=timeout)
-
-    # Detect dataset type early (before preparing tasks)
-    dataset_type = detect_dataset_type(data)
-    print(f"Dataset type: {dataset_type}")
 
     # Prepare tasks
     print("Preparing processing tasks...")
@@ -1530,7 +1532,7 @@ def run_experiment(
 
     # Note: dataset_type was already detected in Phase 1
 
-    grading_tasks = create_grading_tasks(need_grading, judge_model_type='gpt-oss')
+    grading_tasks = create_grading_tasks(need_grading, judge_model_type='gpt-oss', dataset_type=dataset_type)
 
     if len(grading_tasks) > 0:
         if dataset_type == 'code':
