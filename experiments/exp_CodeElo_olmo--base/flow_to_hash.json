@@ -1,0 +1,7 @@
+{
+  "shuffle('line'),answer('retrieval')": "4f44ad3a",
+  "truncate('all'),answer('retrieval')": "832b3a6d",
+  "answer('retrieval')": "9c3cc7e6",
+  "shuffle('word'),answer('retrieval')": "9c885777",
+  "shuffle('word'),truncate('answer'),answer('retrieval')": "5119670b"
+}
