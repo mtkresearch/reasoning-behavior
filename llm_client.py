@@ -109,7 +109,7 @@ class LLMClient:
             elif model_type == 'deepseek-base':
                 return 'deepseek/deepseek-v3.1-base'
             elif model_type == 'olmo':
-                return 'allenai/olmo-3.1-32b-think'
+                return 'allenai/olmo-3.1-32b-instruct'
             elif model_type == 'olmo--base':
                 raise ValueError(f"Unsupported model_type for openrouter: {model_type}")
             elif model_type == 'qwen3':

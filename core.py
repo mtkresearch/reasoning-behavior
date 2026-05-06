@@ -983,6 +983,7 @@ MODEL_TYPE_TO_TOKENIZER = {
     'deepseek': 'deepseek-ai/DeepSeek-V3',
     'gpt-oss': 'openai/gpt-oss-120b',
     'qwen3': 'deepseek-ai/DeepSeek-R1-0528-Qwen3-8B',
+    'olmo': 'allenai/Olmo-3-7B-Instruct',
 }
 
 

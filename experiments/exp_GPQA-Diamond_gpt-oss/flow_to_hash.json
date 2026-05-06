@@ -6,5 +6,8 @@
   "truncate('all')": "79d59000",
   "shuffle('word'),answer('retrieval')": "9c885777",
   "shuffle('in-line-word'),answer('retrieval')": "5fad1139",
-  "shuffle('in-line-word'),shuffle('line'),answer('retrieval')": "e3b4e537"
+  "shuffle('in-line-word'),shuffle('line'),answer('retrieval')": "e3b4e537",
+  "shuffle('token',model_type='gpt-oss'),answer('retrieval')": "aa5c7d14",
+  "padding('token',tokenizer_model='openai/gpt-oss-120b'),answer('retrieval')": "e5ff525d",
+  "padding('word',words_tsv_path='data/GPQA-Diamond/gpt-oss/p1/words.tsv'),answer('retrieval')": "5de4ad80"
 }

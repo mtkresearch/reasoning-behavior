@@ -6,5 +6,9 @@
   "truncate('all')": "79d59000",
   "shuffle('word'),answer('retrieval')": "9c885777",
   "shuffle('in-line-word'),answer('retrieval')": "5fad1139",
-  "shuffle('in-line-word'),shuffle('line'),answer('retrieval')": "e3b4e537"
+  "shuffle('in-line-word'),shuffle('line'),answer('retrieval')": "e3b4e537",
+  "shuffle('line'),truncate('answer'),answer('retrieval')": "eee59653",
+  "shuffle('token',model_type='olmo'),answer('retrieval')": "2beb4698",
+  "padding('token',tokenizer_model='allenai/Olmo-3-7B-Instruct'),answer('retrieval')": "deab1300",
+  "padding('word',words_tsv_path='data/AIME2025__R10/olmo/p1/words.tsv'),answer('retrieval')": "8dddd277"
 }

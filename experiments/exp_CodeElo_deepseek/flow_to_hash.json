@@ -6,5 +6,8 @@
   "shuffle('line'),answer('retrieval')": "4f44ad3a",
   "shuffle('word'),answer('retrieval')": "9c885777",
   "shuffle('in-line-word'),answer('retrieval')": "5fad1139",
-  "shuffle('in-line-word'),shuffle('line'),answer('retrieval')": "e3b4e537"
+  "shuffle('in-line-word'),shuffle('line'),answer('retrieval')": "e3b4e537",
+  "shuffle('token',model_type='deepseek'),answer('retrieval')": "f2956a38",
+  "padding('token',tokenizer_model='deepseek-ai/DeepSeek-V3'),answer('retrieval')": "9ef307ce",
+  "padding('word',words_tsv_path='data/CodeElo/deepseek/p1/words.tsv'),answer('retrieval')": "ef578617"
 }

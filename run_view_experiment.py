@@ -1652,7 +1652,7 @@ def main():
     parser.add_argument(
         '--exp-dir',
         type=str,
-        default='exp',
+        default='experiments/exp',
         help='Experiment directory to scan (default: exp)'
     )
     parser.add_argument(
