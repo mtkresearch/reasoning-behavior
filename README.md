@@ -179,6 +179,6 @@ The web interface shows a tree of all experiments under `experiments/exp/` with 
 @article{chen2025rethinking,
   title   = {Rethinking Dense Sequential Chains: Reasoning Language Models Can Extract Answers from Sparse, Order-Shuffling Chain-of-Thoughts},
   author  = {Yi-Chang Chen and Feng-Ting Liao and Da-shan Shiu and Hung-yi Lee},
-  year    = {2025},
+  year    = {2026},
 }
 ```
